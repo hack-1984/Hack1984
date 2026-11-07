@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import type { FeasibilityRequest, FeasibilityResponse } from "@/lib/contracts";
-import type { TreeUpdate } from "@/lib/types";
+import type { TeamProfile, TreeUpdate } from "@/lib/types";
+import { assessFeasibility } from "@/server/feasibility";
+
+const EMPTY_TEAM: TeamProfile = { roles: [], skills: [], tech: [] };
 
 /** POST /api/feasibility — Greg's Team drawer. { idea, team } -> { updates } */
 export async function POST(req: Request) {
@@ -25,6 +28,17 @@ export async function POST(req: Request) {
     return NextResponse.json({ updates } satisfies FeasibilityResponse);
   }
 
-  // TODO: one askJSON call over all active choices + the team profile.
-  return NextResponse.json({ error: "not implemented — set MOCK_AI=1" }, { status: 501 });
+  if (!body.idea) {
+    return NextResponse.json({ error: "idea is required" }, { status: 400 });
+  }
+
+  try {
+    const updates = await assessFeasibility(body.idea, body.team ?? EMPTY_TEAM);
+    return NextResponse.json({ updates } satisfies FeasibilityResponse);
+  } catch (err) {
+    // An empty update list is a valid answer. Greg's drawer should render
+    // "nothing to flag" rather than break because one call failed.
+    console.error("[api/feasibility] failed:", err);
+    return NextResponse.json({ updates: [] } satisfies FeasibilityResponse);
+  }
 }
