@@ -1,9 +1,10 @@
-import { GoogleGenAI, ThinkingLevel } from "@google/genai";
+import Anthropic from "@anthropic-ai/sdk";
+import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { z } from "zod";
 import { MODELS } from "./models";
 
 /**
- * One model call that returns schema-valid JSON.
+ * One Claude call that returns schema-valid JSON.
  *
  * Signature is fixed — Tony and Greg import this. Add to it, don't change it.
  *
@@ -11,7 +12,7 @@ import { MODELS } from "./models";
  * and clamp numbers in your own code: the model treats ranges as suggestions.
  */
 
-export type Effort = "low" | "medium" | "high";
+export type Effort = "low" | "medium" | "high" | "xhigh" | "max";
 
 export interface AskJSONArgs<S extends z.ZodType> {
   system: string;
@@ -22,48 +23,28 @@ export interface AskJSONArgs<S extends z.ZodType> {
   maxTokens?: number;
 }
 
-const THINKING: Record<Effort, ThinkingLevel> = {
-  low: ThinkingLevel.LOW,
-  medium: ThinkingLevel.MEDIUM,
-  high: ThinkingLevel.HIGH,
-};
-
-let client: GoogleGenAI | null = null;
-function genai(): GoogleGenAI {
+let client: Anthropic | null = null;
+function anthropic(): Anthropic {
   if (!client) {
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) throw new Error("GEMINI_API_KEY is not set");
-    client = new GoogleGenAI({ apiKey });
+    const apiKey = process.env.ANTHROPIC_API_KEY;
+    if (!apiKey) throw new Error("ANTHROPIC_API_KEY is not set");
+    client = new Anthropic({ apiKey });
   }
   return client;
 }
 
-/** Gemini rejects some JSON Schema keywords that Zod emits. */
-function toGeminiSchema(schema: z.ZodType): Record<string, unknown> {
-  const json = z.toJSONSchema(schema, { io: "output" }) as Record<string, unknown>;
-  const strip = (node: unknown): unknown => {
-    if (Array.isArray(node)) return node.map(strip);
-    if (node && typeof node === "object") {
-      const out: Record<string, unknown> = {};
-      for (const [k, v] of Object.entries(node)) {
-        if (k === "$schema" || k === "additionalProperties" || k === "exclusiveMinimum" || k === "exclusiveMaximum") continue;
-        out[k] = strip(v);
-      }
-      return out;
-    }
-    return node;
-  };
-  return strip(json) as Record<string, unknown>;
-}
-
-const TRANSIENT = /\b(429|500|502|503|504|UNAVAILABLE|RESOURCE_EXHAUSTED|high demand|timed out|timeout)\b/i;
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-/**
- * Two kinds of retry, deliberately separate:
- *   - transient (503 "high demand", 429, timeouts) — common on this key, backs off
- *   - schema-invalid output — one retry, as the plan specifies
- */
+/** 429, 5xx and connection errors are worth another go; 400 and 401 are not. */
+function isTransient(err: unknown): boolean {
+  return (
+    err instanceof Anthropic.RateLimitError ||
+    err instanceof Anthropic.InternalServerError ||
+    err instanceof Anthropic.APIConnectionError ||
+    (err instanceof Anthropic.APIError && typeof err.status === "number" && err.status >= 500)
+  );
+}
+
 export async function askJSON<S extends z.ZodType>({
   system,
   prompt,
@@ -72,50 +53,45 @@ export async function askJSON<S extends z.ZodType>({
   effort = "medium",
   maxTokens = 8192,
 }: AskJSONArgs<S>): Promise<z.infer<S>> {
-  const config = {
-    systemInstruction: system,
-    responseMimeType: "application/json",
-    responseSchema: toGeminiSchema(schema),
-    maxOutputTokens: maxTokens,
-    thinkingConfig: { thinkingLevel: THINKING[effort] },
-  };
-
   let lastErr: unknown;
 
-  // schema attempts: the call, then one retry on invalid output
-  for (let attempt = 0; attempt < 2; attempt++) {
-    const contents =
-      attempt === 0
-        ? prompt
-        : `${prompt}\n\nYour previous reply did not match the required JSON schema. Return only valid JSON matching it exactly.`;
-
-    // transient attempts, with backoff
-    let raw: string | undefined;
-    for (let t = 0; t < 4; t++) {
-      try {
-        const res = await genai().models.generateContent({ model, contents, config });
-        raw = res.text ?? "";
-        break;
-      } catch (err) {
-        lastErr = err;
-        const msg = err instanceof Error ? err.message : String(err);
-        if (!TRANSIENT.test(msg) || t === 3) throw err;
-        await sleep(400 * 2 ** t); // 400ms, 800ms, 1.6s
-      }
-    }
-
-    if (raw === undefined) continue;
-
+  // The SDK validates the response against the schema for us, so the only
+  // retry we need here is for transient failures.
+  for (let attempt = 0; attempt < 4; attempt++) {
     try {
-      return schema.parse(JSON.parse(raw)) as z.infer<S>;
+      const res = await anthropic().messages.parse({
+        model,
+        max_tokens: maxTokens,
+        system,
+        messages: [{ role: "user", content: prompt }],
+        output_config: {
+          effort,
+          format: zodOutputFormat(schema),
+        },
+      });
+
+      // Always check before reading content on current models.
+      if (res.stop_reason === "refusal") {
+        throw new Error(
+          `askJSON: ${model} refused (${res.stop_details?.category ?? "no category"})`
+        );
+      }
+      if (res.stop_reason === "max_tokens") {
+        throw new Error(`askJSON: ${model} hit max_tokens (${maxTokens}) before finishing`);
+      }
+      if (!res.parsed_output) {
+        throw new Error(`askJSON: ${model} returned no parseable output`);
+      }
+
+      return res.parsed_output as z.infer<S>;
     } catch (err) {
       lastErr = err;
+      if (!isTransient(err) || attempt === 3) throw err;
+      await sleep(500 * 2 ** attempt); // 0.5s, 1s, 2s
     }
   }
 
   throw new Error(
-    `askJSON: no schema-valid response from ${model} — ${
-      lastErr instanceof Error ? lastErr.message : String(lastErr)
-    }`
+    `askJSON: ${model} failed — ${lastErr instanceof Error ? lastErr.message : String(lastErr)}`
   );
 }

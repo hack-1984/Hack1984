@@ -34,28 +34,35 @@ segment configs at build time. You don't need them; routes are dynamic already.
 
 ---
 
-## The LLM is Gemini, not Claude
+## The LLM is Claude, as the build plan says
 
-The setup doc and build plans say Anthropic. **They're out of date** — we ran out
-of Anthropic access and switched. Use `@google/genai`, never `@anthropic-ai/sdk`
-(still in `package.json`, unused — don't import it).
+We briefly ran on Gemini while we had no Anthropic key. That's over — the
+Gemini free tier capped at **20 requests per day per model**, which died after
+six pitches. `@google/genai` is uninstalled. Use `@anthropic-ai/sdk`.
 
 ```ts
 import { askJSON, search, MODELS } from "@/lib/ai";
 ```
 
-`MODELS` is in `src/lib/ai/models.ts`. **The values were chosen by probing the
-key, not from docs.** Don't "fix" them to something newer without re-probing:
+**We are on a fixed $7 of credits.** That's the one constraint shaping model
+choice, so `MODELS.main` is Sonnet, not Opus:
 
-| What | Result |
-|---|---|
-| All pro models (`gemini-4-argon`, `gemini-pro-latest`, `gemini-3.1-pro-preview`) | 429 quota — **no pro tier on this key** |
-| `gemini-3.8/3.7/3.6-flash`, `gemini-flash-latest` | 503 "high demand" or timeout, more often than not |
-| `gemini-2.5-flash`, `gemini-2.5-pro` | 404 — retired for new users, despite being listed |
-| `gemini-3.5-flash`, `gemini-3.5-flash-lite` | ✅ reliable → `MODELS.main` / `MODELS.fast` |
+| | per `/api/tree` | per Launch Day |
+|---|---|---|
+| Opus 5.5 | ~$0.15 | ~$0.84 |
+| Sonnet 5.5 (`MODELS.main`) | ~$0.07 | — |
+| Haiku 5.5 (`MODELS.fast`) | ~$0.004 | ~$0.02 |
 
-**503s are normal.** `askJSON` already retries transient failures with backoff.
-Any new direct model call needs the same, or it will fail on stage.
+Use `MODELS.fast` for anything that fans out — Launch Day's 20 parallel calls
+on Opus would be most of the budget in one click. **Keep `MOCK_AI=1` on unless
+you're deliberately testing real output.** Every live call spends someone's
+real money.
+
+`askJSON` uses `messages.parse()` with `zodOutputFormat()`, so the SDK
+validates against your Zod schema — you get a typed object or a throw. It
+retries 429/5xx with backoff, and checks `stop_reason` for `refusal` and
+`max_tokens` before reading content. Any new direct model call should do the
+same.
 
 `askJSON`'s signature is fixed — several people import it. Add to it, never
 change it.
@@ -69,7 +76,7 @@ and never paste one into chat** (including to Claude — it ends up in the
 transcript). `.gitignore` covers `.env*` with an exception for `.env.example`.
 
 ```
-GEMINI_API_KEY=
+ANTHROPIC_API_KEY=
 TAVILY_API_KEY=
 MOCK_AI=1
 ```

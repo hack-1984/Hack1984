@@ -34,7 +34,12 @@ async function main() {
   const times: number[] = [];
   let failures = 0;
 
-  for (const pitch of PITCHES) {
+  // Every run spends real credits. LIMIT=2 while iterating; unset for the full set.
+  const limit = Number(process.env.LIMIT ?? PITCHES.length);
+  const pitches = PITCHES.slice(0, limit);
+  console.log(`running ${pitches.length} of ${PITCHES.length} pitches\n`);
+
+  for (const pitch of pitches) {
     const t = Date.now();
     try {
       const res = await fetch(`${BASE}/api/tree`, {
@@ -72,7 +77,7 @@ async function main() {
   const sorted = [...times].sort((a, b) => a - b);
   console.log(
     `\npillar order: ${PILLAR_KEYS.join(",")}` +
-      `\n${PITCHES.length - failures}/${PITCHES.length} returned a tree` +
+      `\n${pitches.length - failures}/${pitches.length} returned a tree` +
       `\nmedian ${sorted[Math.floor(sorted.length / 2)]}ms, slowest ${sorted.at(-1)}ms (bar: under 25000ms)`
   );
 }
