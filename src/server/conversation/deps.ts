@@ -102,6 +102,28 @@ export interface GraveyardRes {
   adjacent: boolean;
 }
 
+/**
+ * POST /api/impact — Greg's Build modal, Theory of change tab (nonprofit only in the UI).
+ * Same shape as the Step 0N block in the master doc. Once Step 0N lands in
+ * src/lib/contracts.ts, replace these three with a re-export from there.
+ */
+export interface LogicModel {
+  inputs: string[]; // resources: team, funding, partners, space
+  activities: string[]; // what the program does
+  outputs: string[]; // countable: '40 kids attend 2 sessions a week'
+  outcomes: string[]; // change in people: 'kids build and ship 3 projects'
+  impact: string; // long-term change, one line
+  assumptions: { text: string; choiceId?: string }[]; // what must be true; choiceId links it to the tree
+  metrics: { label: string; target: string; pillar: PillarKey }[]; // 3 to track
+}
+export interface ImpactReq {
+  idea: Idea;
+}
+export interface ImpactRes {
+  logicModel: LogicModel;
+  updates: TreeUpdate[]; // weak assumptions, source 'plan'
+}
+
 /** POST /api/build */
 export interface BuildReq {
   idea: Idea;

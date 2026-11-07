@@ -1,13 +1,16 @@
 import { z } from "zod";
+import { profileFor } from "@/lib/modes";
 import {
   askJSON,
   MODELS,
   type Evidence,
   type ExtractReq,
   type Idea,
+  type PersonaRole,
   type PillarKey,
   type TreeUpdate,
 } from "./deps";
+import { promptsFor } from "./modes";
 import { personaContext } from "./persona";
 import { treeText } from "./treeText";
 import { activeChoices, clamp, DEADLINES, withDeadline } from "./util";
@@ -45,19 +48,23 @@ const ExtractSchema = z.object({
   ),
 });
 
-const SYSTEM = `You are the update extractor for an idea-tree app. A founder is pressure-testing a startup idea in conversations. You read ONE new exchange and decide whether it should change the founder's idea tree.
+/** The extractor's system prompt. Only the "specific" list and the examples differ by mode. */
+export function extractSystem(idea: Pick<Idea, "mode">): string {
+  const P = promptsFor(idea);
+  const what = idea.mode === "nonprofit" ? "a nonprofit program idea" : "a startup idea";
+  return `You are the update extractor for an idea-tree app. A founder is pressure-testing ${what} in conversations. You read ONE new exchange and decide whether it should change the founder's idea tree.
 
 Be conservative. Most exchanges should produce ZERO updates. Small talk, greetings, vague reactions ("interesting", "not sure", "tell me more"), questions without a stance, and generic advice that isn't about a specific listed choice all produce zero updates.
 
-Change a choice only when the speaker said something SPECIFIC about it: a price they would or wouldn't pay, a tool they already use instead, a reason they'd churn, a channel that would or wouldn't reach them, a concrete threat or validation.
+Change a choice only when the speaker said something SPECIFIC about it: ${P.extractSpecifics}.
 
 Actions:
-- strengthen (+3 to +20): the speaker clearly validated the choice ("I'd pay $8 for that in a heartbeat").
-- weaken (-3 to -25): the speaker doubted or objected to the choice with a specific reason.
-- kill (delta 0): ONLY on a clear, unambiguous rejection of the choice itself ("I would never pay monthly for a fishing app, period"). Mild objections are weaken, not kill.
-- add: a new option the speaker suggested or clearly hinted at ("I'd pay once, like five bucks"). If it replaces or grows from an existing choice, set parentId to that id. When you kill a choice and a better option was hinted at, pair the kill with an add whose parentId is the killed id.
+${P.extractExamples}
 
-Sizing: match the delta to how strong and specific the statement was. Lukewarm: 3-7. Clear: 8-14. Emphatic and specific: 15-25.
+${EXTRACT_RULES}`;
+}
+
+const EXTRACT_RULES = `Sizing: match the delta to how strong and specific the statement was. Lukewarm: 3-7. Clear: 8-14. Emphatic and specific: 15-25.
 
 Hard rules:
 - Use only the bracketed ids from the tree. Never invent ids.
@@ -126,6 +133,9 @@ function findOriginal(s: string, needle: string): string | null {
 function originFor(req: ExtractReq): string {
   if (req.source === "reply") return "founder reply";
   const role = req.persona?.role ?? req.source;
+  // Nonprofit evidence names the scene ("funder meeting"); startup keeps "<role> interview".
+  if (req.idea?.mode === "nonprofit" && role in profileFor("nonprofit").roles)
+    return profileFor("nonprofit").roles[role as PersonaRole].scene.toLowerCase();
   return `${role} interview`;
 }
 
@@ -220,7 +230,7 @@ export function extractPrompt(req: ExtractReq): string {
 
   return [
     `## Idea tree\n${treeText(req.idea)}`,
-    req.persona ? `## Speaker persona\n${personaContext(req.persona)}` : "",
+    req.persona ? `## Speaker persona\n${personaContext(req.persona, req.idea.mode)}` : "",
     req.highlight?.text
       ? `## Text the founder highlighted\n"""${req.highlight.text}"""${req.highlight.choiceId ? ` (on [${req.highlight.choiceId}])` : ""}`
       : "",
@@ -235,7 +245,7 @@ export async function runExtract(req: ExtractReq): Promise<TreeUpdate[]> {
   if (!quoteSources(req).some((t) => t.trim())) return [];
   const raw = await withDeadline(
     askJSON({
-      system: SYSTEM,
+      system: extractSystem(req.idea),
       prompt: extractPrompt(req),
       schema: ExtractSchema,
       model: MODELS.main,
