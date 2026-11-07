@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { GoogleGenAI } from "@google/genai";
+import { MODELS } from "@/lib/ai";
 import { tavily } from "@tavily/core";
 
 /**
@@ -41,7 +42,7 @@ async function checkGemini(): Promise<Check> {
 
   try {
     const res = await new GoogleGenAI({ apiKey: key }).models.generateContent({
-      model: "gemini-3.8-flash",
+      model: MODELS.main,
       contents: "Reply with OK",
     });
     return { ok: true, detail: (res.text ?? "").trim().slice(0, 40) };
