@@ -47,7 +47,14 @@ async function searchOrEmpty(query: string): Promise<SearchHit[]> {
   }
 }
 
-export async function gather(pitch: string): Promise<ResearchBundle> {
+/**
+ * Phase one: queries, then search. Returns the raw hits.
+ *
+ * Split out from the extraction below so the caller can start generating the
+ * tree from these hits while the bundle is still being extracted — the two
+ * read the same results and neither needs the other.
+ */
+export async function gatherHits(pitch: string): Promise<SearchHit[]> {
   const t0 = Date.now();
 
   // 1. Write the five queries.
@@ -86,17 +93,32 @@ export async function gather(pitch: string): Promise<ResearchBundle> {
   // 2. Run all five in parallel.
   const hitLists = await Promise.all(Object.values(queries).map(searchOrEmpty));
   const hits = hitLists.flat();
-  const tSearch = Date.now();
 
+  console.log(
+    `[gather] queries ${tQueries - t0}ms, search ${Date.now() - tQueries}ms — ${hits.length} hits`
+  );
+  return hits;
+}
+
+/** The only URLs allowed to reach an Idea: ones a real search returned. */
+export function knownUrls(hits: SearchHit[]): Set<string> {
+  return new Set(hits.map((h) => h.url).filter(Boolean));
+}
+
+/** Phase two: turn raw hits into the structured bundle. */
+export async function extractBundle(
+  pitch: string,
+  hits: SearchHit[]
+): Promise<ResearchBundle> {
+  const t0 = Date.now();
   if (hits.length === 0) {
     console.warn("[gather] no search results at all");
     return { competitors: [], complaints: [], marketNotes: [] };
   }
 
-  // The only URLs allowed downstream.
-  const known = new Set(hits.map((h) => h.url).filter(Boolean));
+  const known = knownUrls(hits);
 
-  // 3. Extract the bundle. Search text is quoted as data, never as instruction.
+  // Search text is quoted as data, never as instruction.
   let out: z.infer<typeof BundleOut>;
   try {
     out = await askJSON({
@@ -124,7 +146,7 @@ export async function gather(pitch: string): Promise<ResearchBundle> {
     return { competitors: [], complaints: [], marketNotes: [] };
   }
 
-  // 4. Drop anything whose URL did not come from a real result.
+  // Drop anything whose URL did not come from a real result.
   const bundle: ResearchBundle = {
     competitors: out.competitors.map((c) => ({
       ...c,
@@ -136,12 +158,15 @@ export async function gather(pitch: string): Promise<ResearchBundle> {
 
   const dropped = out.complaints.length - bundle.complaints.length;
   console.log(
-    `[gather] queries ${tQueries - t0}ms, search ${tSearch - tQueries}ms, extract ${
-      Date.now() - tSearch
-    }ms, total ${Date.now() - t0}ms — ${hits.length} hits, ${bundle.competitors.length} competitors, ${
-      bundle.complaints.length
-    } complaints${dropped > 0 ? ` (${dropped} dropped for unknown urls)` : ""}`
+    `[gather] extract ${Date.now() - t0}ms — ${bundle.competitors.length} competitors, ` +
+      `${bundle.complaints.length} complaints` +
+      `${dropped > 0 ? ` (${dropped} dropped for unknown urls)` : ""}`
   );
 
   return bundle;
+}
+
+/** Sequential convenience wrapper. The route runs the two phases in parallel. */
+export async function gather(pitch: string): Promise<ResearchBundle> {
+  return extractBundle(pitch, await gatherHits(pitch));
 }

@@ -4,8 +4,8 @@ import { FIXTURE_IDEA } from "@/data/fixture-idea";
 import type { TreeRequest, TreeResponse } from "@/lib/contracts";
 import type { Idea, TeamProfile } from "@/lib/types";
 import { TTLCache, cacheKey } from "@/server/cache";
-import { gather } from "@/server/research/gather";
-import { generateTree } from "@/server/research/generateTree";
+import { extractBundle, gatherHits } from "@/server/research/gather";
+import { assembleIdea, generateChoices } from "@/server/research/generateTree";
 
 const EMPTY_TEAM: TeamProfile = { roles: [], skills: [], tech: [] };
 
@@ -44,12 +44,22 @@ export async function POST(req: Request) {
     } satisfies TreeResponse);
   }
 
-  // This route never returns a 500. gather() degrades to an empty bundle and
-  // generateTree() falls back to a red placeholder tree, so the client always
-  // gets a renderable Idea.
+  // This route never returns a 500. Each phase degrades on its own:
+  // extractBundle() returns an empty bundle, generateChoices() returns
+  // placeholders, so the client always gets a renderable Idea.
   try {
-    const research = await gather(pitch);
-    const idea = await generateTree(pitch, research, team);
+    const hits = await gatherHits(pitch);
+    const tSearch = Date.now();
+
+    // The long pole is generation (~16s) against extraction (~7s). They read
+    // the same hits and neither needs the other, so running them together
+    // takes extraction off the critical path.
+    const [research, choices] = await Promise.all([
+      extractBundle(pitch, hits),
+      generateChoices(pitch, hits, team),
+    ]);
+
+    const idea = assembleIdea(pitch, research, choices);
 
     // Only cache a real tree. Caching a fallback would pin a bad result for
     // six hours, and the pitch would never get a second chance.
@@ -57,13 +67,18 @@ export async function POST(req: Request) {
     if (!isFallback) treeCache.set(key, idea);
 
     console.log(
-      `[api/tree] cache MISS, ${Date.now() - t0}ms total for "${pitch.slice(0, 50)}"` +
+      `[api/tree] cache MISS, ${Date.now() - t0}ms total ` +
+        `(search ${tSearch - t0}ms, parallel ${Date.now() - tSearch}ms) for "${pitch.slice(0, 50)}"` +
         `${isFallback ? " (fallback, not cached)" : ` (cached, ${treeCache.size} entries)`}`
     );
     return NextResponse.json({ idea } satisfies TreeResponse);
   } catch (err) {
     console.error(`[api/tree] unexpected failure after ${Date.now() - t0}ms:`, err);
-    const idea = await generateTree(pitch, { competitors: [], complaints: [], marketNotes: [] }, team);
+    const idea = assembleIdea(
+      pitch,
+      { competitors: [], complaints: [], marketNotes: [] },
+      await generateChoices(pitch, [], team)
+    );
     return NextResponse.json({ idea } satisfies TreeResponse);
   }
 }
