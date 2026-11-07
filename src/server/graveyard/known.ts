@@ -7,7 +7,7 @@
 import type { PillarKey } from "../conversation/deps";
 import type { CauseTag, FailureRecord } from "./types";
 
-type Known = Omit<FailureRecord, "similarity" | "threatens" | "lesson" | "lessonLabel"> & {
+export type Known = Omit<FailureRecord, "similarity" | "threatens" | "lesson" | "lessonLabel"> & {
   defaultLesson: string;
   defaultLessonLabel: string;
 };
@@ -231,4 +231,12 @@ export const CAUSE_PILLAR: Record<CauseTag, PillarKey> = {
   timing: "risks",
   product: "solution",
   other: "risks",
+  "funding-concentration": "revenue",
+  "mission-drift": "solution",
+  governance: "risks",
+  "no-community-buy-in": "customer",
+  "program-didnt-work": "solution",
+  "founder-dependence": "approach",
+  "volunteer-burnout": "approach",
+  "trust-scandal": "risks",
 };

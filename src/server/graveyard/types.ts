@@ -11,9 +11,19 @@ export type CauseTag =
   | "team"
   | "timing"
   | "product"
-  | "other";
+  | "other"
+  // nonprofit causes
+  | "funding-concentration" // one funder or one government contract
+  | "mission-drift"
+  | "governance" // weak board oversight, poor financial controls
+  | "no-community-buy-in" // built for people, not with them
+  | "program-didnt-work" // outputs without outcomes
+  | "founder-dependence"
+  | "volunteer-burnout"
+  | "trust-scandal";
 
-export const CAUSE_TAGS: CauseTag[] = [
+/** Startup causes. Startup prompts offer only these, exactly as before. */
+export const STARTUP_CAUSE_TAGS: CauseTag[] = [
   "no-market-need",
   "ran-out-of-cash",
   "outcompeted",
@@ -25,6 +35,25 @@ export const CAUSE_TAGS: CauseTag[] = [
   "product",
   "other",
 ];
+
+/** Nonprofit causes, plus the startup ones that also apply to nonprofits. */
+export const NONPROFIT_CAUSE_TAGS: CauseTag[] = [
+  "funding-concentration",
+  "mission-drift",
+  "governance",
+  "no-community-buy-in",
+  "program-didnt-work",
+  "founder-dependence",
+  "volunteer-burnout",
+  "trust-scandal",
+  "ran-out-of-cash",
+  "regulation",
+  "timing",
+  "other",
+];
+
+/** Every known tag, for validation. */
+export const CAUSE_TAGS: CauseTag[] = [...new Set([...STARTUP_CAUSE_TAGS, ...NONPROFIT_CAUSE_TAGS])];
 
 export interface FailureRecord {
   id: string;

@@ -1,8 +1,12 @@
 // 15 hand-written exchanges against /api/extract. 5 should produce zero updates.
 // Prints pass/fail per case plus false-positive and invariant counts.
+// Usage: npx tsx scripts/try-extract.ts [--mode nonprofit]
 import type { ChatMessage, TreeUpdate, UpdateSource } from "../src/server/conversation/deps";
-import { FIXTURE_IDEA as idea } from "../src/server/conversation/fixture";
+import { fixtureForMode, modeArg } from "./_nonprofit";
 import { post } from "./_http";
+
+const mode = modeArg();
+const idea = fixtureForMode(mode);
 
 type Expect = "none" | { choiceId?: string; action: TreeUpdate["action"] | "any" }[];
 interface Case {
@@ -13,9 +17,90 @@ interface Case {
   expect: Expect;
 }
 
-const persona = { id: "t", role: "customer", name: "Dana, weekend angler", blurb: "Weekend angler, burned by a premium fishing app." };
+const STARTUP_PERSONA = { id: "t", role: "customer", name: "Dana, weekend angler", blurb: "Weekend angler, burned by a premium fishing app." };
+const NONPROFIT_PERSONA = {
+  id: "t",
+  role: "customer",
+  name: "Marisol, caregiver in Riverside Homes",
+  blurb: "Raises two kids on her own and works evening shifts.",
+};
 
-const CASES: Case[] = [
+// 15 nonprofit exchanges against FIXTURE_NONPROFIT ("CodeCorner"). 5 should produce zero updates.
+const NONPROFIT_CASES: Case[] = [
+  // ---- should change nothing ----
+  { name: "greeting", founder: "Hi Marisol, thanks for making time.", persona: "Sure, the kids are at my sister's. What's this about?", expect: "none" },
+  { name: "vague interest", founder: "It's a coding club for kids.", persona: "Huh, okay. What do they do there exactly?", expect: "none" },
+  { name: "neutral question", founder: "It'd be in the community room.", persona: "Which nights are you thinking?", expect: "none" },
+  { name: "off-topic", founder: "How old are your kids?", persona: "Twelve and nine. The little one is into drawing more than computers.", expect: "none" },
+  { name: "noncommittal", founder: "Would you sign them up?", persona: "Maybe. I'd have to see what it's like first.", expect: "none" },
+  // ---- should change something ----
+  {
+    name: "on-site validation",
+    founder: "Everything happens downstairs in the community room.",
+    persona: "If it's right here in the building, that changes everything. I'd send both of them.",
+    expect: [{ choiceId: "edg-1", action: "strengthen" }],
+  },
+  {
+    name: "schedule objection",
+    founder: "The club runs two evenings a week.",
+    persona: "Two evenings is too much with my shifts. One evening a week I could actually make work.",
+    expect: [{ choiceId: "sol-1", action: "any" }],
+  },
+  {
+    name: "need validation",
+    founder: "Do the kids get any computer class at school?",
+    persona: "Nothing. They cut the only computer class last year and the library closes at five.",
+    expect: [{ choiceId: "pro-1", action: "strengthen" }],
+  },
+  {
+    name: "mentor trust",
+    founder: "Mentors are volunteers from tech companies.",
+    persona: "I'm not leaving my kids with strangers unless they've been background checked. That's a hard line for me.",
+    expect: [{ action: "any" }],
+  },
+  {
+    name: "outreach validation",
+    founder: "We'll announce it at resident council meetings.",
+    persona: "Everybody goes to the council meeting, that's how we hear about anything around here.",
+    expect: [{ choiceId: "rea-1", action: "strengthen" }],
+  },
+  {
+    name: "counselor doubt",
+    founder: "School counselors will refer kids.",
+    persona: "The counselor at their school has four hundred kids. She's never once called me about anything.",
+    expect: [{ choiceId: "rea-2", action: "weaken" }],
+  },
+  {
+    name: "walk home add",
+    founder: "Sessions end at seven thirty.",
+    persona: "It's dark by then in winter. If someone walked them back to the door, I'd sign them up tomorrow.",
+    expect: [{ action: "any" }],
+  },
+  {
+    name: "caregiver need",
+    founder: "Would it help you too?",
+    persona: "Honestly it would be two evenings I know they're safe and not alone in the apartment while I'm at work.",
+    expect: [{ action: "any" }],
+  },
+  {
+    name: "funder objection",
+    source: "investor",
+    founder: "Our first year would come from your foundation grant.",
+    persona: "We rarely fund first-year groups without a fiscal sponsor, and we never want to be someone's only funder.",
+    expect: [{ choiceId: "rev-1", action: "weaken" }],
+  },
+  {
+    name: "founder reply",
+    source: "reply",
+    founder: "Good point. We'll start under a fiscal sponsor and look for a second funder before applying.",
+    persona: "We rarely fund first-year groups without a fiscal sponsor.",
+    expect: [{ action: "any" }],
+  },
+];
+
+const persona = mode === "nonprofit" ? NONPROFIT_PERSONA : STARTUP_PERSONA;
+
+const STARTUP_CASES: Case[] = [
   // ---- should change nothing ----
   { name: "greeting", founder: "Hi Dana, thanks for chatting!", persona: "Sure, happy to help. What's the app?", expect: "none" },
   { name: "vague interest", founder: "It's a bite forecast app.", persona: "Hmm, interesting. Tell me more about how it works.", expect: "none" },
@@ -81,6 +166,8 @@ const CASES: Case[] = [
   },
 ];
 
+const CASES = mode === "nonprofit" ? NONPROFIT_CASES : STARTUP_CASES;
+
 async function main() {
   let fp = 0,
     fn = 0,
@@ -93,7 +180,11 @@ async function main() {
       { from: "persona", text: c.persona },
     ];
     const source = c.source ?? "customer";
-    const { ms, data } = await post<{ updates: TreeUpdate[] }>("/api/extract", { idea, messages, source, persona });
+    const speakerPersona =
+      source === "investor"
+        ? { id: "t-inv", role: "investor", name: "Program officer, community foundation", blurb: "A skeptical foundation program officer." }
+        : persona;
+    const { ms, data } = await post<{ updates: TreeUpdate[] }>("/api/extract", { idea, messages, source, persona: speakerPersona });
     const ups = data.updates;
     const speaker = source === "reply" ? c.founder : c.persona;
     for (const u of ups) {

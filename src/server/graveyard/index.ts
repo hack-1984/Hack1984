@@ -18,7 +18,7 @@ type Entry = { at: number; promise: Promise<FailureRecord[]> };
 const g = globalThis as unknown as { __graveyardCache?: Map<string, Entry> };
 const cache = (g.__graveyardCache ??= new Map());
 
-const cacheKey = (idea: Idea) => `${idea.id}::${idea.pitch}`;
+const cacheKey = (idea: Idea) => `${idea.mode ?? "startup"}::${idea.id}::${idea.pitch}`;
 
 async function runResearch(idea: Idea): Promise<FailureRecord[]> {
   // Score the hand-written fallbacks in parallel so a top-up never adds latency.

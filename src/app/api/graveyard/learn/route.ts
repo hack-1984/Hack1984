@@ -14,7 +14,7 @@
 import type { Idea, TreeUpdate } from "@/server/conversation/deps";
 import { badRequest, isMock, serverError } from "@/server/conversation/util";
 import { buildUpdates, getRecords, type FailureRecord } from "@/server/graveyard";
-import { MOCK_RECORDS } from "@/server/graveyard/mocks";
+import { mockRecordsFor } from "@/server/graveyard/mocks";
 import type { Grave } from "@/lib/types";
 
 interface LearnReq {
@@ -35,7 +35,7 @@ export async function POST(req: Request) {
   if (!idea || !name) return badRequest("expected { idea, grave } with grave.name");
 
   try {
-    const records: FailureRecord[] = isMock() ? MOCK_RECORDS : await getRecords(idea);
+    const records: FailureRecord[] = isMock() ? mockRecordsFor(idea) : await getRecords(idea);
     const record = records.find((r) => r.name.toLowerCase() === name.toLowerCase());
 
     if (!record) {
