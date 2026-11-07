@@ -1,23 +1,23 @@
 import { NextResponse } from "next/server";
-import { FAKE_TREE } from "@/data/fakeTree";
-import { TreeResponseSchema } from "@/lib/schemas";
+import { nanoid } from "nanoid";
+import { FIXTURE_IDEA } from "@/data/fixture-idea";
+import type { TreeRequest, TreeResponse } from "@/lib/contracts";
 
-/**
- * STUB. Returns a hardcoded tree so the frontend can render today.
- * Replace the body with the Claude call that generates a tree from { pitch, mode, team }.
- */
+/** POST /api/tree — Ethan's intake. { pitch, team } -> { idea } */
 export async function POST(req: Request) {
-  const body = await req.json().catch(() => ({}));
+  const body = (await req.json().catch(() => ({}))) as Partial<TreeRequest>;
 
-  const idea = {
-    ...FAKE_TREE,
-    mode: body?.mode === "nonprofit" ? ("nonprofit" as const) : FAKE_TREE.mode,
-    pitch: typeof body?.pitch === "string" && body.pitch.length > 0 ? body.pitch : FAKE_TREE.pitch,
-  };
+  if (process.env.MOCK_AI === "1") {
+    const idea: TreeResponse["idea"] = {
+      ...FIXTURE_IDEA,
+      id: nanoid(8),
+      createdAt: Date.now(),
+      pitch: body.pitch?.trim() || FIXTURE_IDEA.pitch,
+    };
+    return NextResponse.json({ idea } satisfies TreeResponse);
+  }
 
-  return NextResponse.json(TreeResponseSchema.parse({ idea }));
-}
-
-export async function GET() {
-  return NextResponse.json(TreeResponseSchema.parse({ idea: FAKE_TREE }));
+  // TODO: gather() then generateTree(). Never return a 500 — fall back to a
+  // tree with one red placeholder per pillar.
+  return NextResponse.json({ error: "not implemented — set MOCK_AI=1" }, { status: 501 });
 }
