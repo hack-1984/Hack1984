@@ -1,0 +1,27 @@
+/* Page CSS from the design's <helmet>, scoped to this page: body/html rules use :has(),
+   element rules use :where() so their specificity matches the original. */
+body:has(.pg-im){margin:0;background:#f9fafb;font-family:'Geist',system-ui,sans-serif;color:#111827;-webkit-font-smoothing:antialiased}
+:where(.pg-im) a{color:#111827}:where(.pg-im) a:hover{color:#4b5563}
+:where(.pg-im) textarea,:where(.pg-im) button{font-family:inherit}
+@keyframes im-fxTravel{0%{offset-distance:0%;opacity:0}12%{opacity:1}88%{opacity:1}100%{offset-distance:100%;opacity:0}}
+@keyframes im-fxCoin{0%,100%{transform:scaleX(1)}50%{transform:scaleX(.15)}}
+@keyframes im-fxWobble{0%,100%{transform:rotate(-16deg)}50%{transform:rotate(16deg)}}
+@keyframes im-fxPop{0%,55%{transform:scale(.5);opacity:.3}70%{transform:scale(1.5);opacity:1}100%{transform:scale(1);opacity:1}}
+@keyframes im-fxGlint{0%,100%{transform:scale(1) rotate(0deg);filter:none}50%{transform:scale(1.4) rotate(90deg);filter:drop-shadow(0 0 3px #111827)}}
+@keyframes im-fxJitter{0%,100%{transform:translate(0,0)}20%{transform:translate(1.5px,-1px)}40%{transform:translate(-1.5px,1px)}60%{transform:translate(1px,1.5px)}80%{transform:translate(-1px,-1.5px)}}
+@keyframes im-fxBob{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
+@keyframes im-fxMarch{to{stroke-dashoffset:-28}}
+@keyframes im-toastIn{from{opacity:0;transform:translate(-50%,-8px)}to{opacity:1;transform:translate(-50%,0)}}
+@keyframes im-nodeIn{from{opacity:0}to{opacity:1}}
+@keyframes im-drawIn{from{stroke-dashoffset:1}to{stroke-dashoffset:0}}
+@keyframes im-edgeIn{from{clip-path:inset(0 100% 0 0)}to{clip-path:inset(0 0 0 0)}}
+@keyframes im-panelIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+@keyframes im-rowIn{from{opacity:0;transform:translateX(8px)}to{opacity:1;transform:translateX(0)}}
+@keyframes im-breathe{0%,100%{box-shadow:0 0 0 10px #11182710,0 12px 32px #11182733}50%{box-shadow:0 0 0 18px #11182708,0 12px 32px #11182733}}
+@keyframes im-badgePop{0%{opacity:0}100%{opacity:1}}
+@keyframes im-countUp{from{opacity:0;transform:translateY(6px) scale(.9)}to{opacity:1;transform:translateY(0) scale(1)}}
+
+/* style-hover / style-focus from the design */
+.im-hover0:hover{transform:translate(-50%,-50%) scale(1.06) !important}
+.im-hover1:hover{background:#f3f4f6 !important}
+.im-hover2:hover{border-color:#111827 !important}
