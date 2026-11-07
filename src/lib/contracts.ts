@@ -1,6 +1,8 @@
 import type {
   Idea,
   LaunchSummary,
+  Mode,
+  PillarKey,
   SceneSpec,
   SimPersona,
   SimResult,
@@ -20,6 +22,8 @@ import type {
 export interface TreeRequest {
   pitch: string;
   team: TeamProfile;
+  /** Omitted means "startup", so the startup pipeline is unchanged. */
+  mode?: Mode;
 }
 export interface TreeResponse {
   idea: Idea;
@@ -62,4 +66,43 @@ export interface LaunchRunResponse {
   results: SimResult[];
   summary: LaunchSummary;
   updates: TreeUpdate[];
+}
+
+/**
+ * POST /api/impact — Tony's nonprofit Build.
+ *
+ * The nonprofit counterpart of /api/build: where a startup ends at a landing
+ * page and a pitch, a nonprofit ends at a logic model and something a funder
+ * can read. Nonprofit mode only; in startup mode the route returns 400.
+ */
+export interface ImpactRequest {
+  idea: Idea;
+}
+
+/** One number a funder would ask for, with the reasoning that produced it. */
+export interface ImpactMetric {
+  label: string; // "Students served per year"
+  value: string; // "120" — a string, since some are ranges or rates
+  basis: string; // how it was derived, 1 sentence
+  pillar: PillarKey;
+}
+
+/** Inputs -> activities -> outputs -> outcomes, the standard funder framing. */
+export interface LogicModel {
+  inputs: string[];
+  activities: string[];
+  outputs: string[];
+  outcomes: string[];
+}
+
+export interface ImpactResponse {
+  impact: {
+    headline: string;
+    metrics: ImpactMetric[];
+    logicModel: LogicModel;
+    /** What changes for the people served, in their terms. */
+    outcomes: string[];
+    /** ~250 words a programme officer could read without context. */
+    funderOnePager: string;
+  };
 }
