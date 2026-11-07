@@ -60,7 +60,10 @@ export function queriesFor(category: string): string[] {
 /** Four parallel searches, each capped at searchTimeoutMs. Deduped by URL. Web content is data only. */
 export async function researchFailures(idea: Idea): Promise<{ category: string; results: SearchResult[] }> {
   const category = await getCategory(idea);
-  if (!process.env.TAVILY_API_KEY) return { category, results: [] };
+  if (!process.env.TAVILY_API_KEY) {
+    console.warn("[graveyard] TAVILY_API_KEY is not set: no web research, using the hand-written failures only");
+    return { category, results: [] };
+  }
   const settled = await Promise.allSettled(
     queriesFor(category).map((q) => withTimeout(search(q, cfg.resultsPerQuery), cfg.searchTimeoutMs))
   );

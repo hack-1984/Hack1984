@@ -1,98 +1,29 @@
 /**
- * TEMPORARY Step 0 shim — the single import surface for all of Tony's code.
+ * The single import surface for Tony's code (conversation, graveyard, build).
  *
- * Step 0 (Nick's src/lib/contracts.ts, src/lib/ai/**, src/data/fixture-idea.ts,
- * and the updated src/lib/types.ts) wasn't on main when this was written, so the
- * types below mirror the build plan exactly and askJSON/search are minimal local
- * stand-ins.
- *
- * WHEN STEP 0 LANDS: replace this whole file with
- *
- *   export * from "@/lib/types";
- *   export * from "@/lib/contracts";
- *   export { askJSON, MODELS, search } from "@/lib/ai";
- *
- * (adjust paths to whatever Nick named them) and delete ./fixture.ts in favour of
- * "@/data/fixture-idea". Nothing else should need to change.
+ * AI helpers and shared types come from Step 0 (Nick's src/lib/ai and
+ * src/lib/types). What's defined here is only what Step 0 doesn't have:
+ *   - the 'reply' update source (founder replies to a highlight)
+ *   - `ghost` on haunt updates (the dead startup's name)
+ *   - the request/response contracts for Tony's routes
  */
-import Anthropic from "@anthropic-ai/sdk";
-import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
-import { tavily } from "@tavily/core";
-import type { z } from "zod";
+import type { TreeUpdate as BaseTreeUpdate, UpdateSource as BaseUpdateSource, PillarKey, Idea } from "@/lib/types";
 
-// ---------- core types (src/lib/types.ts, per the plan) ----------
+export { askJSON, MODELS, search } from "@/lib/ai";
+export type { Choice, Evidence, Idea, NewChoice, PillarKey } from "@/lib/types";
 
-export type PillarKey =
-  | "customer"
-  | "problem"
-  | "solution"
-  | "approach"
-  | "edge"
-  | "reach"
-  | "revenue"
-  | "risks";
+// ---------- extensions to Step 0 types ----------
 
-export type UpdateSource =
-  | "research"
-  | "customer"
-  | "competitor"
-  | "investor"
-  | "plan"
-  | "launch"
-  | "graveyard"
-  | "feasibility"
-  | "reply";
+/** Step 0's sources plus 'reply' (founder replying to highlighted text). */
+export type UpdateSource = BaseUpdateSource | "reply";
 
-export interface Evidence {
-  type: "source" | "quote" | "competitor";
-  text: string;
-  url?: string;
-  origin: string;
-  tier: "simulated" | "researched" | "real";
-}
-
-export interface Choice {
-  id: string;
-  pillar: PillarKey;
-  parentId?: string;
-  label: string;
-  sub: string;
-  detail: string;
-  confidence: number;
-  status: "active" | "killed" | "proposed";
-  evidence: Evidence[];
-}
-
-export type NewChoice = Omit<Choice, "id" | "evidence"> & { evidence?: Evidence[] };
-
-export interface TreeUpdate {
-  action: "strengthen" | "weaken" | "kill" | "add" | "haunt";
-  choiceId?: string;
-  delta?: number;
-  newChoice?: NewChoice;
-  evidence?: Evidence[];
-  ghost?: string;
-  reason: string;
-  quote?: string;
+/** Step 0's TreeUpdate, plus `ghost` on haunts and the 'reply' source. */
+export type TreeUpdate = Omit<BaseTreeUpdate, "source"> & {
   source: UpdateSource;
-  at: number;
-}
+  ghost?: string;
+};
 
-export interface Idea {
-  id: string;
-  mode: "startup" | "nonprofit";
-  pitch: string;
-  choices: Choice[];
-  history: TreeUpdate[];
-  research: {
-    competitors: { name: string; url?: string; summary: string }[];
-    complaints: { text: string; url: string; where: string }[];
-    marketNotes: string[];
-  };
-  createdAt: number;
-}
-
-// ---------- route contracts (src/lib/contracts.ts, per the plan) ----------
+// ---------- contracts for Tony's routes ----------
 
 export type PersonaRole = "customer" | "competitor" | "investor" | "advisor";
 
@@ -115,6 +46,7 @@ export interface Highlight {
   pillar?: PillarKey;
 }
 
+/** POST /api/persona */
 export interface PersonaReq {
   idea: Idea;
   role: PersonaRole;
@@ -124,6 +56,7 @@ export interface PersonaRes {
   persona: Persona;
 }
 
+/** POST /api/chat — wouldBuy is 0-100 */
 export interface ChatReq {
   idea: Idea;
   persona: Persona;
@@ -136,6 +69,7 @@ export interface ChatRes {
   wouldBuy: number;
 }
 
+/** POST /api/extract — messages = only the newest exchange */
 export interface ExtractReq {
   idea: Idea;
   messages: ChatMessage[];
@@ -147,6 +81,7 @@ export interface ExtractRes {
   updates: TreeUpdate[];
 }
 
+/** POST /api/graveyard (frozen shape) */
 export interface Grave {
   name: string;
   years: string;
@@ -167,6 +102,7 @@ export interface GraveyardRes {
   adjacent: boolean;
 }
 
+/** POST /api/build */
 export interface BuildReq {
   idea: Idea;
 }
@@ -174,57 +110,4 @@ export interface BuildRes {
   landing: { headline: string; subhead: string; bullets: string[]; cta: string };
   pitchOutline: string[];
   onePager: string;
-}
-
-// ---------- AI helpers (src/lib/ai/**, per the plan) ----------
-
-export const MODELS = { main: "claude-opus-5-5", fast: "claude-haiku-5-5" } as const;
-
-let _client: Anthropic | null = null;
-function client() {
-  if (!_client) _client = new Anthropic();
-  return _client;
-}
-
-export async function askJSON<S extends z.ZodType>(opts: {
-  system: string;
-  prompt: string;
-  schema: S;
-  model?: string;
-  effort?: "low" | "medium" | "high" | "xhigh" | "max";
-  maxTokens?: number;
-}): Promise<z.infer<S>> {
-  let lastErr: unknown;
-  for (let attempt = 0; attempt < 2; attempt++) {
-    try {
-      const res = await client().messages.parse({
-        model: opts.model ?? MODELS.main,
-        max_tokens: opts.maxTokens ?? 4000,
-        system: opts.system,
-        messages: [{ role: "user", content: opts.prompt }],
-        output_config: {
-          format: zodOutputFormat(opts.schema),
-          effort: opts.effort ?? "low",
-        },
-      });
-      if (res.parsed_output != null) return res.parsed_output as z.infer<S>;
-      lastErr = new Error(`askJSON: no parsed output (stop_reason=${res.stop_reason})`);
-    } catch (e) {
-      lastErr = e;
-    }
-  }
-  throw lastErr;
-}
-
-export async function search(
-  query: string,
-  maxResults = 5
-): Promise<{ title: string; url: string; content: string }[]> {
-  const tv = tavily({ apiKey: process.env.TAVILY_API_KEY ?? "" });
-  const res = await tv.search(query, { maxResults });
-  return (res.results ?? []).map((r) => ({
-    title: r.title ?? "",
-    url: r.url ?? "",
-    content: r.content ?? "",
-  }));
 }
