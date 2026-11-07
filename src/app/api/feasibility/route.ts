@@ -10,17 +10,29 @@ export async function POST(req: Request) {
   const body = (await req.json().catch(() => ({}))) as Partial<FeasibilityRequest>;
 
   if (process.env.MOCK_AI === "1") {
+    const nonprofit = body.idea?.mode === "nonprofit";
+
+    // Nonprofit feasibility is about running the programme, not building an
+    // app: the binding constraint is who may be alone with a minor.
+    const pillar = nonprofit ? "approach" : "solution";
     const target =
-      body.idea?.choices?.find((c) => c.status === "active" && c.pillar === "solution") ??
+      body.idea?.choices?.find((c) => c.status === "active" && c.pillar === pillar) ??
       body.idea?.choices?.find((c) => c.status === "active");
 
     const updates: TreeUpdate[] = [
       {
         action: "weaken",
-        choiceId: target?.id ?? "sol-1",
+        choiceId: target?.id ?? (nonprofit ? "app-1" : "sol-1"),
         delta: -10,
-        feasibility: { ok: false, note: "Needs a mobile developer; team has none" },
-        reason: "Team cannot realistically build this.",
+        feasibility: nonprofit
+          ? {
+              ok: false,
+              note: "Mentors working with minors need background checks; no one on the team runs them yet",
+            }
+          : { ok: false, note: "Needs a mobile developer; team has none" },
+        reason: nonprofit
+          ? "Team cannot staff the programme as described."
+          : "Team cannot realistically build this.",
         source: "feasibility",
         at: Date.now(),
       },

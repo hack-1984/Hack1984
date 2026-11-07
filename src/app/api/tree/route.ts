@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { nanoid } from "nanoid";
-import { FIXTURE_IDEA } from "@/data/fixture-idea";
 import type { TreeRequest, TreeResponse } from "@/lib/contracts";
+import { fixtureFor } from "@/lib/modes";
 import type { Idea, TeamProfile } from "@/lib/types";
 import { TTLCache, cacheKey } from "@/server/cache";
 import { extractBundle, gatherHits } from "@/server/research/gather";
@@ -17,11 +17,14 @@ export async function POST(req: Request) {
   const body = (await req.json().catch(() => ({}))) as Partial<TreeRequest>;
 
   if (process.env.MOCK_AI === "1") {
+    // fixtureFor() falls back to the startup fixture, so a request with no
+    // mode behaves exactly as it did before nonprofit mode existed.
+    const fixture = fixtureFor(body.mode);
     const idea: TreeResponse["idea"] = {
-      ...FIXTURE_IDEA,
+      ...fixture,
       id: nanoid(8),
       createdAt: Date.now(),
-      pitch: body.pitch?.trim() || FIXTURE_IDEA.pitch,
+      pitch: body.pitch?.trim() || fixture.pitch,
     };
     return NextResponse.json({ idea } satisfies TreeResponse);
   }
@@ -31,7 +34,9 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "pitch is required" }, { status: 400 });
   }
   const team = body.team ?? EMPTY_TEAM;
-  const key = cacheKey(pitch, team);
+  const mode = body.mode ?? "startup";
+  // Keyed on mode too: the same pitch is a different tree in each mode.
+  const key = cacheKey(pitch, team, mode);
   const t0 = Date.now();
 
   const cached = treeCache.get(key);
@@ -59,7 +64,7 @@ export async function POST(req: Request) {
       generateChoices(pitch, hits, team),
     ]);
 
-    const idea = assembleIdea(pitch, research, choices);
+    const idea = assembleIdea(pitch, research, choices, mode);
 
     // Only cache a real tree. Caching a fallback would pin a bad result for
     // six hours, and the pitch would never get a second chance.
@@ -77,7 +82,8 @@ export async function POST(req: Request) {
     const idea = assembleIdea(
       pitch,
       { competitors: [], complaints: [], marketNotes: [] },
-      await generateChoices(pitch, [], team)
+      await generateChoices(pitch, [], team),
+      mode
     );
     return NextResponse.json({ idea } satisfies TreeResponse);
   }
