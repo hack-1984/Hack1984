@@ -1,5 +1,9 @@
 // Shared data shapes for Idea Tree.
-// Change these only after telling the whole team.
+//
+// NOTE: this file is specified by Step 0 of the master doc, which will paste
+// the canonical version over it. These definitions were transcribed from
+// "Idea Tree: Nick's Build Plan". After Step 0 lands, nobody edits this file —
+// if you need an extra field, define a type in your own folder.
 
 export type PillarKey =
   | "customer"
@@ -21,14 +25,15 @@ export type UpdateSource =
   | "investor"
   | "plan"
   | "launch"
-  | "graveyard";
+  | "graveyard"
+  | "feasibility";
 
 export interface Evidence {
   type: "source" | "quote" | "competitor";
-  tier: EvidenceTier;
   text: string;
   url?: string;
   origin: string; // "research", "customer interview 1", etc.
+  tier: EvidenceTier;
 }
 
 export interface Choice {
@@ -43,7 +48,28 @@ export interface Choice {
   feasibility?: { ok: boolean; note: string };
   evidence: Evidence[];
   plan?: { steps: string[]; done: boolean[] };
-  hauntedBy?: string; // grave name, if a failed startup threatens this choice
+  marker?: string;
+}
+
+export type NewChoice = Omit<Choice, "id">;
+
+export interface TreeUpdate {
+  action: "strengthen" | "weaken" | "kill" | "add" | "haunt";
+  choiceId?: string;
+  delta?: number;
+  newChoice?: NewChoice;
+  evidence?: Evidence[];
+  feasibility?: { ok: boolean; note: string };
+  reason: string;
+  quote?: string;
+  source: UpdateSource;
+  at: number;
+}
+
+export interface ResearchBundle {
+  competitors: { name: string; url?: string; summary: string }[];
+  complaints: { text: string; url: string; where: string }[];
+  marketNotes: string[];
 }
 
 export interface TeamProfile {
@@ -54,38 +80,29 @@ export interface TeamProfile {
   budget?: string;
 }
 
-export interface TreeUpdate {
-  action: "strengthen" | "weaken" | "kill" | "add";
-  choiceId?: string;
-  delta?: number;
-  newChoice?: Omit<Choice, "id">;
-  reason: string;
-  quote?: string;
-  source: UpdateSource;
-  at: number;
-}
-
 export interface Idea {
   id: string;
   mode: Mode;
   pitch: string;
   choices: Choice[];
   history: TreeUpdate[];
+  research: ResearchBundle;
+  createdAt: number;
 }
 
 // Launch Day simulation
 
-export interface CustomerGroup {
-  id: string;
-  name: string;
-  figure: "person" | "company";
-  count: number;
-  color: string;
-}
+export type GroupColor = "teal" | "purple" | "amber" | "blue" | "pink";
 
-export interface SceneConfig {
+export interface SceneSpec {
   center: { label: string; icon: string };
-  groups: CustomerGroup[]; // 1–3
+  groups: {
+    id: string;
+    name: string;
+    figure: "person" | "company";
+    count: number;
+    color: GroupColor;
+  }[];
   verbs: { buy: string; curious: string; leave: string };
 }
 
@@ -94,18 +111,17 @@ export interface SimPersona {
   groupId: string;
   name: string;
   blurb: string;
-  sourceUrl?: string;
   budget: number;
   habits: string[];
+  sourceUrl?: string;
 }
 
 export interface SimResult {
   personaId: string;
   decision: "buy" | "curious" | "leave";
-  reason: string;
-  maxPrice: number;
+  reason: string; // ≤ 8 words
+  maxPrice: number; // 0 if they would never pay
   tellsFriend: boolean;
-  committee?: { role: string; verdict: "yes" | "no"; reason: string }[]; // company figures only
 }
 
 export interface LaunchSummary {
