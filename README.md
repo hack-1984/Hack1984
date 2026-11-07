@@ -34,3 +34,99 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+---
+
+# Graveyard API
+
+Three endpoints. All POST, all stateless — send the whole `Idea` every time.
+`MOCK_AI=1` returns fixture graves instantly with no network calls.
+
+The server never mutates the idea. The client applies the updates and sets
+`hauntedBy` itself.
+
+## POST /api/graveyard
+
+Failed startups similar to this idea. **Frozen contract — do not change this
+shape.**
+
+```ts
+// request
+{ idea: Idea }
+
+// response
+{ graves: Grave[], adjacent: boolean }
+```
+
+`adjacent` is `true` when nothing closely similar was found and the graves come
+from neighbouring markets instead. `Grave.sources` only ever holds URLs that
+appeared in real search results.
+
+## POST /api/graveyard/detail
+
+The same research, with everything the UI might want: timelines, cause tags,
+verbatim quotes, and **the tree updates already computed**.
+
+```ts
+// request
+{ idea: Idea }
+
+// response
+{ records: DetailedRecord[], adjacent: boolean }
+// DetailedRecord = FailureRecord & { updates: TreeUpdate[] }
+```
+
+Each record's `updates` holds a `haunt` on the threatened choice (delta scaled
+by similarity, −10 to −20) and an `add` proposing a replacement choice with
+`status: "proposed"`. **If you need updates, read them here** rather than
+recomputing them.
+
+## POST /api/graveyard/learn
+
+A thin adapter for a client holding one `Grave` that wants just its
+replacement choice. Returns the same `add` update `/detail` already contains.
+
+```ts
+// request
+{ idea: Idea, grave: { name: string } }
+
+// response
+{ update: TreeUpdate }
+```
+
+`400` if `grave.name` is missing, `404` if no researched record matches that
+name, `409` if the record threatens no resolvable active choice.
+
+### Example
+
+```json
+{
+  "update": {
+    "action": "add",
+    "source": "graveyard",
+    "reason": "Shipping costs destroyed the unit economics.",
+    "at": 1762531200000,
+    "newChoice": {
+      "pillar": "revenue",
+      "parentId": "rev-2",
+      "label": "Shipping Eats Margin",
+      "sub": "Lesson from Pets.com",
+      "detail": "Shipping costs destroyed the unit economics.",
+      "confidence": 45,
+      "status": "proposed",
+      "evidence": [
+        {
+          "type": "source",
+          "text": "Pets.com sold goods below cost and could not cover shipping.",
+          "url": "https://en.wikipedia.org/wiki/Pets.com",
+          "origin": "graveyard: Pets.com",
+          "tier": "researched"
+        }
+      ]
+    }
+  }
+}
+```
+
+Tuning (grave count, haunt delta range, `learnConfidence`, cache TTL) lives in
+`src/server/graveyard/config.ts`.
