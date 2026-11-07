@@ -118,8 +118,12 @@ All five are mocked behind `MOCK_AI=1` and return 501 without it. Shapes are in
 `src/lib/contracts.ts` — they're what the frontend is written against, so
 changing one breaks someone else's screen.
 
-`GET /api/health` is a temporary diagnostic that checks both API keys. Delete it
-before the demo.
+Tony owns `/api/persona`, `/api/chat`, `/api/extract`, `/api/graveyard`,
+`/api/graveyard/detail` and `/api/build`.
+
+**To check your own keys work**, unset `MOCK_AI` and POST a pitch to
+`/api/tree`. There was a `/api/health` diagnostic for this; it's deleted, since
+a temporary route that survives to demo day stops being temporary.
 
 ---
 
