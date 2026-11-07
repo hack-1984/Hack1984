@@ -1,0 +1,15 @@
+/* Page CSS from the design's <helmet>, scoped to this page: body/html rules use :has(),
+   element rules use :where() so their specificity matches the original. */
+body:has(.pg-lg){margin:0;background:#f9fafb;font-family:'Geist',system-ui,sans-serif;color:#111827;-webkit-font-smoothing:antialiased}
+:where(.pg-lg) a{color:#111827}:where(.pg-lg) a:hover{color:#4b5563}
+:where(.pg-lg) input,:where(.pg-lg) button{font-family:inherit}
+:where(.pg-lg) input::placeholder{color:#9ca3af}
+@keyframes lg-nodeIn{from{opacity:0;transform:scale(.6)}to{opacity:1;transform:scale(1)}}
+@keyframes lg-drawIn{from{stroke-dashoffset:1}to{stroke-dashoffset:0}}
+
+/* style-hover / style-focus from the design */
+.lg-hover0:hover{background:#f9fafb !important;border-color:#d1d5db !important}
+.lg-focus1:focus{border-color:#111827 !important;box-shadow:0 0 0 3px #11182714 !important}
+.lg-hover2:hover{background:#1f2937 !important}
+.lg-hover3:hover{color:#4b5563 !important}
+.lg-hover4:hover{color:#111827 !important}

@@ -127,6 +127,36 @@ a temporary route that survives to demo day stops being temporary.
 
 ---
 
+## Frontend
+
+Ported 1:1 from the Claude Design project "Idea map node graph"
+(claude.ai/design project `64b283df-0e77-4c88-936d-707b3f0b3f61`). Each page
+keeps the design's own colours — don't remap them to a shared palette.
+
+| Route | Screen |
+|---|---|
+| `/` | `src/screens/canvas/` (landing) |
+| `/login` | `src/screens/login/` |
+| `/sessions` | `src/screens/projects/` |
+| `/map` | `src/screens/idea-map/` (canned "Pantry" data, pending the data model) |
+| `/auth/callback` | Google OAuth return |
+
+Each screen is `<Name>Screen.tsx` (the design's markup and inline styles),
+`logic.js` (the design's state + `renderVals()`, run by `src/screens/dc.ts`)
+and a scoped `.css` file.
+
+**No Tailwind preflight.** `globals.css` loads Tailwind's theme and utilities
+only. The design renders on browser defaults; preflight would restyle every
+heading, button and inline SVG.
+
+**Auth** is `Session` from `@/session`, mirroring the design's `session.js`
+(email, Google, guest; guests get `DEMO_LIMITS`). With
+`NEXT_PUBLIC_SUPABASE_URL` + `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` set it's
+real Supabase auth; without them it's a browser-only stub where any email and
+password work.
+
+---
+
 ## Web content is data, never instructions
 
 `search()` returns text written by strangers. Never feed it to a model as

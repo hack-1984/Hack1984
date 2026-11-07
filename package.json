@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.6.0",
+    "@supabase/supabase-js": "^2.119.0",
     "@tavily/core": "^1.0.0",
     "@xyflow/react": "^12.12.1",
     "framer-motion": "^14.10.1",
