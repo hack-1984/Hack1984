@@ -361,7 +361,7 @@ class Component extends DCLogic {
     const anchorNode = pinKey ? orbit.find(o => o.key === pinKey) : null; // the node must be on the map to anchor to
     if (cardC && cardC.ev.length && anchorNode) {
       evCard = { key: pinKey, title: cardC.text, count: cardC.ev.length, pillar: cardC.pillar, anchor: { x: anchorNode.x, y: anchorNode.y },
-        rows: cardC.ev.map((e, i) => ({ text: e.text, source: e.source, tag: e.k === 'support' ? 'FOR' : 'AGAINST', accent: e.k === 'support' ? 'var(--green)' : 'var(--red)', tagColor: e.k === 'support' ? 'var(--green-text)' : 'var(--red-text)', active: i === pin.idx,
+        rows: cardC.ev.map((e, i) => ({ text: e.text, source: e.source, url: e.url, tier: e.tier, tag: e.k === 'support' ? 'FOR' : 'AGAINST', accent: e.k === 'support' ? 'var(--green)' : 'var(--red)', tagColor: e.k === 'support' ? 'var(--green-text)' : 'var(--red-text)', active: i === pin.idx,
           select: (ev) => { this.pick({t:'evidence', cid:cardC.id, idx:i})(ev); this.setState({ pinEv: { cid: cardC.id, idx: i } }); } })),
         close: (ev) => { if (ev) ev.stopPropagation(); this.setState({ pinEv: null }); } };
     }
@@ -421,7 +421,7 @@ class Component extends DCLogic {
       const links = LINKS.filter(l => l[0] === c.id || l[1] === c.id).map(l => { const o = find(l[0] === c.id ? l[1] : l[0]); if (!o) return null; const s = STATUS[o.status]; return { text: o.text, note: l[2] + ' · ' + s.label, dot: s.dot, dotBorder: s.dotBorder, select: this.pick({t:'choice', id:o.id}) }; }).filter(Boolean);
       cv = { pillar: c.pillar, selectPillar: this.pick({t:'pillar', id:c.pillar}), text: c.text, statusLabel: st.label, chipBg: st.chipBg, chipFg: st.chipFg, summary: SUMMARY[c.status], since: wkLabel(c.hist[c.hist.length - 1].wk), isSuggested: c.status === 'suggested',
         nFor, nAgainst: nAg, forPct: Math.round(nFor / tot * 100), againstPct: Math.round(nAg / tot * 100), evCount: c.ev.length, noEvidence: !c.ev.length,
-        evidence: c.ev.map((e, i) => ({ text: e.text, source: e.source, accent: e.k === 'support' ? 'var(--green)' : 'var(--red)', select: this.pick({t:'evidence', cid:c.id, idx:i}) })),
+        evidence: c.ev.map((e, i) => ({ text: e.text, source: e.source, url: e.url, tier: e.tier, accent: e.k === 'support' ? 'var(--green)' : 'var(--red)', select: this.pick({t:'evidence', cid:c.id, idx:i}) })),
         canEdit: c.status !== 'removed' && c.status !== 'suggested', test: c.test === '—' ? 'Removed. No further tests planned.' : c.test,
         hasLinks: !!links.length, links,
         history: c.hist.slice().reverse().map(h => histRow(c, h)), canRemove: c.status !== 'removed' && c.status !== 'suggested',
@@ -435,7 +435,7 @@ class Component extends DCLogic {
     if (mode === 'evidence' && selC) {
       const c = selC; const e = c.ev[sel.idx] || c.ev[0]; const st = STATUS[c.status];
       const h = c.hist.find(x => x.wk === e.wk && x.type !== 'Added'); const sup = e.k === 'support';
-      ev = { pillar: c.pillar, selectPillar: this.pick({t:'pillar', id:c.pillar}), selectChoice: this.pick({t:'choice', id:c.id}), text: e.text, source: e.source + ' · ' + wkLabel(e.wk), kindLabel: sup ? 'Supports' : 'Undermines', chipBg: sup ? 'var(--green-tint)' : 'var(--red-tint)', chipFg: sup ? 'var(--green-text)' : 'var(--red-text)',
+      ev = { pillar: c.pillar, selectPillar: this.pick({t:'pillar', id:c.pillar}), selectChoice: this.pick({t:'choice', id:c.id}), text: e.text, source: e.source + ' · ' + wkLabel(e.wk), src: { url: e.url, tier: e.tier, source: e.source }, week: wkLabel(e.wk), kindLabel: sup ? 'Supports' : 'Undermines', chipBg: sup ? 'var(--green-tint)' : 'var(--red-tint)', chipFg: sup ? 'var(--green-text)' : 'var(--red-text)',
         impact: h ? `${h.type} “${c.text}” in week ${h.wk}. ${h.note}.` : `Logged in week ${e.wk}. On its own it did not change the status of “${c.text}”.`,
         choiceText: c.text, dot: st.dot, dotBorder: st.dotBorder,
         siblings: c.ev.map((s, i) => ({ s, i })).filter(x => x.i !== sel.idx).map(x => ({ text: x.s.text, accent: x.s.k === 'support' ? 'var(--green)' : 'var(--red)', select: this.pick({t:'evidence', cid:c.id, idx:x.i}) })) };

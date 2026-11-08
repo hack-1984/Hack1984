@@ -94,7 +94,7 @@ body:has(.pg-im){margin:0;background:var(--bg);font-family:'Geist',system-ui,san
 .rc-count{display:inline-flex;align-items:center;gap:6px;height:22px;padding:0 9px;border-radius:999px;background:var(--surface);border:1px solid var(--border);font-family:'Geist Mono',monospace;font-size:10px;letter-spacing:.08em;color:var(--green-text);white-space:nowrap}
 .rc-close{width:28px;height:28px;border-radius:999px;border:none;background:transparent;color:var(--muted);font-size:16px;line-height:1;cursor:pointer}
 .rc-body{padding:14px 14px 10px;display:flex;flex-direction:column;gap:10px;overflow:auto;min-height:0;overscroll-behavior:contain}
-.rc-card .im-research-row{display:flex;gap:12px;align-items:flex-start;width:calc(100% + 12px);padding:9px 6px;margin:0 -6px;border:none;border-radius:8px;background:transparent;text-align:left;font:inherit;color:inherit}
+.rc-card .im-research-row{display:flex;gap:12px;align-items:flex-start;padding:9px 6px;margin:0 -6px;border-radius:8px}
 .im-research-row[data-active]{background:var(--accent-tint)}
 
 /* Reduced motion: no growing. The vine and card just appear (the rider never shows). */
@@ -102,3 +102,24 @@ body:has(.pg-im){margin:0;background:var(--bg);font-family:'Geist',system-ui,san
   .rc-vine path,.rc-rider,.rc-card,.rc-head-sprout{transition:none !important}
   .rc-rider{display:none}
 }
+
+/* ---- Source chips (SourceChip.tsx): favicon + domain + type + ↗, the same everywhere on the map ---- */
+.src-chip{display:inline-flex;align-items:center;gap:6px;max-width:100%;min-height:28px;box-sizing:border-box;padding:3px 9px 3px 4px;border-radius:999px;
+  border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:12px;line-height:1.2;text-decoration:none;
+  transition:background .15s,border-color .15s,box-shadow .15s}
+a.src-chip{cursor:pointer}
+a.src-chip:hover{background:var(--surface-2);border-color:var(--muted)}
+a.src-chip:hover .src-out{color:var(--text);transform:translate(1px,-1px)}
+a.src-chip:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-color:var(--accent)}
+.src-chip-static{background:var(--surface-2);border-color:transparent}
+.src-fav{width:20px;height:20px;flex:none;border-radius:6px;object-fit:cover;background:var(--surface-2)}
+.src-fav-letter{display:inline-flex;align-items:center;justify-content:center;border-radius:50%;background:var(--accent-tint);color:var(--green-text);font-size:11px;font-weight:700}
+.src-fav-sprout{display:inline-flex;align-items:center;justify-content:center;border-radius:50%;background:var(--surface)}
+.src-domain{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500}
+.src-type{flex:none;font-size:10.5px;color:var(--muted)}
+.src-out{flex:none;color:var(--muted);transition:transform .15s,color .15s}
+/* Research card rows: the text is the button; the chip sits under it */
+.rc-card .im-research-row{cursor:default}
+.rc-row-main{display:block;width:100%;padding:0;border:none;background:none;font:inherit;font-size:12px;line-height:1.35;color:var(--text);text-align:left;cursor:pointer;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rc-row-main:hover{text-decoration:underline;text-underline-offset:2px}
+@media (prefers-reduced-motion:reduce){.src-chip,.src-out{transition:none}}

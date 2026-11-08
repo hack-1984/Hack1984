@@ -9,6 +9,8 @@
 // Closing plays it in reverse, faster. Only transform, opacity and stroke-dashoffset animate.
 // With reduced motion the vine and card just appear. Data and actions come unchanged from logic.js (evCard).
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type MouseEvent } from "react";
+import SourceChip from "./SourceChip";
+import Sprout from "./Sprout";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 export interface ResearchCardData {
@@ -33,22 +35,6 @@ const T_VINE = 250, T_CARD = 200, T_OUT_CARD = 110, T_OUT_VINE = 140;
 type Phase = "hidden" | "measure" | "vine" | "card" | "open" | "closing";
 
 const reduced = () => typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-
-/** The leaf mark from public/brand/sprout-mark-only.svg, inline so it takes the theme colors. */
-function Sprout({ size = 16 }: { size?: number }) {
-  return (
-    <svg width={size} height={size * 1.2} viewBox="4 6 40 48" aria-hidden="true">
-      <g fill="none" stroke="var(--text)" strokeWidth="3.2" strokeLinecap="round">
-        <path d="M24 46 V30" />
-        <path d="M24 30 L15.5 20.5" />
-        <path d="M24 30 L33.5 18.5" />
-      </g>
-      <circle cx="24" cy="48.5" r="4.6" fill="var(--text)" />
-      <circle cx="12.5" cy="16.5" r="6.2" fill="var(--accent)" />
-      <circle cx="36" cy="14" r="7.6" fill="var(--accent)" />
-    </svg>
-  );
-}
 
 export default function ResearchCard({ card, view }: { card: ResearchCardData | null; view: View }) {
   // What's on screen: lags `card` while it closes, so the content stays during the exit.
@@ -180,21 +166,17 @@ export default function ResearchCard({ card, view }: { card: ResearchCardData | 
             <div style={{ fontSize: "14px", fontWeight: 600, letterSpacing: "-.01em", lineHeight: 1.3, color: "var(--text)", textWrap: "balance" } as CSSProperties}>{shown.title}</div>
             <div style={{ display: "flex", flexDirection: "column" }}>
               {(shown.rows ?? []).map((r: any, i: number) => (
-                <button
-                  type="button"
-                  key={i}
-                  className="im-research-row im-research-row-live"
-                  data-active={r?.active ? "1" : undefined}
-                  aria-current={r?.active ? "true" : undefined}
-                  onClick={r?.select ?? undefined}
-                >
+                // The row's text opens that evidence; the chip under it opens the source site.
+                <div key={i} className="im-research-row im-research-row-live" data-active={r?.active ? "1" : undefined}>
                   <span style={{ width: "3px", alignSelf: "stretch", borderRadius: "2px", background: `${r?.accent ?? ""}`, flex: "none" } as CSSProperties} />
-                  <span style={{ flex: "1", minWidth: "0", display: "flex", flexDirection: "column", gap: "4px" }}>
-                    <span style={{ fontSize: "12px", lineHeight: 1.35, color: "var(--text)", fontWeight: r?.active ? 600 : 400, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r?.text}</span>
-                    <span style={{ fontFamily: "'Geist Mono',monospace", fontSize: "9.5px", color: "var(--muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r?.source}</span>
+                  <span style={{ flex: "1", minWidth: "0", display: "flex", flexDirection: "column", gap: "6px", alignItems: "flex-start" }}>
+                    <button type="button" className="rc-row-main" aria-current={r?.active ? "true" : undefined} onClick={r?.select ?? undefined} style={{ fontWeight: r?.active ? 600 : 400 }}>
+                      {r?.text}
+                    </button>
+                    <SourceChip url={r?.url} tier={r?.tier} source={r?.source} />
                   </span>
                   <span style={{ fontFamily: "'Geist Mono',monospace", fontSize: "9px", letterSpacing: ".1em", color: `${r?.tagColor ?? ""}`, flex: "none", paddingTop: "2px" } as CSSProperties}>{r?.tag}</span>
-                </button>
+                </div>
               ))}
             </div>
           </div>

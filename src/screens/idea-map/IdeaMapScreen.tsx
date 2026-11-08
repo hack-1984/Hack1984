@@ -14,6 +14,7 @@ import "./widgets/widgets.css";
 import WidgetRail, { type WidgetKey } from "./widgets/WidgetRail";
 import FloatingPanel from "./widgets/FloatingPanel";
 import ResearchCard from "./ResearchCard";
+import SourceChip from "./SourceChip";
 import BuildWidget from "./widgets/BuildWidget";
 import DiscussionWidget from "./widgets/DiscussionWidget";
 import GraveyardWidget from "./widgets/GraveyardWidget";
@@ -718,8 +719,8 @@ export default function IdeaMapScreen(props: Record<string, unknown>) {
                               <div style={{ fontSize: "12px", lineHeight: "1.4" }}>
                                 {ev?.text}
                               </div>
-                              <div style={{ fontSize: "10px", color: "var(--muted)", marginTop: "3px", fontFamily: "'Geist Mono',monospace" }}>
-                                {ev?.source}
+                              <div style={{ marginTop: "6px" }}>
+                                <SourceChip url={ev?.url} tier={ev?.tier} source={ev?.source} />
                               </div>
                             </div>
                           </div>
@@ -884,8 +885,9 @@ export default function IdeaMapScreen(props: Record<string, unknown>) {
                       {ev?.text}
                     </div>
                     {" "}
-                    <div style={{ fontSize: "11px", color: "var(--muted)", marginTop: "8px", fontFamily: "'Geist Mono',monospace" }}>
-                      {ev?.source}
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap", marginTop: "10px" }}>
+                      <SourceChip url={ev?.src?.url} tier={ev?.src?.tier} source={ev?.src?.source} />
+                      <span style={{ fontSize: "11px", color: "var(--muted)", fontFamily: "'Geist Mono',monospace" }}>{ev?.week}</span>
                     </div>
                     {" "}
                   </div>
