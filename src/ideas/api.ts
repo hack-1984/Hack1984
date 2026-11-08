@@ -13,7 +13,7 @@ import type {
   LaunchSceneResponse,
 } from "@/lib/contracts";
 import type { Idea, SceneSpec, SimPersona, TeamProfile } from "@/lib/types";
-import type { BuildResponse, ChatResponse, ExtractResponse, GraveRecord, GraveyardDetailResponse, WireChatMessage, WirePersona, WireRole, WireUpdate } from "./wire";
+import type { BuildResponse, ChatResponse, ExtractResponse, GraveRecord, GraveyardDetailResponse, SuggestResponse, WireChatMessage, WirePersona, WireRole, WireUpdate } from "./wire";
 
 async function postJSON<T>(path: string, body: unknown, what: string): Promise<T> {
   let res: Response;
@@ -53,6 +53,13 @@ export function extractUpdates(idea: Idea, persona: WirePersona, exchange: WireC
   // The advisor is a mentor, not a market signal: its updates are tagged as planning advice.
   const source = persona.role === "advisor" ? "plan" : persona.role;
   return postJSON<ExtractResponse>("/api/extract", { idea, persona, messages: exchange, source }, "what this changed").then((r) => r.updates);
+}
+
+/** POST /api/suggest: things the founder could say next. Never throws; [] when unavailable. */
+export function fetchSuggestions(idea: Idea, persona: WirePersona, messages: WireChatMessage[], focusChoiceId?: string): Promise<string[]> {
+  return postJSON<SuggestResponse>("/api/suggest", { idea, persona, messages, ...(focusChoiceId ? { focusChoiceId } : {}) }, "suggestions")
+    .then((r) => (Array.isArray(r.suggestions) ? r.suggestions.filter((s) => typeof s === "string") : []))
+    .catch(() => []);
 }
 
 // ---------- Launch day / Open House ----------

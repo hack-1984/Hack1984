@@ -8,7 +8,7 @@
 // is picked for that choice and the chat is told what the founder wants to test.
 // One conversation per role, cached per idea in this browser.
 import { useCallback, useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
-import { extractUpdates, fetchPersona, sendChat } from "@/ideas/api";
+import { extractUpdates, fetchPersona, fetchSuggestions, sendChat } from "@/ideas/api";
 import { loadWidgetCache, saveWidgetCache } from "@/ideas/store";
 import type { WireChatMessage, WirePersona, WireRole } from "@/ideas/wire";
 import { profileFor } from "@/lib/modes";
@@ -24,6 +24,8 @@ interface Convo {
   wouldBuy: number;
   /** Set when opened from a choice's Challenge button. */
   focus?: { choiceId: string; label: string };
+  /** Experimental: 3-4 lines the founder could send next, for the persona's latest line. */
+  suggestions?: string[];
 }
 
 const ROLES: WireRole[] = ["customer", "investor", "competitor", "advisor"];
@@ -71,23 +73,37 @@ export default function DiscussionWidget({ ctx }: { ctx: WidgetCtx }) {
     [ideaId]
   );
 
+  // Experimental suggested replies. Written for the persona's latest line; attached to the
+  // conversation (and so cached) only if nothing has been said since. Never surfaces an error.
+  async function suggestFor(r: WireRole, base: Convo) {
+    const messages = base.turns.map(({ from, text }) => ({ from, text }));
+    const list = await fetchSuggestions(buildIdea(), base.persona, messages, base.focus?.choiceId);
+    if (!list.length) return;
+    setConvo((cur) => {
+      if (!cur || cur.persona.id !== base.persona.id || cur.turns.length !== base.turns.length) return cur;
+      const next = { ...cur, suggestions: list };
+      saveWidgetCache(ideaId, cacheKey(r), next);
+      return next;
+    });
+  }
+
   // Start a conversation for `r`: find the persona, then let them speak first.
-  const start = useCallback(
-    (r: WireRole, f?: Convo["focus"]) => {
-      setError(null);
-      setBusy("starting");
-      setConvo(null);
-      (async () => {
-        const idea = buildIdea();
-        const persona = await fetchPersona(idea, r, f?.choiceId);
-        const open = await sendChat(idea, persona, [], f?.choiceId);
-        save(r, { persona, turns: [{ from: "persona", text: open.reply }], wouldBuy: open.wouldBuy, focus: f });
-      })()
-        .catch((e: Error) => setError({ message: e.message, retry: () => start(r, f) }))
-        .finally(() => setBusy(null));
-    },
-    [buildIdea, save]
-  );
+  // (A plain function: the only effect that calls it runs once, on open, so it needs no memo.)
+  function start(r: WireRole, f?: Convo["focus"]) {
+    setError(null);
+    setBusy("starting");
+    setConvo(null);
+    (async () => {
+      const idea = buildIdea();
+      const persona = await fetchPersona(idea, r, f?.choiceId);
+      const open = await sendChat(idea, persona, [], f?.choiceId);
+      const opened: Convo = { persona, turns: [{ from: "persona", text: open.reply }], wouldBuy: open.wouldBuy, focus: f };
+      save(r, opened);
+      void suggestFor(r, opened);
+    })()
+      .catch((e: Error) => setError({ message: e.message, retry: () => start(r, f) }))
+      .finally(() => setBusy(null));
+  }
 
   // On open: a pending Challenge starts a fresh conversation focused on its choice;
   // otherwise resume this role's conversation, or start one.
@@ -101,6 +117,18 @@ export default function DiscussionWidget({ ctx }: { ctx: WidgetCtx }) {
     } else if (!convo) start(role);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // A conversation restored from cache (or from before suggestions existed) has none yet: fetch them once.
+  const suggestedFor = useRef<string | null>(null);
+  useEffect(() => {
+    if (!convo || busy || convo.suggestions?.length) return;
+    if (convo.turns[convo.turns.length - 1]?.from !== "persona") return;
+    const key = `${convo.persona.id}:${convo.turns.length}`;
+    if (suggestedFor.current === key) return;
+    suggestedFor.current = key;
+    void suggestFor(role, convo);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [convo, busy, role]);
 
   // Keep the newest message in view.
   useEffect(() => {
@@ -119,7 +147,7 @@ export default function DiscussionWidget({ ctx }: { ctx: WidgetCtx }) {
   }
 
   function send(text: string, base: Convo, r: WireRole) {
-    const withFounder: Convo = { ...base, turns: [...base.turns, { from: "founder", text }] };
+    const withFounder: Convo = { ...base, turns: [...base.turns, { from: "founder", text }], suggestions: undefined };
     save(r, withFounder);
     setDraft("");
     setError(null);
@@ -128,8 +156,9 @@ export default function DiscussionWidget({ ctx }: { ctx: WidgetCtx }) {
       const messages = withFounder.turns.map(({ from, text }) => ({ from, text }));
       const res = await sendChat(buildIdea(), base.persona, messages, base.focus?.choiceId);
       const reply: Turn = { from: "persona", text: res.reply };
-      const withReply: Convo = { ...withFounder, turns: [...withFounder.turns, reply], wouldBuy: res.wouldBuy };
+      const withReply: Convo = { ...withFounder, turns: [...withFounder.turns, reply], wouldBuy: res.wouldBuy, suggestions: undefined };
       save(r, withReply);
+      void suggestFor(r, withReply);
       // Only the newest exchange is sent to the extractor, as the route expects.
       const updates = await extractUpdates(buildIdea(), base.persona, [{ from: "founder", text }, { from: "persona", text: res.reply }]);
       if (!updates.length) return;
@@ -255,6 +284,15 @@ export default function DiscussionWidget({ ctx }: { ctx: WidgetCtx }) {
 
       {convo ? (
         <form onSubmit={submit} style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+          {convo.suggestions?.length && !busy && convo.turns[convo.turns.length - 1]?.from === "persona" ? (
+            <div className="cw-sugg" aria-label="Suggested replies">
+              {convo.suggestions.map((sg, i) => (
+                <button key={sg} type="button" className="cw-chip" style={{ animationDelay: `${i * 50}ms` }} onClick={() => send(sg, convo, role)}>
+                  {sg}
+                </button>
+              ))}
+            </div>
+          ) : null}
           <textarea
             className="im-input cw-input"
             aria-label={`Message ${p?.name ?? titles[role]}`}

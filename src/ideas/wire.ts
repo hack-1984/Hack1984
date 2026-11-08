@@ -93,6 +93,11 @@ export interface ExtractResponse {
   updates: WireUpdate[];
 }
 
+/** POST /api/suggest: 3-4 lines the founder could send next (experimental). Empty on failure. */
+export interface SuggestResponse {
+  suggestions: string[];
+}
+
 // ---------- Build: /api/build ----------
 
 export interface BuildResponse {
