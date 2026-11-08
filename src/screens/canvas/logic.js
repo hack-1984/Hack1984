@@ -41,8 +41,6 @@ class Component extends DCLogic {
       ...this.pillsBase.map((c, i) => ({ d: bez(sol, { x: c.x - 88, y: c.y }, (i - 1) * .18), base: .7, at: 2, delay: (i * .15).toFixed(2) + 's' })),
       ...this.cardsBase.map((k, i) => ({ d: bez({ x: this.pillsBase[i].x + 88, y: this.pillsBase[i].y }, { x: k.x, y: k.y }, (i - 1) * .15), base: .5, at: k.at, delay: '.15s' })),
     ];
-    // sponsorLogos: replace each {alt, src} with a real monochrome mark
-    this.sponsorLogos = ['LOGO','LOGO','LOGO','LOGO','LOGO','LOGO'].map(alt => ({ alt, src: null }));
     this.evidenceBase = [
       { accent: '#4CC27E', l1: '61% of surveyed students cook three or more nights a week', l2: 'Campus dining survey · n=214 · Week 2', tag: 'FOR', w1: '78%', w2: '52%' },
       { accent: '#F26D6D', l1: 'Shared dorm kitchens serve 40+ students each', l2: 'Housing office interview · Week 3', tag: 'AGAINST', w1: '64%', w2: '44%' },
@@ -187,7 +185,6 @@ class Component extends DCLogic {
       pulseR: step === 0 ? 30 : 110, pulseOp: step === 0 ? .9 : 0,
       progress: ['4%', '28%', '52%', '76%', '100%'][step],
       stepLabel: stories[0], stepNum: stories[1] + ' / 04', statusText: stories[2],
-      sponsorTrack: [...this.sponsorLogos, ...this.sponsorLogos],
       feed: (() => { const pool = this.feedPool || (this.feedPool = [...this.evidenceBase,
           { accent: '#4CC27E', l1: 'Grocery delivery to campus up 31% since 2023', l2: 'Regional retail data · Week 2', tag: 'FOR', w1: '74%', w2: '50%' },
           { accent: '#F26D6D', l1: 'Average student food budget is $62 a week', l2: 'Financial aid office survey · Week 3', tag: 'AGAINST', w1: '68%', w2: '40%' },

@@ -35,10 +35,32 @@ const SPONSORS: { file: string; name: string; w: number; h: number; size: string
   { file: "within3.webp", name: "Within3", w: 149, h: 31, size: "100.29% 180.28%", pos: "0.0% 50.9%" },
 ];
 
+type Sponsor = (typeof SPONSORS)[number];
+
+/** One sponsor logo: the white file drawn as a mask in soft Sprout green (full green on hover, canvas.css).
+ *  Used by both the top strip and the bottom row, so adding to SPONSORS updates both. */
+function SponsorLogo({ sponsor: s, scale = 1, role }: { sponsor: Sponsor; scale?: number; role?: string }) {
+  const logo = (
+    <span
+      className="cv-sponsor"
+      role="img"
+      aria-label={s.name}
+      title={s.name}
+      style={{ "--src": `url(/sponsors/${s.file})`, "--w": `${s.w * scale}px`, "--h": `${s.h * scale}px`, "--msize": s.size, "--mpos": s.pos } as CSSProperties}
+    />
+  );
+  // In the strip each logo is a list item; the wrapper keeps the img role on the logo itself.
+  return role ? <span role={role} className="cv-sponsor-item">{logo}</span> : logo;
+}
+
+// Strip speed: the old placeholder strip moved ~33px/s; keep that pace for however many logos there are.
+const MARQUEE_GAP = 40;
+const MARQUEE_SECONDS = Math.round(SPONSORS.reduce((a, sp) => a + sp.w * 0.75 + MARQUEE_GAP, 0) / 33);
+
 export default function CanvasScreen(props: Record<string, unknown>) {
   const v = useLogic(Logic, props);
   if (!v) return <div className="pg-cv" />;
-  const { aboutCopy, ann, barOn, barOp, barPe, barY, burst, cards, dismiss, edges, evidence, feed, feedCount, footerCols, gCaption, gDot, grid, h1a, h1b, h1c, leaves, navOp, navPe, navY, pillars, pills, progress, pulseOp, pulseR, sponsorTrack, sproutBright, sproutScale, stepLabel, stepNum, tabs, team } = v;
+  const { aboutCopy, ann, barOn, barOp, barPe, barY, burst, cards, dismiss, edges, evidence, feed, feedCount, footerCols, gCaption, gDot, grid, h1a, h1b, h1c, leaves, navOp, navPe, navY, pillars, pills, progress, pulseOp, pulseR, sproutBright, sproutScale, stepLabel, stepNum, tabs, team } = v;
   return (
     <div className="pg-cv">
       <header style={{ position: "sticky", top: "0", zIndex: "50", opacity: `${navOp ?? ""}`, transform: `translateY(${navY ?? ""})`, transition: "opacity .12s linear,transform .12s linear", pointerEvents: `${navPe ?? ""}` } as CSSProperties}>
@@ -311,18 +333,22 @@ export default function CanvasScreen(props: Record<string, unknown>) {
           <div style={{ fontFamily: "'Geist Mono',monospace", fontSize: "12px", letterSpacing: ".16em", textTransform: "uppercase", color: "#4A5E53" }}>
             HACK1984 — Sponsors
           </div>
-          <div style={{ width: "100%", maxWidth: "1120px", overflow: "hidden", maskImage: "linear-gradient(90deg,transparent,#000 18%,#000 82%,transparent)", WebkitMaskImage: "linear-gradient(90deg,transparent,#000 18%,#000 82%,transparent)" }}>
-            {" "}
-            <div data-marquee="1" style={{ display: "flex", gap: "40px", width: "max-content", animation: "cv-marquee 32s linear infinite", pointerEvents: "none" }}>
-              {(sponsorTrack ?? []).map((s: any, $index: number) => (
-                <Fragment key={$index}>
-                  <div style={{ width: "136px", height: "48px", flex: "none", borderRadius: "12px", background: "#E6ECE8", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Geist Mono',monospace", fontSize: "11px", letterSpacing: ".14em", color: "#4A5E53", opacity: ".55", filter: "grayscale(1)" }}>
-                    {s?.alt}
-                  </div>
-                </Fragment>
-              ))}
+          {/* Auto-scrolling strip. Two copies of the list slide left by exactly one copy (50%) for a seamless loop;
+              the second copy is aria-hidden so each sponsor is announced once. Pauses on hover; with reduced
+              motion it stops and wraps (canvas.css .cv-marquee). Faded edges as in the design. */}
+          <div className="cv-marquee" style={{ width: "100%", maxWidth: "1120px", overflow: "hidden", maskImage: "linear-gradient(90deg,transparent,#000 18%,#000 82%,transparent)", WebkitMaskImage: "linear-gradient(90deg,transparent,#000 18%,#000 82%,transparent)" }}>
+            <div data-marquee="1" className="cv-marquee-track" style={{ "--cv-loop": `${MARQUEE_SECONDS}s` } as CSSProperties}>
+              <div className="cv-marquee-copy" role="list" aria-label="Sponsors">
+                {SPONSORS.map((sp) => (
+                  <SponsorLogo key={sp.file} sponsor={sp} scale={0.75} role="listitem" />
+                ))}
+              </div>
+              <div className="cv-marquee-copy" aria-hidden="true">
+                {SPONSORS.map((sp) => (
+                  <SponsorLogo key={sp.file} sponsor={sp} scale={0.75} />
+                ))}
+              </div>
             </div>
-            {" "}
           </div>
         </div>
       </section>
@@ -681,15 +707,8 @@ export default function CanvasScreen(props: Record<string, unknown>) {
             Sponsored by
           </h2>
           <div className="cv-sponsors">
-            {SPONSORS.map((s) => (
-              <span
-                key={s.file}
-                className="cv-sponsor"
-                role="img"
-                aria-label={s.name}
-                title={s.name}
-                style={{ "--src": `url(/sponsors/${s.file})`, "--w": `${s.w}px`, "--h": `${s.h}px`, "--msize": s.size, "--mpos": s.pos } as CSSProperties}
-              />
+            {SPONSORS.map((sp) => (
+              <SponsorLogo key={sp.file} sponsor={sp} />
             ))}
           </div>
         </div>
@@ -815,7 +834,6 @@ export default function CanvasScreen(props: Record<string, unknown>) {
       {/*
 SWAP GUIDE
   #map-slot          → real idea-map component (Idea Map.dc.html via <dc-import>)
-  sponsorLogos[]     → real sponsor marks (logic class)
   slabA / slabB      → real feature components (#slab-a-card, #slab-b visual)
   aboutCopy, team[]  → real description and developer data (logic class)
 */}
