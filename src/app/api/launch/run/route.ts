@@ -39,10 +39,12 @@ export async function POST(req: Request) {
   const personas = body.personas;
   const scene = body.scene ?? fallbackScene(idea);
 
+  const unit = launchMode(mode).unitLabel;
+
   const key = cacheKey(idea.id, price, mode);
   const cached = runCache.get(key);
   if (cached) {
-    console.log(`[api/launch/run] cache HIT for ${idea.id} at $${price}`);
+    console.log(`[api/launch/run] cache HIT for ${idea.id} at ${unit(price)}`);
     return NextResponse.json(cached satisfies LaunchRunResponse);
   }
 
@@ -56,18 +58,22 @@ export async function POST(req: Request) {
     runCache.set(key, payload);
 
     console.log(
-      `[api/launch/run] ${Date.now() - t0}ms — buy ${summary.buy}, curious ${summary.curious}, ` +
-        `leave ${summary.leave}, drop-off $${summary.dropOffPrice}, ${updates.length} updates`
+      `[api/launch/run] ${mode ?? "startup"}: ${Date.now() - t0}ms — buy ${summary.buy}, ` +
+        `curious ${summary.curious}, leave ${summary.leave}, ` +
+        `drop-off ${unit(summary.dropOffPrice)}, ${updates.length} updates`
     );
     return NextResponse.json(payload satisfies LaunchRunResponse);
   } catch (err) {
     console.error(`[api/launch/run] unexpected after ${Date.now() - t0}ms:`, err);
-    const results = mockResults(personas, price);
-    const summary = mockSummarise(results, personas, scene, price);
+    // Mode matters even here. A nonprofit run that falls back to the startup
+    // mocks would put an update on Funding, which is the one thing an Open
+    // House is never allowed to do.
+    const results = mockResults(personas, price, mode);
+    const summary = mockSummarise(results, personas, scene, price, mode);
     return NextResponse.json({
       results,
       summary,
-      updates: mockUpdates(summary),
+      updates: mockUpdates(summary, mode),
     } satisfies LaunchRunResponse);
   }
 }
