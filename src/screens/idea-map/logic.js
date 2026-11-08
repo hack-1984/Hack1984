@@ -449,7 +449,7 @@ class Component extends DCLogic {
       ideaId: this.ideaId, wmem: this.state.wmem,
       // Widget memory rides along in the stored idea (StoredIdea.widgets), so it follows the founder across devices.
       setWmem: (key, patch) => { if (!this.idea) return; const widgets = { ...(this.idea.widgets || {}), [key]: { ...((this.idea.widgets || {})[key] || {}), ...patch } }; this.idea = { ...this.idea, widgets }; this.setState({ wmem: widgets }); ideaStore().save(this.idea).catch(err => console.error('[map] save widgets', err)); },
-      pillarPct: Object.fromEntries(pillars.map(p => [p.name, p.pct])),
+      pillarPct: Object.fromEntries(pillars.map(p => [p.name, p.pct])), showPillar: (key) => this.show(LABEL[key] ?? key),
       buildIdea: () => this.idea,
       team: this.team, saveTeam: (team) => this.saveTeam(team),
       focus: this.state.discuss,
@@ -515,9 +515,12 @@ class Component extends DCLogic {
     const at = Date.now();
     const stamped = updates.map(u => ({ ...u, at: u.at || at, source: u.source || 'plan' }));
     const next = applyUpdates(this.idea, stamped);
-    const changes = describeUpdates(this.idea, next, stamped).map(ch => ({ ...ch, pillar: this.show(LABEL[ch.pillar]) }));
+    const described = describeUpdates(this.idea, next, stamped);
+    // Shown labels ("Funding" on a nonprofit) for toasts and "what this changed"; the map's internal
+    // labels ("Revenue") for opening, pulsing and revealing pillars, which are keyed by them.
+    const changes = described.map(ch => ({ ...ch, pillar: this.show(LABEL[ch.pillar]) }));
     if (!changes.length) return changes;
-    const pillarsHit = [...new Set(changes.map(ch => ch.pillar))];
+    const pillarsHit = [...new Set(described.map(ch => LABEL[ch.pillar]))];
     const top = changes[0];
     this.persist(next, { week: this.now, expanded: [...new Set([...this.state.expanded, ...pillarsHit])], flash: { pillars: pillarsHit, text: top.type, key: Date.now() } });
     this.reveal(pillarsHit);

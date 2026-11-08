@@ -8,7 +8,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { fetchGraveyard } from "@/ideas/api";
 import { loadWidgetCache, saveWidgetCache } from "@/ideas/store";
-import { PILLAR_BY_KEY } from "@/lib/pillars";
 import type { GraveyardDetailResponse, WireUpdate } from "@/ideas/wire";
 import type { WidgetCtx } from "./types";
 
@@ -30,7 +29,6 @@ interface Grave {
   learn?: WireUpdate;
 }
 
-const label = (k: string) => PILLAR_BY_KEY[k as keyof typeof PILLAR_BY_KEY]?.startup ?? k;
 // Where graves stand in the yard: x as % of the yard's width, y as % of its height (the stone's base).
 // Back row higher and smaller-looking, front row lower, staggered like the mock.
 const SLOTS = [
@@ -46,7 +44,7 @@ const host = (u: string) => {
   }
 };
 
-function apiGraves(res: GraveyardDetailResponse): Grave[] {
+function apiGraves(res: GraveyardDetailResponse, label: (key: string) => string): Grave[] {
   return res.records.slice(0, SLOTS.length).map((r, i) => ({
     name: r.name,
     years: r.founded && r.died ? `${r.founded}–${r.died}` : r.died ? `Shut down ${r.died}` : "",
@@ -70,7 +68,7 @@ export default function GraveyardWidget({ ctx }: { ctx: WidgetCtx }) {
   const { ideaId, buildIdea } = ctx;
   const [load, setLoad] = useState<Load>(() => {
     const cached = loadWidgetCache<GraveyardDetailResponse>(ideaId, "graveyard");
-    return cached ? { state: "ready", graves: apiGraves(cached) } : { state: "loading" };
+    return cached ? { state: "ready", graves: apiGraves(cached, ctx.showPillar) } : { state: "loading" };
   });
   const [sel, setSel] = useState<number | null>(null);
   const mem = (ctx.wmem.graveyard ?? {}) as { haunted?: Record<string, boolean>; learned?: Record<string, boolean> };
@@ -80,10 +78,10 @@ export default function GraveyardWidget({ ctx }: { ctx: WidgetCtx }) {
     fetchGraveyard(buildIdea())
       .then((res) => {
         saveWidgetCache(ideaId, "graveyard", res);
-        setLoad({ state: "ready", graves: apiGraves(res) });
+        setLoad({ state: "ready", graves: apiGraves(res, ctx.showPillar) });
       })
       .catch((e: Error) => setLoad({ state: "error", message: e.message }));
-  }, [buildIdea, ideaId]);
+  }, [buildIdea, ideaId, ctx.showPillar]);
 
   // Fetch once if this idea has nothing cached.
   const started = useRef(false);

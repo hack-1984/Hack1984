@@ -24,7 +24,7 @@ export default function IdeaMapScreen(props: Record<string, unknown>) {
   // clientOnly: which idea to show comes from the URL and this browser's saved ideas.
   const v = useLogic(Logic, props, { clientOnly: true });
   if (!v) return <div className="pg-im" />;
-  const { panelOpen, panelW, occupied, closePanel, setPanelW, setDragW, loading, missing, widget, setWidget, showBadge, ideaId, wmem, setWmem, pillarPct, buildIdea, applyWidget, openOverview, team, saveTeam, focus, ideaInitial, ideaName, ideaPitch, now, accept, addAgainst, addFor, choices, clearSel, counts, curves, cv, draft, edges, ev, goNow, hasToast, hoverIdea, hoverOff, hoverOn, ideaShadow, isChoice, isEvidence, isIdea, isPast, isPillar, isResource, orbit, ov, paneRef, pctRef, particles, pillars, pv, reject, removeChoice, replay, replayLabel, rv, selIdea, setDraft, showHint, toast, toggleAll, toggleAllLabel, week, weeks, worldRef, zoomFit, zoomIn, zoomOut } = v;
+  const { showPillar, panelOpen, panelW, occupied, closePanel, setPanelW, setDragW, loading, missing, widget, setWidget, showBadge, ideaId, wmem, setWmem, pillarPct, buildIdea, applyWidget, openOverview, team, saveTeam, focus, ideaInitial, ideaName, ideaPitch, now, accept, addAgainst, addFor, choices, clearSel, counts, curves, cv, draft, edges, ev, goNow, hasToast, hoverIdea, hoverOff, hoverOn, ideaShadow, isChoice, isEvidence, isIdea, isPast, isPillar, isResource, orbit, ov, paneRef, pctRef, particles, pillars, pv, reject, removeChoice, replay, replayLabel, rv, selIdea, setDraft, showHint, toast, toggleAll, toggleAllLabel, week, weeks, worldRef, zoomFit, zoomIn, zoomOut } = v;
   // App: no canned idea. While the stored idea loads, or if it isn't this account's, say so instead of drawing an empty map.
   if (loading || missing) {
     return (
@@ -184,7 +184,7 @@ export default function IdeaMapScreen(props: Record<string, unknown>) {
                   {(orbit ?? []).map((o: any) => (
                     <Fragment key={o?.id}>
                       {" "}
-                      <div data-node="orbit" style={{ position: "absolute", left: `${o?.x ?? ""}px`, top: `${o?.y ?? ""}px`, transform: `translate(-50%,-50%) scale(${o?.scale ?? ""})`, width: "176px", display: "flex", alignItems: "center", gap: "8px", padding: "7px 10px", boxSizing: "border-box", borderRadius: "8px", background: "var(--surface)", border: `1px solid ${o?.border ?? ""}`, borderLeft: `3px solid ${o?.accent ?? ""}`, boxShadow: `${o?.shadow ?? ""}`, cursor: "pointer", transition: "transform .35s cubic-bezier(.2,.8,.2,1),box-shadow .2s", animation: "im-nodeIn .35s ease-out backwards", animationDelay: `${o?.delay ?? ""}` } as CSSProperties} onClick={o?.select} onMouseEnter={o?.enter} onMouseLeave={o?.leave}>
+                      <div data-node="orbit" style={{ position: "absolute", left: `${o?.x ?? ""}px`, top: `${o?.y ?? ""}px`, transform: `translate(-50%,-50%) scale(${o?.scale ?? ""})`, width: "176px", display: "flex", alignItems: "center", gap: "8px", padding: "7px 10px", boxSizing: "border-box", borderRadius: "8px", background: "var(--surface)", /* Longhands only: mixing the border shorthand with borderLeft makes React warn when the color changes. */ borderStyle: "solid", borderWidth: "1px 1px 1px 3px", borderColor: `${o?.border ?? ""} ${o?.border ?? ""} ${o?.border ?? ""} ${o?.accent ?? ""}`, boxShadow: `${o?.shadow ?? ""}`, cursor: "pointer", transition: "transform .35s cubic-bezier(.2,.8,.2,1),box-shadow .2s", animation: "im-nodeIn .35s ease-out backwards", animationDelay: `${o?.delay ?? ""}` } as CSSProperties} onClick={o?.select} onMouseEnter={o?.enter} onMouseLeave={o?.leave}>
                         <div style={{ flex: "1", minWidth: "0", fontSize: "10.5px", lineHeight: "1.3", color: "var(--text)", display: "-webkit-box", WebkitLineClamp: "2", WebkitBoxOrient: "vertical", overflow: "hidden" }}>
                           {o?.text}
                         </div>
@@ -791,7 +791,7 @@ export default function IdeaMapScreen(props: Record<string, unknown>) {
                     <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
                       {(cv?.evidence ?? []).map((ev: any, $index: number) => (
                         <Fragment key={$index}>
-                          <div className="im-hover2" style={{ display: "flex", gap: "10px", alignItems: "flex-start", padding: "8px 10px", borderRadius: "8px", border: "1px solid var(--border)", borderLeft: `3px solid ${ev?.accent ?? ""}`, cursor: "pointer" } as CSSProperties} onClick={ev?.select}>
+                          <div className="im-hover2" style={{ display: "flex", gap: "10px", alignItems: "flex-start", padding: "8px 10px", borderRadius: "8px", borderStyle: "solid", borderWidth: "1px 1px 1px 3px", borderColor: `var(--border) var(--border) var(--border) ${ev?.accent ?? ""}`, cursor: "pointer" } as CSSProperties} onClick={ev?.select}>
                             <div style={{ flex: "1" }}>
                               <div style={{ fontSize: "12px", lineHeight: "1.4" }}>
                                 {ev?.text}
@@ -1041,7 +1041,7 @@ export default function IdeaMapScreen(props: Record<string, unknown>) {
                     <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
                       {(ev?.siblings ?? []).map((s: any, $index: number) => (
                         <Fragment key={$index}>
-                          <div className="im-hover2" style={{ padding: "8px 10px", borderRadius: "8px", border: "1px solid var(--border)", borderLeft: `3px solid ${s?.accent ?? ""}`, cursor: "pointer", fontSize: "12px", lineHeight: "1.4" } as CSSProperties} onClick={s?.select}>
+                          <div className="im-hover2" style={{ padding: "8px 10px", borderRadius: "8px", borderStyle: "solid", borderWidth: "1px 1px 1px 3px", borderColor: `var(--border) var(--border) var(--border) ${s?.accent ?? ""}`, cursor: "pointer", fontSize: "12px", lineHeight: "1.4" } as CSSProperties} onClick={s?.select}>
                             {s?.text}
                           </div>
                         </Fragment>
@@ -1152,7 +1152,7 @@ export default function IdeaMapScreen(props: Record<string, unknown>) {
               </>
             ) : null}
             {widget !== "overview" ? (
-              <WidgetSlot widget={widget} ctx={{ ideaId, wmem, setWmem, pillarPct, buildIdea, applyWidget, openOverview, team, saveTeam, focus }} />
+              <WidgetSlot widget={widget} ctx={{ ideaId, wmem, setWmem, pillarPct, showPillar, buildIdea, applyWidget, openOverview, team, saveTeam, focus }} />
             ) : null}
           </FloatingPanel>
           <WidgetRail active={widget as WidgetKey} open={!!panelOpen} onPick={setWidget} badge={!!showBadge} />
