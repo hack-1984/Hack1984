@@ -97,7 +97,7 @@ export function mockExtract(req: ExtractReq): TreeUpdate[] {
   ];
 }
 
-// ---------- nonprofit mocks (FIXTURE_NONPROFIT, "CodeCorner") ----------
+// ---------- nonprofit mocks (FIXTURE_NONPROFIT: after-school coding club in Dorchester) ----------
 
 export function mockPersonaNonprofit(idea: Idea, role: PersonaRole): Persona {
   const complaint = idea.research?.complaints?.[0] ?? FIXTURE_NONPROFIT.research.complaints[0];
@@ -106,8 +106,8 @@ export function mockPersonaNonprofit(idea: Idea, role: PersonaRole): Persona {
       return {
         id: "mock-np-cus",
         role,
-        name: "Marisol, caregiver in Riverside Homes",
-        blurb: "Raises two kids on her own and works evening shifts; their school dropped its only computer class.",
+        name: "Marisol, Dorchester parent",
+        blurb: "Works second shift and has a seventh grader with nowhere to go between dismissal and six.",
         basedOn: complaint,
       };
     case "competitor":
@@ -136,14 +136,14 @@ export function mockPersonaNonprofit(idea: Idea, role: PersonaRole): Persona {
 
 const REPLIES_NONPROFIT: Record<PersonaRole, string[]> = {
   customer: [
-    "Hi, I'm Marisol. I work until eight most nights, so who's watching the kids while they're at this club?",
-    "If it's right here in the community room, that changes things. I'd send both of them.",
-    "Two evenings a week is a lot. One evening I could actually make work.",
+    "Hi, I'm Marisol. I work second shift, so who's watching my son if this runs past six?",
+    "If it's right there in his school library, that changes things. He wouldn't need the bus.",
+    "Two afternoons is fine, but it has to end before six or I can't pick him up.",
     "If you walked them home after, I'd sign them up tomorrow.",
   ],
   competitor: [
     "We already run coding clubs in four schools nearby. Have you talked to us before starting something new?",
-    "Your housing partnership is the piece we don't have. We can't get rooms on site.",
+    "Being inside the school is the piece we don't have. Our kids have to take a bus to us.",
     "Honestly, we could lend you a curriculum instead of you writing one from scratch.",
     "Mentor churn is what kills these programs. We lose half our volunteers by spring.",
   ],
@@ -156,8 +156,8 @@ const REPLIES_NONPROFIT: Record<PersonaRole, string[]> = {
   advisor: [
     "Start under a fiscal sponsor so you can take grants before your own 501(c)(3) comes through.",
     "Run background checks on every mentor before the first session. Funders will ask.",
-    "Pilot one evening with ten kids and count who comes back in week four.",
-    "Put two people from the resident council on your advisory board early.",
+    "Pilot one term with ten kids and count who comes back in week four.",
+    "Put two parents from the school on your advisory board early.",
   ],
 };
 const WOULD_BUY_NONPROFIT = [35, 50, 30, 55];

@@ -1,16 +1,17 @@
 import { NextResponse } from "next/server";
 import type { LaunchPersonasRequest, LaunchPersonasResponse } from "@/lib/contracts";
-import { MOCK_SCENE, mockPersonas } from "@/server/launch/mock";
+import { mockPersonas, mockScene } from "@/server/launch/mock";
 import { buildPersonas } from "@/server/launch/personas";
 import { fallbackScene } from "@/server/launch/scene";
 
-/** POST /api/launch/personas — Ethan's Launch Day. { idea, scene } -> { personas } */
+/** POST /api/launch/personas — Ethan's Launch Day / Open House. { idea, scene } -> { personas } */
 export async function POST(req: Request) {
   const body = (await req.json().catch(() => ({}))) as Partial<LaunchPersonasRequest>;
 
   if (process.env.MOCK_AI === "1") {
+    const mode = body.idea?.mode;
     return NextResponse.json({
-      personas: mockPersonas(body.scene ?? MOCK_SCENE),
+      personas: mockPersonas(body.scene ?? mockScene(mode), mode),
     } satisfies LaunchPersonasResponse);
   }
 

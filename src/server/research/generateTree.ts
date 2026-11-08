@@ -3,7 +3,7 @@ import { z } from "zod";
 import { askJSON, type SearchHit } from "@/lib/ai";
 import { PILLAR_KEYS } from "@/lib/pillars";
 import { knownUrls } from "./gather";
-import type { Choice, Evidence, Idea, PillarKey, ResearchBundle, TeamProfile } from "@/lib/types";
+import type { Choice, Evidence, Idea, Mode, PillarKey, ResearchBundle, TeamProfile } from "@/lib/types";
 
 /** Short id prefixes, so a choice id reads as `rev-1`. */
 const PREFIX: Record<PillarKey, string> = {
@@ -212,7 +212,8 @@ export async function generateChoices(
 export function assembleIdea(
   pitch: string,
   research: ResearchBundle,
-  choices: Choice[]
+  choices: Choice[],
+  mode: Mode = "startup"
 ): Idea {
   // If generation collapsed to placeholders we at least hang the competitors
   // off Edge, so the tree says something true rather than nothing.
@@ -237,7 +238,7 @@ export function assembleIdea(
 
   return {
     id: nanoid(8),
-    mode: "startup",
+    mode,
     pitch,
     createdAt: Date.now(),
     research,

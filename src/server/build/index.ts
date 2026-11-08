@@ -141,28 +141,28 @@ export const MOCK_BUILD: BuildRes = {
     "CatchCast helps weekend anglers stop wasting trips.\n\nCasual anglers fish a handful of weekends a year and often guess where and when to go. CatchCast combines weather, moon, water temperature and local catch logs into an hourly bite score for nearby spots.\n\nWe will reach anglers through QR displays at local bait and tackle shops. The basic map is free; how to charge for the forecast is still being tested.\n\nThe main risk is forecast accuracy: if it misses a few weekends in a row, users leave. Our first milestone is proving the forecast beats guessing in one region.",
 };
 
-/** MOCK_AI=1 response for FIXTURE_NONPROFIT ("CodeCorner"). */
+/** MOCK_AI=1 response for FIXTURE_NONPROFIT (after-school coding club in Dorchester). */
 export const MOCK_BUILD_NONPROFIT: BuildRes = {
   landing: {
-    headline: "Give kids in Riverside Homes a place to code",
-    subhead: "CodeCorner runs a free after-school coding club for middle schoolers, in the community room where they already live.",
+    headline: "Give Dorchester kids somewhere to code after school",
+    subhead: "A free coding club for middle schoolers, inside the school they already attend, two afternoons a week.",
     bullets: [
-      "One evening of your time pairs a mentor with six kids",
-      "Every session happens on site, so no one needs a ride",
+      "One afternoon a week pairs a mentor with four kids",
+      "Every session is in the school, so no one needs a bus",
       "Kids build real projects they can show their families",
     ],
     cta: "Volunteer",
   },
   pitchOutline: [
-    "Need statement: Middle schoolers in public housing have few computer science classes and nowhere safe to go after school.",
-    "Program: A free weekly coding club in the housing community room, built around projects.",
+    "Need statement: Dorchester middle schoolers have nothing between dismissal and a caregiver getting home, and the nearest program is downtown.",
+    "Program: A free coding club two afternoons a week in the school library, built around projects kids choose.",
     "Goals and outcomes: Kids attend regularly and finish their own projects; outcomes still to be measured in a pilot.",
     "Evaluation: Track attendance, kids returning in week four and projects completed each term.",
-    "Budget and funding mix: A first local foundation grant, with a second funder and individual donors still to find.",
+    "Budget and funding mix: One family foundation today; a second funder, small donors and a city contract still to find.",
     "Sustainability: Retain volunteer mentors and add funders before the first grant ends.",
   ],
   onePager:
-    "CodeCorner brings coding to kids who have no other way to learn it.\n\nMany middle schoolers in public housing attend schools with few computer science classes, and the library closes before their caregivers get home. CodeCorner runs a free coding club in the community room of their own building, with volunteer mentors working with small groups on real projects.\n\nOur partnership with the housing authority gives us space on site, and resident councils help us reach families. We are applying for a first-year grant from a local foundation and looking for more funders, so the program never depends on one.\n\nOur biggest risk is keeping mentors through the year. We will run a pilot term first, count who keeps coming back, and share what we learn.",
+    "Dorchester middle schoolers have nowhere to go between the last bell and a caregiver getting home.\n\nThe nearest after-school programs are downtown, and the bus stops running before late sessions end. We run a free coding club inside the school itself, two afternoons a week, where volunteer mentors work with groups of four on projects the kids choose.\n\nSchool counselors refer students, and every mentor passes a CORI background check. Today one family foundation funds the pilot; we are looking for a second funder and small donors so the club never depends on one source.\n\nOur biggest risk is keeping mentors from semester to semester. We will run a pilot term first, count who keeps coming back, and share what we learn.",
 };
 
 export const mockBuildFor = (idea: Pick<Idea, "mode">) => (idea.mode === "nonprofit" ? MOCK_BUILD_NONPROFIT : MOCK_BUILD);

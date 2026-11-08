@@ -1,12 +1,13 @@
-import { pillarLabelFor, profileFor } from "@/lib/modes";
+import { profileFor } from "@/lib/modes";
+import { pillarLabel as sharedPillarLabel } from "@/lib/pillars";
 import type { Idea, PillarKey } from "./deps";
-import { promptsFor } from "./modes";
+import { modeOf, promptsFor } from "./modes";
 import { activeChoices } from "./util";
 
 const PILLAR_ORDER: PillarKey[] = ["customer", "problem", "solution", "approach", "edge", "reach", "revenue", "risks"];
 
 /** Pillar name in the idea's mode: 'Revenue' for a startup, 'Funding' for a nonprofit. Missing mode = startup. */
-export const pillarLabel = (p: PillarKey, mode?: string) => pillarLabelFor(p, mode);
+export const pillarLabel = (p: PillarKey, mode?: string) => sharedPillarLabel(p, modeOf({ mode }));
 
 /** One line per active choice, e.g. "[rev-1] Revenue: $8/month premium (46) – forecast + maps" */
 export function choiceLine(
@@ -21,7 +22,7 @@ export function choiceLine(
  * The bracketed ids are the ONLY ids the model may reference.
  */
 export function treeText(idea: Idea, opts: { competitors?: number; complaints?: number } = {}): string {
-  const p = profileFor(idea.mode);
+  const p = profileFor(modeOf(idea));
   const choices = activeChoices(idea).sort(
     (a, b) => PILLAR_ORDER.indexOf(a.pillar) - PILLAR_ORDER.indexOf(b.pillar)
   );

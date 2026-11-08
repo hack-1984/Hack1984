@@ -1,114 +1,147 @@
-import type { Idea, PillarKey } from './types';
+import { FIXTURE_IDEA } from "@/data/fixture-idea";
+import { FIXTURE_NONPROFIT } from "@/data/fixture-nonprofit";
+import { PILLARS } from "./pillars";
+import type { Idea, Mode, PillarKey } from "./types";
 
-export type Mode = Idea['mode']; // 'startup' | 'nonprofit'
-// Same keys as PersonaRole in contracts.ts. Modes relabel roles; they never add one.
-export type ModeRole = 'customer' | 'competitor' | 'investor' | 'advisor';
-export type BuildTab = 'landing' | 'pitchOutline' | 'onePager' | 'impact';
+/**
+ * Every difference between the startup and nonprofit sides, in one file.
+ *
+ * Specified by Step 0N of the master doc. After Step 0N lands, nobody edits
+ * this file — the rest of the work is the same screens and the same routes
+ * reading a different profile. If you need an extra field, define a type in
+ * your own folder.
+ *
+ * A missing mode means "startup", so the startup pipeline behaves exactly as
+ * it does today.
+ */
+
+/** The four persona roles. Same keys in both modes; only the titles change. */
+export type RoleKey = "customer" | "competitor" | "investor" | "advisor";
 
 export interface ModeProfile {
   mode: Mode;
-  name: string;            // toggle and badge text
-  rootLabel: string;       // what the root node is called
-  readinessLabel: string;
-  accent: string;          // one accent color per mode; confidence colors never change
-  pillars: Record<PillarKey, { label: string; question: string }>;
-  roles: Record<ModeRole, { title: string; scene: string; meter: string | null }>;
-  personaForPillar: Record<PillarKey, ModeRole>; // node menu Challenge
-  scenes: ModeRole[];      // chat buttons on the toolbar, in order
+  /** Name of the mode itself, for the Startup / Nonprofit switch. */
+  label: string;
+  /** What the root of the tree is called. */
+  rootLabel: string;
+  /** Placeholder for the intake box. */
+  pitchPlaceholder: string;
+  /** The 8 pillars in fixed order, labelled for this mode. */
+  pillars: { key: PillarKey; label: string; question: string }[];
+  /** Titles for the four persona roles. */
+  roles: Record<RoleKey, string>;
+  /** What the three ResearchBundle fields are called in this mode. */
   research: { competitors: string; complaints: string; marketNotes: string };
-  graveyard: { title: string; loader: string; adjacent: string; raisedLabel: string };
+  /** Launch Day / Open House. `price` and `maxPrice` carry `unit`. */
   launch: {
-    title: string; button: string; unit: 'usd' | 'hours';
-    sliderLabel: string; dropOffLabel: string;
-    min: number; max: number; step: number; fallback: number;
-    disclaimer: string;
+    /** Screen title. */
+    title: string;
+    /** What the price slider measures. */
+    unit: "dollars" | "hours";
+    /** Short suffix for rendering a value, e.g. "$8" vs "4 hrs/month". */
+    unitShort: string;
+    /** Slider default, floor and ceiling. */
+    fallback: number;
+    min: number;
+    max: number;
+    /** decide() returns buy/curious/leave; these are the words shown. */
+    verbs: { buy: string; curious: string; leave: string };
+    /** Fallback scene centre icon (validated against lucide by the route). */
+    icon: string;
+    /** Pillars a launch update may never touch. */
+    neverUpdate: PillarKey[];
+    /** Where an update aimed at a `neverUpdate` pillar goes instead. */
+    remapTo: PillarKey;
   };
-  build: { title: string; tabs: { key: BuildTab; label: string }[] };
-  intake: { placeholder: string; loading: string[] };
 }
 
-const STARTUP: ModeProfile = {
-  mode: 'startup', name: 'Startup', rootLabel: 'Pitch', readinessLabel: 'Launch readiness', accent: '#58a6ff',
-  pillars: {
-    customer: { label: 'Customer', question: 'Who is it for' },
-    problem: { label: 'Problem', question: 'Why do they need it' },
-    solution: { label: 'Solution', question: 'What do you build' },
-    approach: { label: 'Approach', question: 'How does it operate' },
-    edge: { label: 'Edge', question: 'Why do you win' },
-    reach: { label: 'Reach', question: 'Where do customers come from' },
-    revenue: { label: 'Revenue', question: 'How does it make money' },
-    risks: { label: 'Risks', question: 'What could bring it down' },
+const PROFILES: Record<Mode, ModeProfile> = {
+  startup: {
+    mode: "startup",
+    label: "Startup",
+    rootLabel: "Pitch",
+    pitchPlaceholder: "An app that tells you where the fish are biting today.",
+    pillars: PILLARS.map((p) => ({ key: p.key, label: p.startup, question: p.question })),
+    roles: {
+      customer: "Customer",
+      competitor: "Competitor",
+      investor: "Investor",
+      advisor: "Advisor",
+    },
+    research: {
+      competitors: "Competitors",
+      complaints: "Customer complaints",
+      marketNotes: "Market notes",
+    },
+    launch: {
+      title: "Launch Day",
+      unit: "dollars",
+      unitShort: "$",
+      fallback: 8,
+      min: 0,
+      max: 40,
+      verbs: { buy: "buys", curious: "curious", leave: "walks past" },
+      icon: "Store",
+      neverUpdate: [],
+      remapTo: "approach",
+    },
   },
-  roles: {
-    customer: { title: 'Customer', scene: 'Customer interview', meter: 'Would buy' },
-    investor: { title: 'Investor', scene: 'Investor grilling', meter: 'Would invest' },
-    competitor: { title: 'Competitor CEO', scene: 'Competitor war game', meter: 'Not worried' },
-    advisor: { title: 'Advisor', scene: 'Ask an advisor', meter: null },
+  nonprofit: {
+    mode: "nonprofit",
+    label: "Nonprofit",
+    rootLabel: "Mission",
+    pitchPlaceholder: "A free after-school coding club for middle schoolers in Dorchester.",
+    pillars: PILLARS.map((p) => ({ key: p.key, label: p.nonprofit, question: p.question })),
+    roles: {
+      customer: "Community member",
+      competitor: "Peer organization",
+      investor: "Funder",
+      advisor: "Advisor",
+    },
+    research: {
+      competitors: "Peer organizations",
+      complaints: "Community voices",
+      marketNotes: "Need and funding notes",
+    },
+    launch: {
+      title: "Open House",
+      unit: "hours",
+      unitShort: " hrs/month",
+      fallback: 4,
+      min: 1,
+      max: 20,
+      verbs: { buy: "joins", curious: "maybe", leave: "walks away" },
+      icon: "HeartHandshake",
+      // A nonprofit program is free; nobody "joins" harder because of money,
+      // so community uptake never moves the Funding pillar.
+      neverUpdate: ["revenue"],
+      remapTo: "approach",
+    },
   },
-  personaForPillar: {
-    customer: 'customer', problem: 'customer', solution: 'customer',
-    edge: 'competitor', reach: 'competitor',
-    revenue: 'investor', risks: 'investor', approach: 'investor',
-  },
-  scenes: ['customer', 'investor', 'competitor'],
-  research: { competitors: 'Competitors', complaints: 'Complaints', marketNotes: 'Market notes' },
-  graveyard: { title: 'The Graveyard', loader: 'Digging up the past', adjacent: 'No exact matches. These failed in nearby markets.', raisedLabel: 'Raised' },
-  launch: {
-    title: 'Launch Day', button: 'Launch', unit: 'usd', sliderLabel: 'Price', dropOffLabel: 'Drop-off price',
-    min: 1, max: 100, step: 1, fallback: 10,
-    disclaimer: 'A rehearsal, not proof. Test with real people next.',
-  },
-  build: { title: 'Build', tabs: [
-    { key: 'landing', label: 'Landing page' }, { key: 'pitchOutline', label: 'Pitch deck' }, { key: 'onePager', label: 'One-pager' },
-  ] },
-  intake: { placeholder: 'An app that predicts where fish are biting', loading: ['Searching competitors', 'Reading complaints', 'Building your pillars'] },
 };
 
-const NONPROFIT: ModeProfile = {
-  mode: 'nonprofit', name: 'Nonprofit', rootLabel: 'Mission', readinessLabel: 'Mission readiness', accent: '#d2a8ff',
-  pillars: {
-    customer: { label: 'People served', question: 'Who do you serve' },
-    problem: { label: 'Need', question: 'What need goes unmet' },
-    solution: { label: 'Program', question: 'What do you run' },
-    approach: { label: 'Approach', question: 'How is it delivered and staffed' },
-    edge: { label: 'Why us', question: 'Why your organization' },
-    reach: { label: 'Outreach', question: 'How do people find you' },
-    revenue: { label: 'Funding', question: 'How is it funded and sustained' },
-    risks: { label: 'Risks', question: 'What could stop the mission' },
-  },
-  roles: {
-    customer: { title: 'Person served', scene: 'Community listening session', meter: 'Would take part' },
-    investor: { title: 'Funder', scene: 'Funder meeting', meter: 'Would fund' },
-    competitor: { title: 'Peer organization', scene: 'Peer roundtable', meter: 'Would partner' },
-    advisor: { title: 'Board mentor', scene: 'Ask a board mentor', meter: null },
-  },
-  personaForPillar: {
-    customer: 'customer', problem: 'customer', solution: 'customer', reach: 'customer',
-    edge: 'competitor', approach: 'competitor',
-    revenue: 'investor', risks: 'investor',
-  },
-  scenes: ['customer', 'investor', 'competitor'],
-  research: { competitors: 'Peer organizations', complaints: 'Community voices', marketNotes: 'Need and funding notes' },
-  graveyard: { title: 'The Nonprofit Graveyard', loader: 'Reading the closing letters', adjacent: 'No exact matches. These closed in nearby causes.', raisedLabel: 'Peak budget' },
-  launch: {
-    title: 'Open House', button: 'Open the doors', unit: 'hours', sliderLabel: 'Time asked per month', dropOffLabel: 'Drop-off point',
-    min: 1, max: 20, step: 1, fallback: 4,
-    disclaimer: 'A rehearsal, not proof. Run a real pilot session next.',
-  },
-  build: { title: 'Build', tabs: [
-    { key: 'landing', label: 'Volunteer and donate page' }, { key: 'pitchOutline', label: 'Grant proposal outline' },
-    { key: 'onePager', label: 'Case for support' }, { key: 'impact', label: 'Theory of change' },
-  ] },
-  intake: { placeholder: 'A free after-school coding club for kids in public housing', loading: ['Finding peer organizations', 'Listening to community voices', 'Building your pillars'] },
-};
+/** The profile for a mode. Undefined means startup. */
+export function profileFor(mode?: Mode): ModeProfile {
+  return PROFILES[mode ?? "startup"];
+}
 
-export const MODES: Record<Mode, ModeProfile> = { startup: STARTUP, nonprofit: NONPROFIT };
-export const MODE_LIST: Mode[] = ['startup', 'nonprofit'];
+/** The fixture for a mode, for mocks. Undefined means startup. */
+export function fixtureFor(mode?: Mode): Idea {
+  return mode === "nonprofit" ? FIXTURE_NONPROFIT : FIXTURE_IDEA;
+}
 
-/** Missing or unknown mode means startup, so old saved ideas keep working. */
-export const profileFor = (mode?: string): ModeProfile => (mode === 'nonprofit' ? NONPROFIT : STARTUP);
-export const pillarLabelFor = (key: PillarKey, mode?: string) => profileFor(mode).pillars[key].label;
+/** Render a slider value in this mode's unit: "$8" or "4 hrs/month". */
+export function formatUnit(value: number, mode?: Mode): string {
+  const p = profileFor(mode);
+  return p.launch.unit === "dollars" ? `$${value}` : `${value}${p.launch.unitShort}`;
+}
 
-/** The Launch Day / Open House slider value, formatted: '$8' or '4 hrs/month'. */
-export const formatAsk = (value: number, mode?: string) =>
-  profileFor(mode).launch.unit === 'usd' ? `$${value}` : `${value} hrs/month`;
+/**
+ * Where a launch update aimed at `pillar` should actually land.
+ * In nonprofit mode an objection about money is really about how the program
+ * runs, so it is remapped rather than dropped.
+ */
+export function remapPillar(pillar: PillarKey, mode?: Mode): PillarKey {
+  const p = profileFor(mode);
+  return p.launch.neverUpdate.includes(pillar) ? p.launch.remapTo : pillar;
+}

@@ -1,5 +1,4 @@
 import { z } from "zod";
-import { profileFor } from "@/lib/modes";
 import {
   askJSON,
   MODELS,
@@ -10,7 +9,7 @@ import {
   type PillarKey,
   type TreeUpdate,
 } from "./deps";
-import { promptsFor } from "./modes";
+import { EVIDENCE_ORIGIN, promptsFor } from "./modes";
 import { personaContext } from "./persona";
 import { treeText } from "./treeText";
 import { activeChoices, clamp, DEADLINES, withDeadline } from "./util";
@@ -134,8 +133,8 @@ function originFor(req: ExtractReq): string {
   if (req.source === "reply") return "founder reply";
   const role = req.persona?.role ?? req.source;
   // Nonprofit evidence names the scene ("funder meeting"); startup keeps "<role> interview".
-  if (req.idea?.mode === "nonprofit" && role in profileFor("nonprofit").roles)
-    return profileFor("nonprofit").roles[role as PersonaRole].scene.toLowerCase();
+  if (req.idea?.mode === "nonprofit" && role in EVIDENCE_ORIGIN.nonprofit)
+    return EVIDENCE_ORIGIN.nonprofit[role as PersonaRole];
   return `${role} interview`;
 }
 

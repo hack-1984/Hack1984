@@ -11,9 +11,9 @@ const role = (positional()[0] ?? "customer") as PersonaRole;
 const FOUNDER_LINES =
   mode === "nonprofit"
     ? [
-        "Hi! I'm starting CodeCorner, a free after-school coding club for kids right here in Riverside Homes.",
-        "We'd run it two evenings a week in the community room, with volunteer mentors from local tech companies.",
-        "Our first year would be funded by a $25k grant from a local foundation.",
+        "Hi! I'm starting a free after-school coding club for middle schoolers here in Dorchester.",
+        "We'd run it two afternoons a week in the school library, with college students and local engineers as mentors.",
+        "Our first year would be funded by a single grant from one family foundation.",
       ]
     : [
         "Hi! I'm building CatchCast, an app that tells you where and when fish are biting near you.",

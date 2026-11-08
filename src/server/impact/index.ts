@@ -183,7 +183,7 @@ export async function runImpact(idea: Idea): Promise<ImpactRes> {
 
 // ---------- MOCK_AI=1 ----------
 
-/** Logic model for FIXTURE_NONPROFIT ("CodeCorner"), with one untested assumption on its mentors. */
+/** Logic model for FIXTURE_NONPROFIT (Dorchester coding club), with one untested assumption on its mentors. */
 export function mockImpact(idea: Idea): ImpactRes {
   const now = Date.now();
   const nonprofit = idea.mode === "nonprofit";
@@ -193,14 +193,14 @@ export function mockImpact(idea: Idea): ImpactRes {
     : "Anglers trust the forecast after a single bad weekend";
   const logicModel: LogicModel = nonprofit
     ? {
-        inputs: ["Volunteer mentors", "Community room from the housing partner", "Local foundation grant", "Resident councils"],
-        activities: ["Run a coding club two evenings a week", "Pair mentors with groups of six kids", "Recruit families door to door"],
+        inputs: ["Volunteer mentors", "School library space", "One family foundation grant", "School counselor referrals"],
+        activities: ["Run a coding club two afternoons a week", "Pair mentors with groups of four kids", "Background-check every mentor"],
         outputs: ["40 kids attend at least one session a month", "60 sessions held per school year", "Each kid finishes 3 projects"],
         outcomes: ["Kids can build and explain a working app", "Kids see themselves as able to study computer science"],
-        impact: "More young people from public housing choose and finish computing pathways.",
+        impact: "More Dorchester young people choose and finish computing pathways.",
         assumptions: [
           { text: assumption, choiceId: target?.id },
-          { text: "Caregivers feel the on-site club is safe in the evening", choiceId: resolveChoice(idea, "cus-2", "customer")?.id },
+          { text: "Caregivers can pick kids up when the club ends", choiceId: resolveChoice(idea, "cus-2", "customer")?.id },
         ],
         metrics: [
           { label: "Kids returning in week four", target: "70% of first-week kids", pillar: "customer" },

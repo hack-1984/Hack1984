@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import type { LaunchRunRequest, LaunchRunResponse } from "@/lib/contracts";
 import { TTLCache, cacheKey } from "@/server/cache";
-import { MOCK_SCENE, mockPersonas, mockResults, mockUpdates, summarise as mockSummarise } from "@/server/launch/mock";
+import { mockPersonas, mockResults, mockScene, mockUpdates, summarise as mockSummarise } from "@/server/launch/mock";
+import { launchMode } from "@/server/launch/modes";
 import { fallbackScene } from "@/server/launch/scene";
 import { judge, summarise, toUpdates } from "@/server/launch/run";
 
@@ -14,17 +15,20 @@ const runCache = new TTLCache<LaunchRunResponse>();
  */
 export async function POST(req: Request) {
   const body = (await req.json().catch(() => ({}))) as Partial<LaunchRunRequest>;
-  const price = typeof body.price === "number" ? body.price : 8;
+  const mode = body.idea?.mode;
+  // A missing price means the mode's own default: $8 on Launch Day, 4 hours
+  // a month at an Open House.
+  const price = typeof body.price === "number" ? body.price : mode === "nonprofit" ? 4 : 8;
 
   if (process.env.MOCK_AI === "1") {
-    const scene = body.scene ?? MOCK_SCENE;
-    const personas = body.personas?.length ? body.personas : mockPersonas(scene);
-    const results = mockResults(personas, price);
-    const summary = mockSummarise(results, personas, scene, price);
+    const scene = body.scene ?? mockScene(mode);
+    const personas = body.personas?.length ? body.personas : mockPersonas(scene, mode);
+    const results = mockResults(personas, price, mode);
+    const summary = mockSummarise(results, personas, scene, price, mode);
     return NextResponse.json({
       results,
       summary,
-      updates: mockUpdates(summary),
+      updates: mockUpdates(summary, mode),
     } satisfies LaunchRunResponse);
   }
 
@@ -35,7 +39,7 @@ export async function POST(req: Request) {
   const personas = body.personas;
   const scene = body.scene ?? fallbackScene(idea);
 
-  const key = cacheKey(idea.id, price);
+  const key = cacheKey(idea.id, price, mode);
   const cached = runCache.get(key);
   if (cached) {
     console.log(`[api/launch/run] cache HIT for ${idea.id} at $${price}`);

@@ -21,65 +21,61 @@ const STARTUP_PERSONA = { id: "t", role: "customer", name: "Dana, weekend angler
 const NONPROFIT_PERSONA = {
   id: "t",
   role: "customer",
-  name: "Marisol, caregiver in Riverside Homes",
-  blurb: "Raises two kids on her own and works evening shifts.",
+  name: "Marisol, Dorchester parent",
+  blurb: "Works second shift and has a seventh grader with nowhere to go after school.",
 };
 
-// 15 nonprofit exchanges against FIXTURE_NONPROFIT ("CodeCorner"). 5 should produce zero updates.
+// 15 nonprofit exchanges against FIXTURE_NONPROFIT (Dorchester coding club). 5 should produce zero updates.
+// Ids: cus-1 graders, cus-2 caregivers, pro-1 nothing after 3pm, sol-1 club, app-1 mentors,
+// edg-1 inside the school, rea-1 school counselors, rev-1 one family foundation, ris-1/ris-2.
 const NONPROFIT_CASES: Case[] = [
   // ---- should change nothing ----
-  { name: "greeting", founder: "Hi Marisol, thanks for making time.", persona: "Sure, the kids are at my sister's. What's this about?", expect: "none" },
+  { name: "greeting", founder: "Hi Marisol, thanks for making time.", persona: "Sure, my shift starts at four. What's this about?", expect: "none" },
   { name: "vague interest", founder: "It's a coding club for kids.", persona: "Huh, okay. What do they do there exactly?", expect: "none" },
-  { name: "neutral question", founder: "It'd be in the community room.", persona: "Which nights are you thinking?", expect: "none" },
-  { name: "off-topic", founder: "How old are your kids?", persona: "Twelve and nine. The little one is into drawing more than computers.", expect: "none" },
-  { name: "noncommittal", founder: "Would you sign them up?", persona: "Maybe. I'd have to see what it's like first.", expect: "none" },
+  { name: "neutral question", founder: "It'd be at his school.", persona: "Which days are you thinking?", expect: "none" },
+  { name: "off-topic", founder: "How old is your son?", persona: "He's twelve. He mostly plays basketball right now.", expect: "none" },
+  { name: "noncommittal", founder: "Would you sign him up?", persona: "Maybe. I'd have to see what it's like first.", expect: "none" },
   // ---- should change something ----
   {
-    name: "on-site validation",
-    founder: "Everything happens downstairs in the community room.",
-    persona: "If it's right here in the building, that changes everything. I'd send both of them.",
+    name: "in-school validation",
+    founder: "It runs in the school library right after the last bell.",
+    persona: "If it's right there in his school, that changes everything. He wouldn't need the bus at all.",
     expect: [{ choiceId: "edg-1", action: "strengthen" }],
   },
   {
-    name: "schedule objection",
-    founder: "The club runs two evenings a week.",
-    persona: "Two evenings is too much with my shifts. One evening a week I could actually make work.",
+    name: "end-time objection",
+    founder: "Sessions run from three thirty to six thirty.",
+    persona: "Six thirty is too late, I can't get there before six. If it ended at six I'd sign him up.",
     expect: [{ choiceId: "sol-1", action: "any" }],
   },
   {
     name: "need validation",
-    founder: "Do the kids get any computer class at school?",
-    persona: "Nothing. They cut the only computer class last year and the library closes at five.",
+    founder: "What does he do after school now?",
+    persona: "Nothing. He sits at home alone until I get back, because everything good is downtown.",
     expect: [{ choiceId: "pro-1", action: "strengthen" }],
   },
   {
     name: "mentor trust",
-    founder: "Mentors are volunteers from tech companies.",
-    persona: "I'm not leaving my kids with strangers unless they've been background checked. That's a hard line for me.",
+    founder: "Mentors are college students and engineers.",
+    persona: "I'm not leaving my kid with strangers unless they've been background checked. That's a hard line for me.",
     expect: [{ action: "any" }],
   },
   {
-    name: "outreach validation",
-    founder: "We'll announce it at resident council meetings.",
-    persona: "Everybody goes to the council meeting, that's how we hear about anything around here.",
-    expect: [{ choiceId: "rea-1", action: "strengthen" }],
-  },
-  {
     name: "counselor doubt",
-    founder: "School counselors will refer kids.",
-    persona: "The counselor at their school has four hundred kids. She's never once called me about anything.",
-    expect: [{ choiceId: "rea-2", action: "weaken" }],
+    founder: "School counselors will refer kids to us.",
+    persona: "The counselor at his school has four hundred kids. She's never once called me about anything.",
+    expect: [{ choiceId: "rea-1", action: "weaken" }],
   },
   {
-    name: "walk home add",
-    founder: "Sessions end at seven thirty.",
-    persona: "It's dark by then in winter. If someone walked them back to the door, I'd sign them up tomorrow.",
+    name: "word of mouth add",
+    founder: "How do parents around here hear about programs?",
+    persona: "Honestly, other parents at pickup. If two moms I know signed up, I would too.",
     expect: [{ action: "any" }],
   },
   {
     name: "caregiver need",
     founder: "Would it help you too?",
-    persona: "Honestly it would be two evenings I know they're safe and not alone in the apartment while I'm at work.",
+    persona: "It would be two afternoons I know he's safe and not alone in the apartment while I'm at work.",
     expect: [{ action: "any" }],
   },
   {

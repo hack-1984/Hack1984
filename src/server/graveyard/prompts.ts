@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { Mode } from "@/lib/modes";
+import type { Mode } from "@/lib/types";
 import { graveyardConfig as cfg } from "./config";
 import { NONPROFIT_CAUSE_TAGS, STARTUP_CAUSE_TAGS } from "./types";
 

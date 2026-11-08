@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { profileFor, type Mode } from "@/lib/modes";
+import type { Mode } from "@/lib/types";
 import { askJSON, MODELS, search, type Idea } from "../conversation/deps";
 import { modeOf } from "../conversation/modes";
 import { activeChoices, DEADLINES } from "../conversation/util";
@@ -76,8 +76,8 @@ function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
   });
 }
 
-export function queriesFor(category: string, mode?: string): string[] {
-  return MODE_RESEARCH[profileFor(mode).mode].queries(category);
+export function queriesFor(category: string, mode?: Mode): string[] {
+  return MODE_RESEARCH[modeOf({ mode })].queries(category);
 }
 
 /** Four parallel searches, each capped at searchTimeoutMs. Deduped by URL. Web content is data only. */

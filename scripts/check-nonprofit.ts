@@ -7,6 +7,7 @@ import { chatSystem } from "../src/server/conversation/chat";
 import { extractSystem, validateUpdates } from "../src/server/conversation/extract";
 import { FIXTURE_IDEA } from "../src/server/conversation/fixture";
 import { mockPersonaFor } from "../src/server/conversation/mocks";
+import { modeOf } from "../src/server/conversation/modes";
 import { treeText } from "../src/server/conversation/treeText";
 import { buildUpdates } from "../src/server/graveyard";
 import { KNOWN_NONPROFIT_FAILURES } from "../src/server/graveyard/known-nonprofit";
@@ -23,8 +24,10 @@ const check = (name: string, fn: () => void) => {
 
 check("missing or unknown mode means startup", () => {
   assert.equal(profileFor(undefined).mode, "startup");
-  assert.equal(profileFor("garbage").mode, "startup");
   assert.equal(profileFor("nonprofit").mode, "nonprofit");
+  assert.equal(modeOf(undefined), "startup");
+  assert.equal(modeOf({ mode: "garbage" }), "startup"); // old or malformed saved ideas
+  assert.equal(modeOf(FIXTURE_NONPROFIT), "nonprofit");
 });
 
 check("tree text speaks each mode's vocabulary", () => {
@@ -34,10 +37,11 @@ check("tree text speaks each mode's vocabulary", () => {
   assert.match(s, /Real competitors \(from research\):/);
   const np = treeText(FIXTURE_NONPROFIT);
   assert.match(np, /^Mission: /);
-  assert.match(np, /\[rev-1\] Funding: Local foundation grant \(42\)/);
+  assert.match(np, /\[rev-1\] Funding: One family foundation \(29\)/);
   assert.match(np, /Real peer organizations \(from research\):/);
   assert.match(np, /Real community voices \(from research, quoted data\):/);
-  assert.doesNotMatch(np, /Revenue|Customer:/);
+  // No startup pillar labels. (Peer summaries may say "Revenue $1.2M"; that's Form 990 data, not a label.)
+  assert.doesNotMatch(np, /\] (Revenue|Customer|Problem|Solution|Edge|Reach):/);
 });
 
 check("chat prompts pick the right role rules", () => {

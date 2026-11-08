@@ -5,10 +5,27 @@
  * mode later means one more entry here. Wording that is shared by both modes
  * stays next to the code that uses it.
  */
-import { profileFor, type Mode } from "@/lib/modes";
+import type { Mode } from "@/lib/types";
 import type { Idea, PersonaRole } from "./deps";
 
-export const modeOf = (idea: Pick<Idea, "mode"> | undefined): Mode => profileFor(idea?.mode).mode;
+/** The idea's mode. Missing or unknown means startup, so old saved ideas keep working. */
+export const modeOf = (idea: { mode?: string } | undefined): Mode => (idea?.mode === "nonprofit" ? "nonprofit" : "startup");
+
+/** Evidence origin for an extracted update, e.g. "funder meeting". Startup keeps "<role> interview". */
+export const EVIDENCE_ORIGIN: Record<Mode, Record<PersonaRole, string>> = {
+  startup: {
+    customer: "customer interview",
+    competitor: "competitor interview",
+    investor: "investor interview",
+    advisor: "advisor interview",
+  },
+  nonprofit: {
+    customer: "community listening session",
+    competitor: "peer roundtable",
+    investor: "funder meeting",
+    advisor: "board mentor session",
+  },
+};
 
 export interface ConversationPrompts {
   /** What the founder is building, for "You are role-playing in a ... simulator". */
