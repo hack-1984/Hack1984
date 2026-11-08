@@ -12,9 +12,12 @@ import { DCLogic } from "../dc";
 import { Session } from "@/session";
 import { PILLARS as PILLAR_DEFS, PILLAR_KEYS } from "@/lib/pillars";
 import { adopt, applyUpdates, describeUpdates, ideaStore, reject as rejectChoice, toMapModel } from "@/lib/db";
+import { planChoice, researchChoice } from "@/ideas/api";
 import { Camera, MIN_ZOOM, MAX_ZOOM } from "./camera";
 const PILLARS = PILLAR_DEFS.map(p => p.startup);
 const LABEL = Object.fromEntries(PILLAR_DEFS.map(p => [p.key, p.startup]));
+// App: who a choice's Challenge button talks to, by pillar.
+const ROLE_FOR_PILLAR = { customer:'customer', problem:'customer', solution:'customer', edge:'competitor', reach:'competitor', revenue:'investor', risks:'investor', approach:'investor' };
 const FX = {
   Customer:{glyph:'●', sizes:['6px'], dur:'4s', inner:'none'},
   Problem:{glyph:'?', sizes:['10px'], dur:'4s', inner:'none'},
@@ -91,7 +94,7 @@ class Component extends DCLogic {
   constructor(p) {
     super(p);
     this.idea = null; this.ideaId = null; this.team = null; this.now = 1; this.name = ''; this.pitch = '';
-    this.state = { sel:null, hoverIdea:false, hover:null, draft:'', toast:null, expanded:[], replaying:false, loading:true, missing:false,
+    this.state = { sel:null, hoverIdea:false, hover:null, draft:'', toast:null, expanded:[], replaying:false, loading:true, missing:false, discuss:null, nodeBusy:null,
       choices: [], resources: [], links: [], wmem: {}, week: 1, widget: 'overview', flash: null };
   }
   // App: the map's drawing data, derived from the stored Idea. Pillar names are the design's startup labels (they key FX and angles).
@@ -365,7 +368,10 @@ class Component extends DCLogic {
         evidence: c.ev.map((e, i) => ({ text: e.text, source: e.source, accent: e.k === 'support' ? 'var(--green)' : 'var(--red)', select: this.pick({t:'evidence', cid:c.id, idx:i}) })),
         canEdit: !isPast && c.status !== 'removed' && c.status !== 'suggested', test: c.test === '—' ? 'Removed. No further tests planned.' : c.test,
         noResources: !c.res.length, resources: c.res.map(id => resChip(id)), hasLinks: !!links.length, links,
-        history: c.hist.slice().reverse().map(h => histRow(c, h)), canRemove: !isPast && c.status !== 'removed' && c.status !== 'suggested' };
+        history: c.hist.slice().reverse().map(h => histRow(c, h)), canRemove: !isPast && c.status !== 'removed' && c.status !== 'suggested',
+        // App: pressure-test this choice. Challenge opens Discussions; Research and Plan call /api/node/*.
+        canAct: c.status !== 'removed' && c.status !== 'suggested', nodeBusy: this.state.nodeBusy,
+        challenge: (e) => { e.stopPropagation(); this.challenge(c); }, research: (e) => { e.stopPropagation(); this.research(c); }, plan: (e) => { e.stopPropagation(); this.plan(c); } };
     }
 
     // evidence view
@@ -421,6 +427,8 @@ class Component extends DCLogic {
       setWmem: (key, patch) => { if (!this.idea) return; const widgets = { ...(this.idea.widgets || {}), [key]: { ...((this.idea.widgets || {})[key] || {}), ...patch } }; this.idea = { ...this.idea, widgets }; this.setState({ wmem: widgets }); ideaStore().save(this.idea).catch(err => console.error('[map] save widgets', err)); },
       pillarPct: Object.fromEntries(pillars.map(p => [p.name, p.pct])),
       buildIdea: () => this.idea,
+      team: this.team, saveTeam: (team) => this.saveTeam(team),
+      focus: this.state.discuss,
       applyWidget: (updates, sourceLabel, toast) => this.applyWidget(updates, sourceLabel, toast),
       openOverview: () => this.setState({ widget: 'overview', sel: null }),
       ov, pv, cv, ev, rv,
@@ -434,6 +442,39 @@ class Component extends DCLogic {
       accept: (e) => { e.stopPropagation(); const c = selC; if (!c) return; const l = LINKS.find(x => x[1] === c.id); const old = l ? find(l[0]) : null; this.persist(adopt(this.idea, c.id), { sel: {t:'choice', id:c.id} }, old ? `Replacement accepted · “${old.text}” retired` : `“${c.text}” accepted`); },
       reject: (e) => { e.stopPropagation(); const c = selC; if (!c) return; const l = LINKS.find(x => x[1] === c.id); const old = l ? find(l[0]) : null; this.persist(rejectChoice(this.idea, c.id), { sel: old ? {t:'choice', id:old.id} : null }, old ? `Suggestion rejected · “${old.text}” stays ${STATUS[old.status].label.toLowerCase()}` : 'Suggestion rejected'); },
     };
+  }
+  // App: the team card. Saved to the account, then the map is re-derived so its resources follow.
+  async saveTeam(team) {
+    await ideaStore().saveTeam(team);
+    this.team = team;
+    if (this.idea) this.setState(this.derive(this.idea));
+  }
+  // App: open Discussions with the persona this pillar calls for, focused on the choice.
+  challenge(c) {
+    const role = ROLE_FOR_PILLAR[c.pillarKey] || 'customer';
+    this.setState({ widget: 'customer', discuss: { role, choiceId: c.id, label: c.text, key: Date.now() } });
+  }
+  // App: web evidence for or against one choice, landed through the same path as every widget.
+  research(c) {
+    if (this.state.nodeBusy) return;
+    this.setState({ nodeBusy: 'research' });
+    researchChoice(this.idea, c.id, this.team)
+      .then(updates => { if (!updates.length) { this.say(`No clear evidence found for “${c.text}”`); return; } this.applyWidget(updates, 'Research'); })
+      .catch(err => this.say(err.message))
+      .finally(() => this.setState({ nodeBusy: null }));
+  }
+  // App: 3-5 next steps for one choice, stored as its plan; the first undone step becomes "Next test".
+  plan(c) {
+    if (this.state.nodeBusy) return;
+    this.setState({ nodeBusy: 'plan' });
+    planChoice(this.idea, c.id, this.team)
+      .then(steps => {
+        if (!steps.length) { this.say('No plan came back. Try again.'); return; }
+        const next = { ...this.idea, choices: this.idea.choices.map(x => x.id === c.id ? { ...x, plan: { steps, done: steps.map(() => false) } } : x) };
+        this.persist(next, null, `Plan for “${c.text}” · next test: ${steps[0]}`);
+      })
+      .catch(err => this.say(err.message))
+      .finally(() => this.setState({ nodeBusy: null }));
   }
   addEvidence(e, k) {
     e.stopPropagation(); const text = this.state.draft.trim(); if (!text) { this.say('Write what you learned first'); return; }

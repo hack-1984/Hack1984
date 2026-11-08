@@ -123,7 +123,7 @@ export default function NewIdeaScreen() {
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   onBlur={() => setTouched((t) => ({ ...t, description: true }))}
-                  placeholder="A $8/month meal-planning app for college students on tight budgets."
+                  placeholder="An app that tells you where the fish are biting today."
                   required
                   minLength={MIN_DESCRIPTION}
                   maxLength={600}
