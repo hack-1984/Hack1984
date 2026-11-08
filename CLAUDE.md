@@ -108,7 +108,7 @@ return an `Idea`, data, or `TreeUpdate[]`.
 
 | Route | Called by | Request | Response |
 |---|---|---|---|
-| `POST /api/tree` | intake | `{ pitch, team }` | `{ idea }` |
+| `POST /api/tree` | intake | `{ pitch, team, mode? }` | `{ idea }` |
 | `POST /api/feasibility` | Team drawer | `{ idea, team }` | `{ updates }` each with `.feasibility` |
 | `POST /api/launch/scene` | Launch Day | `{ idea }` | `{ scene }` |
 | `POST /api/launch/personas` | Launch Day | `{ idea, scene }` | `{ personas }` |
@@ -124,6 +124,53 @@ Tony owns `/api/persona`, `/api/chat`, `/api/extract`, `/api/graveyard`,
 **To check your own keys work**, unset `MOCK_AI` and POST a pitch to
 `/api/tree`. There was a `/api/health` diagnostic for this; it's deleted, since
 a temporary route that survives to demo day stops being temporary.
+
+---
+
+## Nonprofit mode
+
+`POST /api/tree` takes an optional `mode: 'nonprofit'`; it's carried on
+`idea.mode` from then on, so every other route reads it off the `Idea` you
+send. **A missing mode is `'startup'`** — the startup pipeline is untouched.
+
+Same eight `PillarKey`s in the same order, always. Only labels, prompts and
+evidence differ: Customer becomes People served, Revenue becomes Funding.
+Never branch on labels, and never add a pillar.
+
+Every difference lives in one of three files. Add to these rather than
+writing `if (mode === 'nonprofit')` into a pipeline:
+
+| File | Holds |
+|---|---|
+| `src/lib/modes.ts` | Labels, placeholders, `fixtureFor`, `formatUnit` — client-safe |
+| `src/server/research/modes.ts` | Query, extraction and tree-generation prompts |
+| `src/server/launch/modes.ts` | Open House scene, persona and judging prompts |
+
+Two rules are enforced in code, not asked for in a prompt, because a prompt
+the model ignores isn't a rule:
+
+- **No launch update may touch Funding.** Whether 31 neighbours can spare four
+  hours says nothing about whether a grant renews. An objection that lands
+  there is redirected to Approach, never dropped.
+- **Single-source funding is capped at 44**, so it renders red. Funding
+  concentration is what closes small nonprofits.
+
+Launch Day becomes **Open House**: the programme is free, so the ask is hours
+a month, not dollars. `decide()` is unit-agnostic and is still the only place
+the buy/curious/leave rule lives.
+
+Peer organizations come from the **ProPublica Nonprofit Explorer** — free, no
+key, in `src/server/research/propublica.ts`. Real Form 990 revenue. Two
+things it does that aren't in its docs: it matches organization *names*, so
+`"youth tutoring program"` finds nothing, and a 404 is an ordinary empty
+result, not an error. URLs are built from the EIN it returns, never from
+model output.
+
+```bash
+MOCK_AI= npx tsx scripts/try-tree.ts --mode nonprofit    # the 10-pitch bar
+MOCK_AI= npx tsx scripts/try-launch.ts --mode nonprofit  # one Open House
+MOCK_AI= npx tsx scripts/warm-cache.ts                   # demo day, after the server is up
+```
 
 ---
 
