@@ -329,8 +329,8 @@ export default function CanvasScreen(props: Record<string, unknown>) {
       </section>
       <section data-sec="1" style={{ background: "#fff", color: "#000", padding: "40px 20px 44px", marginTop: "0", position: "relative", zIndex: "2", borderRadius: "28px 28px 0 0", boxShadow: "0 -16px 40px -8px #0F2E201A,0 1px 0 #DDE3DC inset", clipPath: "inset(-80px 0 0 0)" }}>
         {" "}
-        <div style={{ maxWidth: "1200px", margin: "0 auto", display: "flex", flexDirection: "column", alignItems: "center", gap: "22px" }}>
-          <div style={{ fontFamily: "'Geist Mono',monospace", fontSize: "12px", letterSpacing: ".16em", textTransform: "uppercase", color: "color-mix(in srgb, var(--accent) 70%, var(--bg))" }}>
+        <div style={{ maxWidth: "1200px", margin: "0 auto", display: "flex", flexDirection: "column", alignItems: "center", gap: "30px" }}>
+          <div style={{ fontFamily: "'Geist Mono',monospace", fontSize: "12px", letterSpacing: ".16em", textTransform: "uppercase", color: "#4A5E53" }}>
             HACK1984 Sponsors
           </div>
           {/* Auto-scrolling strip. Two copies of the list slide left by exactly one copy (50%) for a seamless loop;
