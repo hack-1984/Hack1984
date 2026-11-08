@@ -73,5 +73,24 @@ export async function createIdea(input: { name: string; description: string; mod
   const { idea } = (await res.json()) as TreeResponse;
   if (!idea || !Array.isArray(idea.choices)) throw new Error("Research came back empty. Try again.");
   const stored = await store.save(toStored(idea, probe));
+  prefetchGraveyard(stored);
   return { id: stored.id, name: stored.title, description: stored.description, idea: stored, createdAt: stored.createdAt };
+}
+
+/**
+ * Start the graveyard search in the background so it's usually done before the founder opens it.
+ * Fire-and-forget: never awaited, never throws. The server makes it a no-op under MOCK_AI=1.
+ * Sends the stored idea, the same one the Graveyard widget sends, so both share one search.
+ */
+function prefetchGraveyard(idea: StoredIdea) {
+  try {
+    void fetch("/api/graveyard/prefetch", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ idea }),
+      keepalive: true,
+    }).catch(() => {});
+  } catch {
+    /* prefetch is an optimisation; the Graveyard searches on open anyway */
+  }
 }

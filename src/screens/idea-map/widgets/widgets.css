@@ -129,3 +129,11 @@ body.wg-resizing .wg-float-body{pointer-events:none}
 .im-action{flex:1;height:30px;border-radius:999px;border:1px solid var(--border);background:var(--surface);color:var(--text);font:inherit;font-size:11px;font-weight:600;cursor:pointer}
 .im-action:hover:not(:disabled){background:var(--surface-2)}
 .im-action:disabled{opacity:.55;cursor:wait}
+
+/* Graveyard streaming: each stone rises out of the ground as it's found; a live status line while searching */
+.gy-plot{animation:gy-rise .55s cubic-bezier(.3,1.3,.5,1) both}
+@keyframes gy-rise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+.gy-status{display:flex;align-items:center;gap:8px;font-size:13px;line-height:1.45;color:var(--muted)}
+.gy-spin{flex:none;width:14px;height:14px;box-sizing:border-box;border-radius:50%;border:2px solid var(--border);border-top-color:var(--accent);animation:gy-spin .8s linear infinite}
+@keyframes gy-spin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.gy-plot{animation:none}.gy-spin{animation-duration:2s}}
