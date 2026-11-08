@@ -63,6 +63,12 @@ export default function TeamWidget({ ctx }: { ctx: WidgetCtx }) {
     }
   }
 
+  // Nonprofit wording: a program is run (often by volunteers), not built.
+  const np = ctx.buildIdea()?.mode === "nonprofit";
+  const copy = np
+    ? { eyebrow: "Who's running it · checked against every choice", skills: "e.g. teaching, fundraising", tech: "e.g. Google Forms, Canva", hours: "Volunteer hours / week", ok: "Every choice looks doable with this team." }
+    : { eyebrow: "Who's building it · checked against every choice", skills: "e.g. iOS, sales", tech: "e.g. React, Figma", hours: "Hours / week", ok: "Every choice looks buildable with this team." };
+
   const field = (label: string, hint: string, value: string, set: (v: string) => void, type = "text") => (
     <label className="tm-label">
       <span>
@@ -76,15 +82,15 @@ export default function TeamWidget({ ctx }: { ctx: WidgetCtx }) {
     <section className="wg-panel" aria-label="Team">
       <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
         <h2 className="wg-title">Team</h2>
-        <span className="wg-eyebrow">Who&apos;s building it · checked against every choice</span>
+        <span className="wg-eyebrow">{copy.eyebrow}</span>
       </div>
 
       <form onSubmit={submit} style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
         {field("Roles", "comma-separated", roles, setRoles)}
-        {field("Skills", "e.g. iOS, sales", skills, setSkills)}
-        {field("Tools and tech", "e.g. React, Figma", tech, setTech)}
+        {field("Skills", copy.skills, skills, setSkills)}
+        {field("Tools and tech", copy.tech, tech, setTech)}
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
-          {field("Hours / week", "", hours, setHours, "number")}
+          {field(copy.hours, "", hours, setHours, "number")}
           {field("Budget", "", budget, setBudget)}
         </div>
         <button type="submit" className="wg-btn" disabled={busy}>
@@ -101,7 +107,7 @@ export default function TeamWidget({ ctx }: { ctx: WidgetCtx }) {
       {notes ? (
         <div style={{ display: "flex", flexDirection: "column", gap: "8px" }} aria-live="polite">
           <span className="wg-eyebrow">{notes.length ? "What the check found" : "Nothing to flag"}</span>
-          {!notes.length ? <p className="wg-muted">Every choice looks buildable with this team.</p> : null}
+          {!notes.length ? <p className="wg-muted">{copy.ok}</p> : null}
           {notes.map((n, i) => (
             <div key={i} className="tm-note" style={{ borderLeftColor: n.ok ? "var(--green)" : "var(--red)" }}>
               <b>{n.label}</b>

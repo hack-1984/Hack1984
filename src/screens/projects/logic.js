@@ -9,7 +9,9 @@ import React from "react";
 import { DCLogic } from "../dc";
 import { Session } from "@/session";
 import { ideaStore, weekOf } from "@/lib/db";
-const PILLARS = ['Customer','Problem','Solution','Approach','Edge','Reach','Revenue','Risks'];
+import { PILLAR_KEYS, pillarLabel } from "@/lib/pillars";
+// App change: bar tooltips use each idea's own pillar names (People served, Funding… for a nonprofit).
+const barLabel = (k, mode) => pillarLabel(PILLAR_KEYS[k], mode === 'nonprofit' ? 'nonprofit' : 'startup');
 // Same thresholds as the map and the landing page: strong ≥ 70%, mixed ≥ 45%, weak below.
 const confColor = v => v >= .70 ? 'var(--green)' : v >= .45 ? 'var(--amber)' : 'var(--red)';
 const confBg = v => v >= .70 ? 'var(--green-tint)' : v >= .45 ? 'var(--amber-tint)' : 'var(--red-tint)';
@@ -47,12 +49,12 @@ class Component extends DCLogic {
   }
   renderVals() {
     const s = this.state.session || Session.getSession() || { name: 'Guest', mode: 'full' };
-    const saved = (this.state.saved || []).map(x => ({ id: x.id, name: x.title || (x.description || '').slice(0, 60) || 'Untitled idea', description: x.description, week: weekOf(x.updatedAt, x.createdAt), scores: x.pillarScores && x.pillarScores.length === 8 ? x.pillarScores : PILLARS.map(() => 0), edited: planted(x.createdAt), href: `/map?id=${encodeURIComponent(x.id)}` }));
+    const saved = (this.state.saved || []).map(x => ({ id: x.id, mode: x.mode, name: x.title || (x.description || '').slice(0, 60) || 'Untitled idea', description: x.description, week: weekOf(x.updatedAt, x.createdAt), scores: x.pillarScores && x.pillarScores.length === 8 ? x.pillarScores : PILLARS.map(() => 0), edited: planted(x.createdAt), href: `/map?id=${encodeURIComponent(x.id)}` }));
     const projects = saved.map((p, i) => {
       const avg = p.scores.reduce((a, b) => a + b, 0) / p.scores.length;
       return { ...p, title: p.name, meta: `Week ${p.week} · ${p.edited}`, delay: (i * .06) + 's', readiness: Math.round(avg * 100), pillBg: confBg(avg), pillFg: confText(avg), pillDot: confColor(avg),
         confirming: this.state.confirmId === p.id, leaving: this.state.leavingId === p.id,
-        bars: p.scores.map((v, k) => ({ h: Math.round(v * 100) + '%', color: confColor(v), title: PILLARS[k] + ' ' + Math.round(v * 100) + '%' })) };
+        bars: p.scores.map((v, k) => ({ h: Math.round(v * 100) + '%', color: confColor(v), title: barLabel(k, p.mode) + ' ' + Math.round(v * 100) + '%' })) };
     });
     return {
       name: s.name, initial: (s.name || 'G').charAt(0).toUpperCase(), isDemo: s.mode === 'demo',

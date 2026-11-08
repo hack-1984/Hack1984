@@ -78,7 +78,8 @@ const ITEMS: { key: WidgetKey; label: string; icon: ReactNode }[] = [
   },
 ];
 
-export default function WidgetRail({ active, open, onPick, badge }: { active: WidgetKey; open: boolean; onPick: (w: WidgetKey) => void; badge: boolean }) {
+// labels: per-idea overrides, e.g. { launch: "Open House" } on a nonprofit.
+export default function WidgetRail({ active, open, onPick, badge, labels }: { active: WidgetKey; open: boolean; onPick: (w: WidgetKey) => void; badge: boolean; labels?: Partial<Record<WidgetKey, string>> }) {
   return (
     <nav aria-label="Widgets" className="wg-rail">
       {ITEMS.map((it) => (
@@ -87,9 +88,9 @@ export default function WidgetRail({ active, open, onPick, badge }: { active: Wi
           type="button"
           className={`wg-rail-btn${active === it.key && open ? " is-active" : ""}`}
           data-widget={it.key}
-          aria-label={it.label + (it.key === "overview" && badge ? " (a suggestion is waiting)" : "")}
+          aria-label={(labels?.[it.key] ?? it.label) + (it.key === "overview" && badge ? " (a suggestion is waiting)" : "")}
           aria-pressed={active === it.key && open}
-          title={it.label}
+          title={labels?.[it.key] ?? it.label}
           onClick={() => onPick(it.key)}
         >
           {it.icon}

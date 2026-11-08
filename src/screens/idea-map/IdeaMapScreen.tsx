@@ -30,7 +30,7 @@ export default function IdeaMapScreen(props: Record<string, unknown>) {
   // clientOnly: which idea to show comes from the URL and this browser's saved ideas.
   const v = useLogic(Logic, props, { clientOnly: true });
   if (!v) return <div className="pg-im" />;
-  const { showPillar, panelOpen, panelW, occupied, closePanel, setPanelW, setDragW, loading, missing, widget, setWidget, showBadge, ideaId, wmem, setWmem, pillarPct, buildIdea, applyWidget, openOverview, team, saveTeam, focus, ideaInitial, ideaName, ideaPitch, accept, addAgainst, addFor, choices, clearSel, counts, curves, cv, draft, edges, ev, hasToast, hoverIdea, hoverOff, hoverOn, evCard, researchView, ideaShadow, isChoice, isEvidence, isIdea, isPillar, orbit, ov, paneRef, pctRef, particles, pillars, pv, reject, removeChoice, selIdea, setDraft, showHint, toast, toggleAll, toggleAllLabel, worldRef, zoomFit, zoomIn, zoomOut, nChoices, nEvidence, canUndo, undoLabel, undo } = v;
+  const { railLabels, draftHint, showPillar, panelOpen, panelW, occupied, closePanel, setPanelW, setDragW, loading, missing, widget, setWidget, showBadge, ideaId, wmem, setWmem, pillarPct, buildIdea, applyWidget, openOverview, team, saveTeam, focus, ideaInitial, ideaName, ideaPitch, accept, addAgainst, addFor, choices, clearSel, counts, curves, cv, draft, edges, ev, hasToast, hoverIdea, hoverOff, hoverOn, evCard, researchView, ideaShadow, isChoice, isEvidence, isIdea, isPillar, orbit, ov, paneRef, pctRef, particles, pillars, pv, reject, removeChoice, selIdea, setDraft, showHint, toast, toggleAll, toggleAllLabel, worldRef, zoomFit, zoomIn, zoomOut, nChoices, nEvidence, canUndo, undoLabel, undo } = v;
   // App: no canned idea. While the stored idea loads, or if it isn't this account's, say so instead of drawing an empty map.
   if (loading || missing) {
     return (
@@ -137,8 +137,9 @@ export default function IdeaMapScreen(props: Record<string, unknown>) {
                           {p?.badge}
                         </div>
                         {" "}
-                        <div style={{ width: "100%", height: "100%", borderRadius: "50%", background: "var(--surface)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "1px", fontSize: "11px", fontWeight: "600", color: "var(--text)", letterSpacing: "-.01em" }}>
-                          <span>
+                        {/* App: textAlign + lineHeight so a two-line name ("People served") stays centred in the circle. */}
+                        <div style={{ width: "100%", height: "100%", borderRadius: "50%", background: "var(--surface)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "1px", fontSize: "11px", fontWeight: "600", color: "var(--text)", letterSpacing: "-.01em", textAlign: "center" }}>
+                          <span style={{ lineHeight: "1.1", padding: "0 4px" }}>
                             {p?.name}
                           </span>
                           <span style={{ fontSize: "9px", fontFamily: "'Geist Mono',monospace", fontWeight: "500", color: `${p?.labelColor ?? ""}` } as CSSProperties}>
@@ -751,7 +752,7 @@ export default function IdeaMapScreen(props: Record<string, unknown>) {
                         {" "}
                         <div style={{ marginTop: "12px", padding: "10px", borderRadius: "8px", border: "1px solid var(--border)" }}>
                           {" "}
-                          <textarea className="im-input" aria-label="What you learned" value={draft} onChange={setDraft} placeholder="Add what you learned… e.g. 7 of 10 testers finished setup" style={{ width: "100%", boxSizing: "border-box", minHeight: "52px", border: "1px solid var(--border)", borderRadius: "6px", padding: "8px", fontSize: "12px", resize: "vertical", background: "var(--surface-2)", color: "var(--text)" }} />
+                          <textarea className="im-input" aria-label="What you learned" value={draft} onChange={setDraft} placeholder={draftHint} style={{ width: "100%", boxSizing: "border-box", minHeight: "52px", border: "1px solid var(--border)", borderRadius: "6px", padding: "8px", fontSize: "12px", resize: "vertical", background: "var(--surface-2)", color: "var(--text)" }} />
                           {" "}
                           <div style={{ display: "flex", gap: "6px", marginTop: "8px" }}>
                             <button style={{ flex: "1", height: "30px", borderRadius: "999px", border: "1px solid var(--green-line)", background: "var(--surface)", color: "var(--green-text)", fontSize: "11px", fontWeight: "600", cursor: "pointer" }} onClick={addFor}>
@@ -973,7 +974,7 @@ export default function IdeaMapScreen(props: Record<string, unknown>) {
               <WidgetSlot widget={widget} ctx={{ ideaId, wmem, setWmem, pillarPct, showPillar, buildIdea, applyWidget, openOverview, team, saveTeam, focus }} />
             ) : null}
           </FloatingPanel>
-          <WidgetRail active={widget as WidgetKey} open={!!panelOpen} onPick={setWidget} badge={!!showBadge} />
+          <WidgetRail active={widget as WidgetKey} open={!!panelOpen} onPick={setWidget} badge={!!showBadge} labels={railLabels} />
         </div>
       </div>
     </div>

@@ -67,7 +67,12 @@ type Phase = "searching" | "done" | "error";
 
 export default function GraveyardWidget({ ctx }: { ctx: WidgetCtx }) {
   const { ideaId, buildIdea } = ctx;
-  const kind = buildIdea()?.mode === "nonprofit" ? ["organization", "organizations"] : ["startup", "startups"];
+  const nonprofit = buildIdea()?.mode === "nonprofit";
+  const kind = nonprofit ? ["organization", "organizations"] : ["startup", "startups"];
+  // Nonprofit wording: causes, not markets; a closed charity's money is its peak budget, not funds raised.
+  const words = nonprofit
+    ? { nearby: "No close matches. These shut down in nearby causes.", adjacent: "Adjacent cause", raised: "Peak budget" }
+    : { nearby: "No close matches. These shut down in nearby markets.", adjacent: "Adjacent market", raised: "Raised" };
   const [cached] = useState(() => loadWidgetCache<GraveyardDetailResponse>(ideaId, "graveyard"));
   const [records, setRecords] = useState<GraveRecord[]>(cached?.records ?? []);
   const [adjacent, setAdjacent] = useState(cached?.adjacent ?? false);
@@ -213,7 +218,7 @@ export default function GraveyardWidget({ ctx }: { ctx: WidgetCtx }) {
         </div>
       ) : null}
 
-      {phase === "done" && adjacent && graves.length ? <p className="wg-muted">No close matches. These shut down in nearby markets.</p> : null}
+      {phase === "done" && adjacent && graves.length ? <p className="wg-muted">{words.nearby}</p> : null}
       {phase === "done" && !graves.length ? <p className="wg-muted">No similar shutdowns found for this idea.</p> : null}
 
       {graves.length ? (
@@ -255,12 +260,12 @@ export default function GraveyardWidget({ ctx }: { ctx: WidgetCtx }) {
           <div className="gy-head">
             <span style={{ fontSize: "16px", fontWeight: 700 }}>{g.name}</span>
             <span style={{ fontSize: "13px", color: "var(--muted)" }}>{g.years}</span>
-            {g.adjacent ? <span className="gy-tag">Adjacent market</span> : null}
+            {g.adjacent ? <span className="gy-tag">{words.adjacent}</span> : null}
           </div>
           <span style={{ fontSize: "14px", fontStyle: "italic", color: "var(--text)" }}>“{g.epitaph}”</span>
           <div className="gy-tiles">
             <div className="gy-tile">
-              <div className="gy-tile-k">Raised</div>
+              <div className="gy-tile-k">{words.raised}</div>
               <div className="gy-tile-v">{g.raised}</div>
             </div>
             <div className="gy-tile">
