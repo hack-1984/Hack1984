@@ -10,13 +10,20 @@
 import React from "react";
 import { DCLogic } from "../dc";
 import { Session } from "@/session";
-import { PILLARS as PILLAR_DEFS, PILLAR_KEYS } from "@/lib/pillars";
+import { PILLARS as PILLAR_DEFS, PILLAR_KEYS, pillarLabel } from "@/lib/pillars";
 import { adopt, applyUpdates, describeUpdates, ideaStore, reject as rejectChoice, toMapModel } from "@/lib/db";
 import { planChoice, researchChoice } from "@/ideas/api";
 import { Camera, MIN_ZOOM, MAX_ZOOM } from "./camera";
 const PILLARS = PILLAR_DEFS.map(p => p.startup);
 const LABEL = Object.fromEntries(PILLAR_DEFS.map(p => [p.key, p.startup]));
-// App: who a choice's Challenge button talks to, by pillar.
+// The startup labels stay the map's internal identity: they key FX, the
+// angles, `expanded`, and every c.pillar comparison. Nonprofit labels differ
+// only on screen, so they are translated back through the key at the three
+// places a pillar name is actually rendered -- see show() below.
+const KEY_OF = Object.fromEntries(PILLAR_DEFS.map(p => [p.startup, p.key]));
+// App: who a choice's Challenge button talks to, by pillar. Keyed on the
+// pillar KEY, so it holds in both modes — only the role's display name
+// differs there (profileFor(mode).roles).
 const ROLE_FOR_PILLAR = { customer:'customer', problem:'customer', solution:'customer', edge:'competitor', reach:'competitor', revenue:'investor', risks:'investor', approach:'investor' };
 const FX = {
   Customer:{glyph:'●', sizes:['6px'], dur:'4s', inner:'none'},
@@ -102,6 +109,10 @@ class Component extends DCLogic {
     this.state = { sel:null, hoverIdea:false, hover:null, draft:'', toast:null, expanded:[], replaying:false, loading:true, missing:false, discuss:null, nodeBusy:null,
       choices: [], resources: [], links: [], wmem: {}, week: 1, widget: 'overview', flash: null, panelOpen: true, panelW: readPanelW() };
   }
+  // The label to SHOW for a pillar the map holds internally as a startup
+  // label: "Customer" stays "Customer" on a startup, becomes "People served"
+  // on a nonprofit. Identity is unchanged either way.
+  show(p) { return pillarLabel(KEY_OF[p] ?? p, this.idea?.mode === 'nonprofit' ? 'nonprofit' : 'startup'); }
   // App: the map's drawing data, derived from the stored Idea. Pillar names are the design's startup labels (they key FX and angles).
   derive(idea) {
     const m = toMapModel(idea, this.team);
@@ -331,7 +342,7 @@ class Component extends DCLogic {
       const info = pillarInfo(p); const active = pillarActive(p); const [x, y] = pPos(p); const shrunk = focused && !active; const hk = 'p:' + p;
       const nC = view.filter(c => c.pillar === p && c.status !== 'removed').length; const open = expanded.includes(p); const i = PILLARS.indexOf(p);
       const fl = this.state.flash && this.state.flash.pillars.includes(p) ? this.state.flash : null;
-      return { flashing: !!fl, flashText: fl ? fl.text : '', flashKey: fl ? fl.key : 0, name: p, x, y, glyph: FX[p].glyph, delay: (i * .05) + 's', rowDelay: (i * .04) + 's', badge: open ? '–' : nC, badgeBg: open ? 'var(--accent)' : 'var(--surface)', badgeBorder: open ? 'var(--surface)' : 'var(--border)', badgeFg: open ? 'var(--on-accent)' : 'var(--text)', badgeDelay: (.3 + i * .05) + 's', ring: `conic-gradient(${info.ringColor} ${Math.round(info.avg * 360)}deg, var(--border) 0)`, title: `${info.label} · ${info.pct}%`, shadow: active ? '0 0 0 4px var(--focus-ring)' : '0 1px 2px var(--shadow)', pct: info.pct, label: info.label, labelColor: info.labelColor, op: shrunk ? .85 : 1, scale: hov(hk, shrunk ? .66 : 1), select: this.togglePillar(p), enter: this.hoverOn(hk), leave: this.hoverOff(hk) };
+      return { flashing: !!fl, flashText: fl ? fl.text : '', flashKey: fl ? fl.key : 0, name: this.show(p), x, y, glyph: FX[p].glyph, delay: (i * .05) + 's', rowDelay: (i * .04) + 's', badge: open ? '–' : nC, badgeBg: open ? 'var(--accent)' : 'var(--surface)', badgeBorder: open ? 'var(--surface)' : 'var(--border)', badgeFg: open ? 'var(--on-accent)' : 'var(--text)', badgeDelay: (.3 + i * .05) + 's', ring: `conic-gradient(${info.ringColor} ${Math.round(info.avg * 360)}deg, var(--border) 0)`, title: `${info.label} · ${info.pct}%`, shadow: active ? '0 0 0 4px var(--focus-ring)' : '0 1px 2px var(--shadow)', pct: info.pct, label: info.label, labelColor: info.labelColor, op: shrunk ? .85 : 1, scale: hov(hk, shrunk ? .66 : 1), select: this.togglePillar(p), enter: this.hoverOn(hk), leave: this.hoverOff(hk) };
     });
     const choiceRow = c => { const st = STATUS[c.status]; return { dot: st.dot, dotBorder: st.dotBorder, deco: c.status === 'removed' ? 'line-through' : 'none', text: c.text, sub: `${st.label} · ${c.ev.length} evidence`, select: this.pick({t:'choice', id:c.id}) }; };
     const choices = rows.map(({ c, x, y, j, collapsed }) => {
@@ -361,7 +372,7 @@ class Component extends DCLogic {
       const p = sel.id; const info = pillarInfo(p); const cs = view.filter(c => c.pillar === p); const act = cs.filter(c => c.status !== 'removed');
       const evN = cs.reduce((a, c) => a + c.ev.length, 0); const resIds = [...new Set(act.flatMap(c => c.res))]; const gapsN = resIds.filter(id => !RES.find(r => r.id === id).have).length;
       const tests = act.filter(c => c.status !== 'strengthened' && c.test !== '—').map(c => ({ choice: c.text, text: c.test, select: this.pick({t:'choice', id:c.id}) }));
-      pv = { name: p, glyph: FX[p].glyph, pct: info.pct, ring: `conic-gradient(${info.ringColor} ${Math.round(info.avg * 360)}deg, var(--border) 0)`, label: info.label, labelColor: info.labelColor, summary: `${act.length} active ${act.length === 1 ? 'choice' : 'choices'} · ${evN} evidence · ${gapsN ? gapsN + ' resource gap' + (gapsN > 1 ? 's' : '') : 'no resource gaps'}`,
+      pv = { name: this.show(p), glyph: FX[p].glyph, pct: info.pct, ring: `conic-gradient(${info.ringColor} ${Math.round(info.avg * 360)}deg, var(--border) 0)`, label: info.label, labelColor: info.labelColor, summary: `${act.length} active ${act.length === 1 ? 'choice' : 'choices'} · ${evN} evidence · ${gapsN ? gapsN + ' resource gap' + (gapsN > 1 ? 's' : '') : 'no resource gaps'}`,
         choices: cs.map(choiceRow), tests, noTests: !tests.length, resources: resIds.map(id => resChip(id)), noRes: !resIds.length,
         history: cs.flatMap(c => c.hist.map(h => histRow(c, h))).sort((a, b) => parseInt(b.week.slice(3)) - parseInt(a.week.slice(3))) };
     }
@@ -504,7 +515,7 @@ class Component extends DCLogic {
     const at = Date.now();
     const stamped = updates.map(u => ({ ...u, at: u.at || at, source: u.source || 'plan' }));
     const next = applyUpdates(this.idea, stamped);
-    const changes = describeUpdates(this.idea, next, stamped).map(ch => ({ ...ch, pillar: LABEL[ch.pillar] }));
+    const changes = describeUpdates(this.idea, next, stamped).map(ch => ({ ...ch, pillar: this.show(LABEL[ch.pillar]) }));
     if (!changes.length) return changes;
     const pillarsHit = [...new Set(changes.map(ch => ch.pillar))];
     const top = changes[0];
