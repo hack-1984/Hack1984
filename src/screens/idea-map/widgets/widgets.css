@@ -1,7 +1,23 @@
 /* Map widgets: the rail and the widget panels. Layout from design/sprout-mocks/App.dc.html,
    colors from the Sprout theme variables only. */
 
-.wg-rail{flex:none;display:flex;flex-direction:column;gap:6px;padding:10px 6px;border-right:1px solid var(--border);background:var(--surface)}
+/* Tab strip: floats on the far right edge of the map, outside the panel (lo-fi + mock). */
+.wg-rail{position:absolute;right:16px;top:50%;transform:translateY(-50%);z-index:7;display:flex;flex-direction:column;gap:6px;padding:6px;background:var(--surface);border:1px solid var(--border);border-radius:14px;box-shadow:0 8px 24px var(--shadow)}
+
+/* Floating panel: white rounded card over the right of the map, left of the strip (right = STRIP_SPACE in logic.js). */
+.wg-float{position:absolute;right:84px;top:16px;bottom:16px;z-index:6;max-width:calc(100% - 204px);display:flex;box-sizing:border-box;background:var(--surface);border:1px solid var(--border);border-radius:16px;box-shadow:0 12px 40px var(--shadow),0 2px 8px var(--shadow);animation:wg-floatIn .25s cubic-bezier(.2,.8,.2,1) both}
+.wg-float[hidden]{display:none}
+.wg-float-body{flex:1;min-width:0;display:flex;flex-direction:column;overflow:auto;border-radius:16px}
+@keyframes wg-floatIn{from{opacity:0;transform:translateX(12px)}to{opacity:1;transform:none}}
+/* Grip on the panel's left edge: drag (or arrow keys) to resize. */
+.wg-grip{position:absolute;left:-7px;top:0;bottom:0;width:14px;z-index:2;cursor:ew-resize;display:flex;align-items:center;justify-content:center;touch-action:none;border-radius:8px}
+.wg-grip span{width:4px;height:40px;border-radius:999px;background:var(--border);transition:background .15s,height .15s}
+.wg-grip:hover span,.wg-grip:focus-visible span{background:var(--muted);height:56px}
+body.wg-resizing{cursor:ew-resize;user-select:none}
+body.wg-resizing .wg-float-body{pointer-events:none}
+.wg-close{position:absolute;right:10px;top:10px;z-index:2;width:32px;height:32px;border:none;border-radius:8px;background:transparent;color:var(--muted);display:flex;align-items:center;justify-content:center;cursor:pointer}
+.wg-close:hover{background:var(--surface-2);color:var(--text)}
+@media (prefers-reduced-motion:reduce){.wg-float{animation:none}}
 .wg-rail-btn{position:relative;width:44px;height:44px;border:none;border-radius:10px;background:transparent;color:var(--text);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:background .15s}
 .wg-rail-btn:hover{background:var(--surface-2)}
 .wg-rail-btn.is-active{background:var(--surface-2);box-shadow:inset 3px 0 0 var(--accent)}
@@ -18,9 +34,29 @@
 .wg-error{display:flex;flex-direction:column;gap:10px;padding:12px;border-radius:10px;background:var(--red-tint);color:var(--red-text);font-size:13px;line-height:1.45}
 
 /* Graveyard */
-.gy-yard{position:relative;transition:height .5s cubic-bezier(.3,1,.4,1)}
-.gy-stone{position:absolute;padding:0;border:none;cursor:pointer;transform-origin:50% 100%;border-radius:50% 50% 3px 3px / 45% 45% 3px 3px;transition:transform .45s cubic-bezier(.3,1.3,.5,1),background .3s}
-.gy-name{position:absolute;transform:translate(-50%,4px);font-size:11px;white-space:nowrap;pointer-events:none}
+/* The yard: a patch of ground; stones stand on it (mock: graves scattered, the open one grows). */
+.gy-yard{position:relative;height:220px;margin-top:4px;border-radius:14px;overflow:visible;
+  background:linear-gradient(to bottom,transparent 0,transparent 34%,color-mix(in srgb,var(--green) 9%,var(--surface-2)) 34%,var(--surface-2) 100%);
+  transition:height .5s cubic-bezier(.3,1,.4,1)}
+.gy-yard.has-sel{height:180px}
+.gy-plot{position:absolute;width:0;height:0}
+.gy-stone{position:absolute;left:0;top:0;padding:0;border:none;cursor:pointer;transform-origin:50% 100%;
+  border-radius:50% 50% 4px 4px / 42% 42% 4px 4px;
+  background:color-mix(in srgb,var(--muted) 70%,var(--surface));
+  box-shadow:inset -3px -2px 0 color-mix(in srgb,var(--text) 12%,transparent),0 3px 0 -1px color-mix(in srgb,var(--text) 18%,transparent);
+  transition:transform .45s cubic-bezier(.3,1.3,.5,1),background .3s,opacity .3s}
+.gy-stone:hover{background:color-mix(in srgb,var(--muted) 90%,var(--surface))}
+.gy-plot.is-on .gy-stone{background:var(--text)}
+.gy-plot.is-other .gy-stone{opacity:.55}
+/* A faint carved cross on each stone. */
+.gy-engrave{position:absolute;left:50%;top:26%;width:30%;height:34%;transform:translateX(-50%);pointer-events:none;
+  background:linear-gradient(var(--surface),var(--surface)) center/2px 100% no-repeat,linear-gradient(var(--surface),var(--surface)) center 30%/100% 2px no-repeat;opacity:.45}
+/* Name: on hover / focus, and always under the open stone. */
+.gy-tip{position:absolute;left:0;top:6px;transform:translateX(-50%);white-space:nowrap;font-size:11.5px;font-weight:600;color:var(--text);
+  padding:3px 8px;border-radius:999px;background:var(--surface);border:1px solid var(--border);box-shadow:0 4px 12px var(--shadow);
+  opacity:0;pointer-events:none;transition:opacity .15s,transform .15s}
+.gy-plot:hover .gy-tip,.gy-stone:focus-visible + .gy-tip,.gy-plot.is-on .gy-tip{opacity:1}
+.gy-plot:hover{z-index:200 !important}
 .gy-detail{display:flex;flex-direction:column;gap:10px;animation:im-panelIn .3s ease-out both}
 .gy-head{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
 .gy-tag{font-size:11px;font-weight:600;padding:2px 8px;border-radius:999px;background:var(--surface-2);color:var(--muted)}
@@ -31,7 +67,7 @@
 .gy-sources{font-family:'Geist Mono',monospace;font-size:11px;color:var(--muted);display:flex;flex-wrap:wrap;gap:4px 10px}
 .gy-sources a{color:var(--muted)}
 .gy-sources a:hover{color:var(--text)}
-@media (prefers-reduced-motion:reduce){.gy-stone,.gy-yard{transition:none}}
+@media (prefers-reduced-motion:reduce){.gy-stone,.gy-yard,.gy-tip{transition:none}}
 
 /* Pillar pulse when a widget result lands (mock: .pulse / .rise) */
 .im-flash-ring{position:absolute;inset:-6px;border-radius:50%;border:2px solid var(--accent);pointer-events:none;animation:im-pulse 1.6s ease-out both}
