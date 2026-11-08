@@ -3,6 +3,8 @@
 // Typed calls to the widget routes. Each takes the stored Idea (ctx.buildIdea(),
 // exactly as the backend shaped it) and throws an Error with a readable message.
 import type {
+  FeasibilityRequest,
+  FeasibilityResponse,
   LaunchPersonasRequest,
   LaunchPersonasResponse,
   LaunchRunRequest,
@@ -10,8 +12,8 @@ import type {
   LaunchSceneRequest,
   LaunchSceneResponse,
 } from "@/lib/contracts";
-import type { Idea, SceneSpec, SimPersona } from "@/lib/types";
-import type { ChatResponse, ExtractResponse, GraveyardDetailResponse, WireChatMessage, WirePersona, WireRole } from "./wire";
+import type { Idea, SceneSpec, SimPersona, TeamProfile } from "@/lib/types";
+import type { BuildResponse, ChatResponse, ExtractResponse, GraveyardDetailResponse, WireChatMessage, WirePersona, WireRole, WireUpdate } from "./wire";
 
 async function postJSON<T>(path: string, body: unknown, what: string): Promise<T> {
   let res: Response;
@@ -42,13 +44,15 @@ export function fetchPersona(idea: Idea, role: WireRole, choiceId?: string) {
 }
 
 /** POST /api/chat: the persona's next line. An empty `messages` list gets its opening line. */
-export function sendChat(idea: Idea, persona: WirePersona, messages: WireChatMessage[]) {
-  return postJSON<ChatResponse>("/api/chat", { idea, persona, messages }, "a reply");
+export function sendChat(idea: Idea, persona: WirePersona, messages: WireChatMessage[], focusChoiceId?: string) {
+  return postJSON<ChatResponse>("/api/chat", { idea, persona, messages, ...(focusChoiceId ? { focusChoiceId } : {}) }, "a reply");
 }
 
 /** POST /api/extract with only the newest exchange (the founder's line and the reply). */
 export function extractUpdates(idea: Idea, persona: WirePersona, exchange: WireChatMessage[]) {
-  return postJSON<ExtractResponse>("/api/extract", { idea, persona, messages: exchange, source: persona.role }, "what this changed").then((r) => r.updates);
+  // The advisor is a mentor, not a market signal: its updates are tagged as planning advice.
+  const source = persona.role === "advisor" ? "plan" : persona.role;
+  return postJSON<ExtractResponse>("/api/extract", { idea, persona, messages: exchange, source }, "what this changed").then((r) => r.updates);
 }
 
 // ---------- Launch day / Open House ----------
@@ -63,4 +67,26 @@ export function launchPersonas(idea: Idea, scene: SceneSpec) {
 
 export function launchRun(idea: Idea, scene: SceneSpec, personas: SimPersona[], price: number) {
   return postJSON<LaunchRunResponse>("/api/launch/run", { idea, scene, personas, price } satisfies LaunchRunRequest, "the results");
+}
+
+// ---------- Build, Team, node actions ----------
+
+/** POST /api/build: landing copy, pitch outline and one-pager from the tree. */
+export function fetchBuild(idea: Idea) {
+  return postJSON<BuildResponse>("/api/build", { idea }, "your launch materials");
+}
+
+/** POST /api/feasibility: weakens or strengthens choices against what the team can do. */
+export function checkFeasibility(idea: Idea, team: TeamProfile) {
+  return postJSON<FeasibilityResponse>("/api/feasibility", { idea, team } satisfies FeasibilityRequest, "the team check").then((r) => r.updates);
+}
+
+/** POST /api/node/research: web evidence for or against one choice. */
+export function researchChoice(idea: Idea, choiceId: string, team?: TeamProfile | null) {
+  return postJSON<{ updates: WireUpdate[] }>("/api/node/research", { idea, choiceId, ...(team ? { team } : {}) }, "research").then((r) => r.updates);
+}
+
+/** POST /api/node/plan: 3-5 next steps to test one choice. */
+export function planChoice(idea: Idea, choiceId: string, team?: TeamProfile | null) {
+  return postJSON<{ steps: string[] }>("/api/node/plan", { idea, choiceId, ...(team ? { team } : {}) }, "a plan").then((r) => r.steps);
 }

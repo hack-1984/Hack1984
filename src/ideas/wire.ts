@@ -92,3 +92,11 @@ export interface ChatResponse {
 export interface ExtractResponse {
   updates: WireUpdate[];
 }
+
+// ---------- Build: /api/build ----------
+
+export interface BuildResponse {
+  landing: { headline: string; subhead: string; bullets: string[]; cta: string };
+  pitchOutline: string[];
+  onePager: string;
+}

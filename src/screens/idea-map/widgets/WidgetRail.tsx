@@ -4,7 +4,7 @@
 // Icons and sizes from design/sprout-mocks/App.dc.html; colors from the Sprout theme.
 import type { ReactNode } from "react";
 
-export type WidgetKey = "overview" | "launch" | "graveyard" | "customer";
+export type WidgetKey = "overview" | "launch" | "graveyard" | "customer" | "build" | "team";
 
 const ICON = { width: 22, height: 22, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 1.8, strokeLinecap: "round", strokeLinejoin: "round", "aria-hidden": true } as const;
 
@@ -45,10 +45,33 @@ const ITEMS: { key: WidgetKey; label: string; icon: ReactNode }[] = [
   },
   {
     key: "customer",
-    label: "Customer discussion",
+    label: "Discussions",
     icon: (
       <svg {...ICON}>
         <path d="M4 5h16v11H9l-5 4z" />
+      </svg>
+    ),
+  },
+  {
+    key: "build",
+    label: "Build",
+    icon: (
+      <svg {...ICON}>
+        <path d="M14 3h7v7" />
+        <path d="M21 3l-9 9" />
+        <path d="M18 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h5" />
+      </svg>
+    ),
+  },
+  {
+    key: "team",
+    label: "Team",
+    icon: (
+      <svg {...ICON}>
+        <circle cx="9" cy="8" r="3.2" />
+        <path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6" />
+        <path d="M16 4.5a3 3 0 0 1 0 6" />
+        <path d="M18 14.5c1.8.8 3 2.7 3 5" />
       </svg>
     ),
   },
