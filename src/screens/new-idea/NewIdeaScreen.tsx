@@ -104,7 +104,7 @@ export default function NewIdeaScreen() {
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   onBlur={() => setTouched((t) => ({ ...t, name: true }))}
-                  placeholder="Pantry"
+                  placeholder="Bite forecast"
                   required
                   maxLength={60}
                   autoComplete="off"

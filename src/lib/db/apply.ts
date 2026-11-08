@@ -2,8 +2,8 @@
 // backend's Idea (types.ts) does not know about: title, description, sources,
 // queries, relation, sourceId. Routes return updates keyed on choice ids; this
 // is the one place they land. The server never mutates the idea.
-import type { NewChoice, TreeUpdate } from "@/lib/types";
-import type { StoredChoice, StoredIdea } from "./schema";
+import type { NewChoice, PillarKey, TreeUpdate } from "@/lib/types";
+import type { HistType, StoredChoice, StoredIdea } from "./schema";
 
 const clamp = (n: number) => Math.max(0, Math.min(100, Math.round(n)));
 
@@ -47,7 +47,7 @@ export function applyUpdates(idea: StoredIdea, updates: TreeUpdate[]): StoredIde
       case "strengthen":
       case "weaken":
       case "haunt": {
-        if (!target) break;
+        if (!target || target.status !== "active") break; // nothing to move on a retired or pending choice
         const sign = u.action === "strengthen" ? 1 : -1;
         const delta = u.delta ?? (u.action === "haunt" ? -10 : sign * 5);
         // A strengthen never lowers and a weaken/haunt never raises, whatever sign the delta came with.
@@ -65,7 +65,7 @@ export function applyUpdates(idea: StoredIdea, updates: TreeUpdate[]): StoredIde
         break;
       }
       case "kill": {
-        if (!target) break;
+        if (!target || target.status !== "active") break;
         next.choices[i] = {
           ...target,
           status: "killed",
@@ -76,6 +76,11 @@ export function applyUpdates(idea: StoredIdea, updates: TreeUpdate[]): StoredIde
       case "add": {
         if (!u.newChoice) break;
         const nc: NewChoice = u.newChoice;
+        // Already on the tree (same label in the same pillar, not killed)? Don't duplicate it.
+        const dup = next.choices.find(
+          (c) => c.pillar === nc.pillar && c.status !== "killed" && c.label.trim().toLowerCase() === nc.label.trim().toLowerCase()
+        );
+        if (dup) break;
         next.choices.push({
           ...nc,
           id: nextChoiceId(next, nc.pillar),
@@ -86,6 +91,35 @@ export function applyUpdates(idea: StoredIdea, updates: TreeUpdate[]): StoredIde
     }
   }
   return next;
+}
+
+/** What one batch of updates did, for "what this changed" lists and pillar highlights. */
+export interface Change {
+  type: HistType;
+  choiceId: string;
+  choiceText: string;
+  pillar: PillarKey;
+  reason: string;
+}
+
+/** Describe `updates` as applied from `before` to `after` (the result of applyUpdates). */
+export function describeUpdates(before: StoredIdea, after: StoredIdea, updates: TreeUpdate[]): Change[] {
+  const changes: Change[] = [];
+  for (const u of updates) {
+    if (u.action === "add" && u.newChoice) {
+      const nc = u.newChoice;
+      const c = after.choices.find(
+        (x) => x.pillar === nc.pillar && x.status !== "killed" && x.label.trim().toLowerCase() === nc.label.trim().toLowerCase()
+      );
+      if (c) changes.push({ type: nc.status === "proposed" ? "Suggested" : "Added", choiceId: c.id, choiceText: c.label, pillar: c.pillar, reason: u.reason });
+      continue;
+    }
+    const was = u.choiceId ? before.choices.find((x) => x.id === u.choiceId) : undefined;
+    if (!was || was.status !== "active") continue;
+    const type: HistType = u.action === "kill" ? "Removed" : u.action === "strengthen" ? "Strengthened" : "Weakened";
+    changes.push({ type, choiceId: was.id, choiceText: was.label, pillar: was.pillar, reason: u.reason });
+  }
+  return changes;
 }
 
 /** The founder accepts a proposed choice. Its pivot parent, if any, is killed. */

@@ -1,18 +1,17 @@
 // The shape the Idea Map screen renders, computed from an Idea.
 //
 // Agreed with the backend: the store keeps the backend's Idea (types.ts) and
-// this is derived from it, never stored. Field names follow the design's
-// canned data in src/screens/idea-map/logic.js (CHOICES0, RESOURCES0, LINKS),
-// so the screen can swap its constants for toMapModel(idea, team) with no
-// template changes. Each field says where it comes from.
+// this is derived from it, never stored. Field names follow the Idea Map
+// design's data shape (choices with ev/hist/res/test, resources, links), which
+// src/screens/idea-map/logic.js renders. Each field says where it comes from.
 import { PILLARS, PILLAR_BY_KEY } from "@/lib/pillars";
 import type { PillarKey, TeamProfile, TreeUpdate } from "@/lib/types";
-import { support, type StoredChoice, type StoredIdea } from "./schema";
+import { histTypeFor, support, type HistType, type StoredChoice, type StoredIdea } from "./schema";
 
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 
 /** The design's history row types. */
-export type MapHistType = "Added" | "Strengthened" | "Weakened" | "Removed" | "Suggested";
+export type MapHistType = HistType;
 
 export interface MapEvidence {
   k: "support" | "against"; // from the update that carried it: weaken/haunt → against, else support
@@ -40,8 +39,9 @@ export interface MapChoice {
   res: string[]; // MapResource ids this choice depends on
   test: string; // first undone plan step, else "—"
   ev: MapEvidence[];
-  hist: MapHist[]; // at least one "Added" row
+  hist: MapHist[]; // at least one row; the first comes from status and confidence
   support: 0 | 1 | 2; // distinct source domains: unsupported, single, corroborated
+  ghost?: string; // Choice.marker: the dead startup haunting this choice
 }
 
 export interface MapResource {
@@ -118,10 +118,15 @@ export function toMapModel(idea: StoredIdea, team?: TeamProfile | null, now = Da
       .filter((u) => u.choiceId === c.id)
       .map((u) => ({ wk: weekOf(u.at, idea.createdAt), type: HIST_TYPE[u.action], note: u.reason }));
     const born = idea.history.find((u) => u.action === "add" && u.newChoice?.label === c.label && u.newChoice.pillar === c.pillar);
+    // The first row: what the research said. Untouched choices take their state from confidence,
+    // so a fresh map isn't eight flat pillars; later rows come from the updates above.
+    const bornType: HistType = born
+      ? c.status === "proposed" ? "Suggested" : "Added"
+      : hist.length ? "Added" : histTypeFor(c, idea);
     hist.unshift({
       wk: born ? weekOf(born.at, idea.createdAt) : 1,
-      type: c.status === "proposed" ? "Suggested" : "Added",
-      note: born?.reason ?? "From the research",
+      type: bornType,
+      note: born?.reason ?? c.detail ?? "From the research",
     });
     hist.sort((a, b) => a.wk - b.wk);
 
@@ -144,7 +149,7 @@ export function toMapModel(idea: StoredIdea, team?: TeamProfile | null, now = Da
       };
     });
 
-    const test = c.plan?.steps.find((_, i) => !c.plan!.done[i]) ?? "—";
+    const test = c.status === "killed" ? "—" : c.plan?.steps.find((_, i) => !c.plan!.done[i]) ?? "No test planned yet. Talk to five people this choice depends on.";
 
     return {
       id: c.id,
@@ -159,6 +164,7 @@ export function toMapModel(idea: StoredIdea, team?: TeamProfile | null, now = Da
       ev,
       hist,
       support: support(c, idea),
+      ...(c.marker ? { ghost: c.marker } : {}),
     };
   });
 

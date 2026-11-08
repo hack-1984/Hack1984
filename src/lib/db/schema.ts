@@ -80,6 +80,8 @@ export interface StoredIdea extends Omit<Idea, "choices">, Probe {
   choices: StoredChoice[];
   sources?: Source[];
   queries?: ResearchQuery[];
+  /** Per-widget memory the map keeps with the idea (e.g. which graves were visited). UI state, not a claim. */
+  widgets?: Record<string, Record<string, unknown>>;
 }
 
 /** The pitch the routes research, built from the probe. Title alone if the description is empty. */
@@ -131,12 +133,41 @@ export function support(choice: StoredChoice, idea: StoredIdea): Support {
   return domains.size === 0 ? 0 : domains.size === 1 ? 1 : 2;
 }
 
-/** Mean confidence of active choices per pillar, 0-1, in fixed pillar order. For the list's bars. */
-export function pillarScores(idea: Pick<Idea, "choices">): number[] {
+/** The Idea Map's history row types. */
+export type HistType = "Added" | "Strengthened" | "Weakened" | "Removed" | "Suggested";
+
+/** The map's weight for each state, from the design. */
+export const SCORE: Record<HistType, number> = { Strengthened: 1, Added: 0.6, Suggested: 0, Weakened: 0.2, Removed: 0 };
+
+const STRONG = 75;
+const WEAK = 45;
+
+/**
+ * The state the map shows for a choice right now: the last update that touched
+ * it, or, for a choice nothing has touched, its status and confidence.
+ */
+export function histTypeFor(choice: Choice, idea: Pick<Idea, "history">): HistType {
+  if (choice.status === "killed") return "Removed";
+  if (choice.status === "proposed") return "Suggested";
+  for (let i = idea.history.length - 1; i >= 0; i--) {
+    const u = idea.history[i];
+    if (u.choiceId !== choice.id) continue;
+    if (u.action === "strengthen") return "Strengthened";
+    if (u.action === "weaken" || u.action === "haunt") return "Weakened";
+    if (u.action === "add") break; // accepted: fall through to confidence
+  }
+  return choice.confidence >= STRONG ? "Strengthened" : choice.confidence < WEAK ? "Weakened" : "Added";
+}
+
+/**
+ * Per-pillar scores 0-1 in fixed order, weighted exactly as the map's rings
+ * are, so the ideas list and the map agree. Stored as pillar_scores at save.
+ */
+export function pillarScores(idea: Pick<Idea, "choices" | "history">): number[] {
   return PILLAR_KEYS.map((key: PillarKey) => {
-    const active = idea.choices.filter((c) => c.pillar === key && c.status === "active");
-    if (active.length === 0) return 0;
-    return active.reduce((sum, c) => sum + c.confidence, 0) / active.length / 100;
+    const live = idea.choices.filter((c) => c.pillar === key && c.status === "active");
+    if (live.length === 0) return 0;
+    return live.reduce((sum, c) => sum + SCORE[histTypeFor(c, idea)], 0) / live.length;
   });
 }
 
