@@ -4,6 +4,9 @@
 // (claude.ai/design project 64b283df-0e77-4c88-936d-707b3f0b3f61).
 // Markup is the design's; colors use the Sprout theme variables (globals.css).
 // Behaviour is in ./logic.js.
+// App addition: a remove control on each card (hover-revealed X, inline confirm, animated exit).
+// It sits beside the card link in a positioned wrapper so the anchor stays valid and a click on
+// it never navigates.
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { Fragment, type CSSProperties } from "react";
 import Link from "next/link";
@@ -14,7 +17,7 @@ import "./projects.css";
 export default function ProjectsScreen(props: Record<string, unknown>) {
   const v = useLogic(Logic, props, { clientOnly: true });
   if (!v) return <div className="pg-pj" />;
-  const { initial, isDemo, logout, name, projects } = v;
+  const { initial, isDemo, logout, name, projects, askRemove, cancelRemove, confirmRemove } = v;
   return (
     <div className="pg-pj">
       <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "var(--bg)" }}>
@@ -56,7 +59,8 @@ export default function ProjectsScreen(props: Record<string, unknown>) {
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(260px,1fr))", gap: "16px" }}>
             {(projects ?? []).map((p: any) => (
               <Fragment key={p?.id}>
-                <Link className="pj-hover1" href={p?.href} style={{ display: "flex", flexDirection: "column", gap: "14px", padding: "18px", borderRadius: "14px", border: "1px solid var(--border)", background: "var(--surface)", textDecoration: "none", color: "var(--text)", textAlign: "left", cursor: "pointer", transition: "background .15s,border-color .15s,box-shadow .15s,transform .15s", animation: "pj-cardIn .35s cubic-bezier(.2,.8,.2,1) both", animationDelay: `${p?.delay ?? ""}` } as CSSProperties}>
+                <div className={"pj-card" + (p?.confirming ? " pj-card-confirming" : "") + (p?.leaving ? " pj-card-leaving" : "")} style={{ position: "relative", display: "flex", borderRadius: "14px", transition: "transform .15s", animation: p?.leaving ? "pj-cardOut .24s cubic-bezier(.4,0,.6,1) both" : "pj-cardIn .35s cubic-bezier(.2,.8,.2,1) both", animationDelay: p?.leaving ? "0s" : `${p?.delay ?? ""}` } as CSSProperties}>
+                <Link className="pj-hover1" href={p?.href} aria-hidden={p?.confirming ? true : undefined} tabIndex={p?.confirming ? -1 : undefined} style={{ flex: "1", display: "flex", flexDirection: "column", gap: "14px", padding: "18px", borderRadius: "14px", border: "1px solid var(--border)", background: "var(--surface)", textDecoration: "none", color: "var(--text)", textAlign: "left", cursor: "pointer", transition: "background .15s,border-color .15s,box-shadow .15s" } as CSSProperties}>
                   <div style={{ display: "flex", alignItems: "flex-end", gap: "5px", height: "56px", padding: "0 2px" }}>
                     {(p?.bars ?? []).map((b: any, $index: number) => (
                       <Fragment key={$index}>
@@ -83,6 +87,33 @@ export default function ProjectsScreen(props: Record<string, unknown>) {
                     </span>
                   </div>
                 </Link>
+                {/* Remove: revealed on hover/focus, always visible on touch (projects.css). */}
+                <button type="button" className="pj-x" aria-label={`Remove ${p?.title ?? "idea"}`} title="Remove idea" onClick={() => askRemove?.(p?.id)} style={{ position: "absolute", top: "10px", right: "10px", width: "26px", height: "26px", padding: "0", borderRadius: "50%", border: "1px solid var(--border)", background: "var(--surface)", color: "var(--muted)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", boxShadow: "0 1px 2px var(--shadow)" }}>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M6 6l12 12M18 6L6 18" />
+                  </svg>
+                </button>
+                {p?.confirming ? (
+                  <div className="pj-confirm" role="dialog" aria-label={`Remove ${p?.title ?? "idea"}?`} onClick={(e) => { if (e.target === e.currentTarget) cancelRemove?.(); }} style={{ position: "absolute", inset: "0", borderRadius: "14px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "12px", padding: "18px", textAlign: "center", boxSizing: "border-box" }}>
+                    <div style={{ display: "flex", flexDirection: "column", gap: "4px", maxWidth: "100%" }}>
+                      <div style={{ fontSize: "14px", fontWeight: "600", lineHeight: "1.3", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "220px" }}>
+                        {"Remove “"}{p?.title}{"”?"}
+                      </div>
+                      <div style={{ fontSize: "12px", color: "var(--muted)" }}>
+                        This can&apos;t be undone.
+                      </div>
+                    </div>
+                    <div style={{ display: "flex", gap: "8px" }}>
+                      <button type="button" className="pj-hover0" autoFocus onClick={() => cancelRemove?.()} style={{ height: "32px", padding: "0 14px", borderRadius: "999px", border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text)", fontSize: "12.5px", fontWeight: "500", cursor: "pointer", transition: "background .15s,border-color .15s" }}>
+                        Keep
+                      </button>
+                      <button type="button" className="pj-danger" onClick={() => confirmRemove?.(p?.id)} style={{ height: "32px", padding: "0 14px", borderRadius: "999px", border: "1px solid var(--red)", background: "var(--red)", color: "#fff", fontSize: "12.5px", fontWeight: "600", cursor: "pointer", transition: "background .15s,border-color .15s,transform .1s" }}>
+                        Remove
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
+                </div>
               </Fragment>
             ))}
             <Link className="pj-hover2" href="/new" style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "10px", minHeight: "200px", padding: "18px", borderRadius: "14px", border: "1.5px dashed var(--border)", background: "transparent", textDecoration: "none", color: "var(--muted)", cursor: "pointer", transition: "border-color .15s,color .15s,background .15s" }}>

@@ -9,3 +9,22 @@ body:has(.pg-pj){margin:0;background:var(--bg);font-family:'Geist',system-ui,san
 .pj-hover0:hover{background:var(--surface-2) !important;border-color:var(--muted) !important}
 .pj-hover1:hover{background:var(--surface-2) !important;border-color:var(--muted) !important;box-shadow:0 8px 24px var(--shadow) !important;transform:translateY(-2px) !important}
 .pj-hover2:hover{border-color:var(--accent) !important;color:var(--text) !important;background:var(--surface-2) !important}
+
+/* Remove control (app addition). The wrapper carries the lift so the X and confirm panel move with the card. */
+@keyframes pj-cardOut{from{opacity:1;transform:scale(1)}to{opacity:0;transform:scale(.96)}}
+@keyframes pj-fadeIn{from{opacity:0}to{opacity:1}}
+.pj-card:hover{transform:translateY(-2px)}
+.pj-card-leaving{pointer-events:none}
+.pj-hover1:hover{transform:none !important} /* the wrapper lifts instead */
+.pj-x{opacity:0;transform:scale(.9);transition:opacity .15s,transform .15s,background .15s,border-color .15s,color .15s}
+.pj-card:hover .pj-x,.pj-card:focus-within .pj-x{opacity:1;transform:scale(1)}
+.pj-x:hover{background:var(--red-tint) !important;border-color:var(--red-line) !important;color:var(--red-text) !important}
+.pj-x:active{transform:scale(.92)}
+.pj-x:focus-visible{outline:2px solid var(--focus-ring);outline-offset:1px}
+.pj-card-confirming .pj-x{opacity:0;pointer-events:none}
+@media (hover:none){.pj-x{opacity:1;transform:scale(1)}}
+.pj-confirm{background:color-mix(in srgb,var(--surface) 90%,transparent);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);animation:pj-fadeIn .18s ease both}
+.pj-confirm>*{animation:pj-cardIn .22s cubic-bezier(.2,.8,.2,1) both}
+.pj-danger:hover{background:var(--red-text) !important;border-color:var(--red-text) !important}
+.pj-danger:active{transform:scale(.97)}
+.pj-danger:focus-visible,.pj-confirm .pj-hover0:focus-visible{outline:2px solid var(--focus-ring);outline-offset:2px}
