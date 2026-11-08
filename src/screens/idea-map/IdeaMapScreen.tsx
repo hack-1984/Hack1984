@@ -13,6 +13,8 @@ import "./idea-map.css";
 import "./widgets/widgets.css";
 import WidgetRail, { type WidgetKey } from "./widgets/WidgetRail";
 import FloatingPanel from "./widgets/FloatingPanel";
+import ResearchCard from "./ResearchCard";
+import SourceChip from "./SourceChip";
 import BuildWidget from "./widgets/BuildWidget";
 import DiscussionWidget from "./widgets/DiscussionWidget";
 import GraveyardWidget from "./widgets/GraveyardWidget";
@@ -24,7 +26,7 @@ export default function IdeaMapScreen(props: Record<string, unknown>) {
   // clientOnly: which idea to show comes from the URL and this browser's saved ideas.
   const v = useLogic(Logic, props, { clientOnly: true });
   if (!v) return <div className="pg-im" />;
-  const { showPillar, panelOpen, panelW, occupied, closePanel, setPanelW, setDragW, loading, missing, widget, setWidget, showBadge, ideaId, wmem, setWmem, pillarPct, buildIdea, applyWidget, openOverview, team, saveTeam, focus, ideaInitial, ideaName, ideaPitch, accept, addAgainst, addFor, choices, clearSel, counts, curves, cv, draft, edges, ev, hasToast, hoverIdea, hoverOff, hoverOn, evCard, evCardOpen, ideaShadow, isChoice, isEvidence, isIdea, isPillar, orbit, ov, paneRef, pctRef, particles, pillars, pv, reject, removeChoice, selIdea, setDraft, showHint, toast, toggleAll, toggleAllLabel, worldRef, zoomFit, zoomIn, zoomOut } = v;
+  const { showPillar, panelOpen, panelW, occupied, closePanel, setPanelW, setDragW, loading, missing, widget, setWidget, showBadge, ideaId, wmem, setWmem, pillarPct, buildIdea, applyWidget, openOverview, team, saveTeam, focus, ideaInitial, ideaName, ideaPitch, accept, addAgainst, addFor, choices, clearSel, counts, curves, cv, draft, edges, ev, hasToast, hoverIdea, hoverOff, hoverOn, evCard, researchView, ideaShadow, isChoice, isEvidence, isIdea, isPillar, orbit, ov, paneRef, pctRef, particles, pillars, pv, reject, removeChoice, selIdea, setDraft, showHint, toast, toggleAll, toggleAllLabel, worldRef, zoomFit, zoomIn, zoomOut } = v;
   // App: no canned idea. While the stored idea loads, or if it isn't this account's, say so instead of drawing an empty map.
   if (loading || missing) {
     return (
@@ -189,7 +191,7 @@ export default function IdeaMapScreen(props: Record<string, unknown>) {
                   {(orbit ?? []).map((o: any) => (
                     <Fragment key={o?.id}>
                       {" "}
-                      <div data-node="orbit" style={{ position: "absolute", left: `${o?.x ?? ""}px`, top: `${o?.y ?? ""}px`, transform: `translate(-50%,-50%) scale(${o?.scale ?? ""})`, width: "176px", display: "flex", alignItems: "center", gap: "8px", padding: "7px 10px", boxSizing: "border-box", borderRadius: "8px", background: "var(--surface)", /* Longhands only: mixing the border shorthand with borderLeft makes React warn when the color changes. */ borderStyle: "solid", borderWidth: "1px 1px 1px 3px", borderColor: `${o?.border ?? ""} ${o?.border ?? ""} ${o?.border ?? ""} ${o?.accent ?? ""}`, boxShadow: `${o?.shadow ?? ""}`, cursor: "pointer", transition: "transform .35s cubic-bezier(.2,.8,.2,1),box-shadow .2s", animation: "im-nodeIn .35s ease-out backwards", animationDelay: `${o?.delay ?? ""}` } as CSSProperties} onClick={o?.select} onMouseEnter={o?.enter} onMouseLeave={o?.leave}>
+                      <div data-node="orbit" data-ev-key={o?.key} role={o?.select ? "button" : undefined} tabIndex={o?.select ? 0 : undefined} aria-pressed={o?.select ? !!o?.pinned : undefined} aria-label={o?.select ? `${o?.kind === "for" ? "Supporting" : "Undermining"} evidence: ${o?.text}. Open its research.` : undefined} onKeyDown={o?.select ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); o.select(e); } } : undefined} style={{ position: "absolute", left: `${o?.x ?? ""}px`, top: `${o?.y ?? ""}px`, transform: `translate(-50%,-50%) scale(${o?.scale ?? ""})`, width: "176px", display: "flex", alignItems: "center", gap: "8px", padding: "7px 10px", boxSizing: "border-box", borderRadius: "8px", background: "var(--surface)", /* Longhands only: mixing the border shorthand with borderLeft makes React warn when the color changes. */ borderStyle: "solid", borderWidth: "1px 1px 1px 3px", borderColor: `${o?.border ?? ""} ${o?.border ?? ""} ${o?.border ?? ""} ${o?.accent ?? ""}`, boxShadow: `${o?.shadow ?? ""}`, cursor: "pointer", transition: "transform .35s cubic-bezier(.2,.8,.2,1),box-shadow .2s", animation: "im-nodeIn .35s ease-out backwards", animationDelay: `${o?.delay ?? ""}` } as CSSProperties} onClick={o?.select} onMouseEnter={o?.enter} onMouseLeave={o?.leave}>
                         <div style={{ flex: "1", minWidth: "0", fontSize: "10.5px", lineHeight: "1.3", color: "var(--text)", display: "-webkit-box", WebkitLineClamp: "2", WebkitBoxOrient: "vertical", overflow: "hidden" }}>
                           {o?.text}
                         </div>
@@ -201,6 +203,8 @@ export default function IdeaMapScreen(props: Record<string, unknown>) {
                     </Fragment>
                   ))}
                   {" "}
+                  {/* Research card: grows out of the clicked evidence node and stays anchored to it. */}
+                  <ResearchCard card={evCard} view={researchView} />
                   <div data-node="idea" className="im-hover0" style={{ position: "absolute", left: "670px", top: "550px", transform: "translate(-50%,-50%)", width: "104px", height: "104px", borderRadius: "50%", background: "var(--surface)", border: "2px solid var(--accent)", boxShadow: `${ideaShadow ?? ""}`, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", zIndex: "2", transition: "transform .25s cubic-bezier(.34,1.56,.64,1)" } as CSSProperties} onClick={selIdea} onMouseEnter={hoverOn} onMouseLeave={hoverOff}>
                     <span className="im-breathe-ring" aria-hidden="true" />
                     <div style={{ width: "64px", height: "64px", borderRadius: "50%", background: "var(--accent)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--on-accent)", fontSize: "30px", fontWeight: "700", letterSpacing: "-.04em" }}>
@@ -237,51 +241,6 @@ export default function IdeaMapScreen(props: Record<string, unknown>) {
               {" "}
             </div>
             {" "}
-            {/* App: the Research card, the landing page's in miniature. Rises from the bottom left while an evidence card is hovered; a click pins it. */}
-            {evCard ? (
-              <div className="im-research-tab" data-open={evCardOpen ? "1" : undefined} data-pinned={evCard.pinned ? "1" : undefined} aria-hidden={!evCardOpen}>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", height: "44px", padding: "0 16px", borderBottom: "1px solid var(--border)", background: "var(--surface-2)", borderRadius: "16px 16px 0 0", flex: "none" }}>
-                  <div style={{ fontFamily: "'Geist Mono',monospace", fontSize: "11px", letterSpacing: ".12em", textTransform: "uppercase", color: "var(--text)", whiteSpace: "nowrap" }}>
-                    Research
-                  </div>
-                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                    <div style={{ display: "inline-flex", alignItems: "center", gap: "6px", height: "22px", padding: "0 9px", borderRadius: "999px", background: "var(--surface)", border: "1px solid var(--border)", fontFamily: "'Geist Mono',monospace", fontSize: "10px", letterSpacing: ".08em", color: "var(--green-text)", whiteSpace: "nowrap" }}>
-                      <span className="im-ev-dot" style={{ width: "6px", height: "6px", borderRadius: "50%", background: "var(--accent)" }} />
-                      <span>{evCard.count}</span>{evCard.count === 1 ? " SOURCE" : " SOURCES"}
-                    </div>
-                    {evCard.pinned ? (
-                      <button className="im-hover1" onClick={evCard.close} aria-label="Close research" title="Close (Esc)" style={{ width: "24px", height: "24px", borderRadius: "999px", border: "none", background: "transparent", color: "var(--muted)", fontSize: "15px", lineHeight: "1", cursor: "pointer" }}>
-                        ×
-                      </button>
-                    ) : null}
-                  </div>
-                </div>
-                <div style={{ padding: "16px 16px 6px", display: "flex", flexDirection: "column", gap: "12px" }}>
-                  <div style={{ fontSize: "14px", fontWeight: "600", letterSpacing: "-.01em", lineHeight: "1.3", color: "var(--text)", textWrap: "balance" } as CSSProperties}>
-                    {evCard.title}
-                  </div>
-                  <div style={{ display: "flex", flexDirection: "column" }}>
-                    {(evCard.rows ?? []).map((r: any, $index: number) => (
-                      <div key={$index} className={r?.select ? "im-research-row im-research-row-live" : "im-research-row"} data-active={r?.active ? "1" : undefined} onClick={r?.select ?? undefined} style={{ display: "flex", gap: "12px", alignItems: "flex-start", padding: "9px 6px", margin: "0 -6px", borderRadius: "8px" }}>
-                        <span style={{ width: "3px", alignSelf: "stretch", borderRadius: "2px", background: `${r?.accent ?? ""}`, flex: "none" } as CSSProperties} />
-                        <div style={{ flex: "1", minWidth: "0", display: "flex", flexDirection: "column", gap: "4px" }}>
-                          <div style={{ fontSize: "12px", lineHeight: "1.35", color: "var(--text)", fontWeight: r?.active ? 600 : 400, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                            {r?.text}
-                          </div>
-                          <div style={{ fontFamily: "'Geist Mono',monospace", fontSize: "9.5px", color: "var(--muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                            {r?.source}
-                          </div>
-                        </div>
-                        <span style={{ fontFamily: "'Geist Mono',monospace", fontSize: "9px", letterSpacing: ".1em", color: `${r?.tagColor ?? ""}`, flex: "none", paddingTop: "2px" } as CSSProperties}>
-                          {r?.tag}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                <div style={{ height: "10px", flex: "none" }} />
-              </div>
-            ) : null}
             <div style={{ position: "absolute", right: "var(--wg-occ)", top: "16px", transition: "right .25s ease", display: "flex", alignItems: "center", gap: "2px", padding: "4px", borderRadius: "999px", background: "var(--surface)", border: "1px solid var(--border)", boxShadow: "0 4px 16px var(--shadow)", zIndex: "4" }}>
               <button className="im-hover1" style={{ width: "28px", height: "28px", borderRadius: "999px", border: "none", background: "transparent", color: "var(--text)", fontSize: "16px", cursor: "pointer", lineHeight: "1" }} onClick={zoomOut} title="Zoom out (−)" aria-label="Zoom out">
                 −
@@ -760,8 +719,8 @@ export default function IdeaMapScreen(props: Record<string, unknown>) {
                               <div style={{ fontSize: "12px", lineHeight: "1.4" }}>
                                 {ev?.text}
                               </div>
-                              <div style={{ fontSize: "10px", color: "var(--muted)", marginTop: "3px", fontFamily: "'Geist Mono',monospace" }}>
-                                {ev?.source}
+                              <div style={{ marginTop: "6px" }}>
+                                <SourceChip url={ev?.url} tier={ev?.tier} source={ev?.source} />
                               </div>
                             </div>
                           </div>
@@ -926,8 +885,9 @@ export default function IdeaMapScreen(props: Record<string, unknown>) {
                       {ev?.text}
                     </div>
                     {" "}
-                    <div style={{ fontSize: "11px", color: "var(--muted)", marginTop: "8px", fontFamily: "'Geist Mono',monospace" }}>
-                      {ev?.source}
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap", marginTop: "10px" }}>
+                      <SourceChip url={ev?.src?.url} tier={ev?.src?.tier} source={ev?.src?.source} />
+                      <span style={{ fontSize: "11px", color: "var(--muted)", fontFamily: "'Geist Mono',monospace" }}>{ev?.week}</span>
                     </div>
                     {" "}
                   </div>

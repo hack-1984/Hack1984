@@ -45,12 +45,81 @@ body:has(.pg-im){margin:0;background:var(--bg);font-family:'Geist',system-ui,san
 .im-conf-ring{position:relative;width:30px;height:30px;flex:none;border-radius:50%;display:flex;align-items:center;justify-content:center;box-sizing:border-box}
 .im-conf-core{width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;box-sizing:border-box;font-family:'Geist Mono',monospace;font-size:8px;font-weight:600;letter-spacing:-.02em;line-height:1}
 /* Research card: docked to the bottom of the canvas, rises while an evidence card is hovered, stays when pinned. */
-.im-research-tab{position:absolute;left:24px;bottom:0;width:380px;max-height:min(60%,420px);display:flex;flex-direction:column;overflow:hidden;box-sizing:border-box;border-radius:16px 16px 0 0;background:var(--surface);border:1px solid var(--border);border-bottom:none;color:var(--text);box-shadow:0 -8px 40px var(--shadow),0 -1px 0 var(--border);z-index:4;pointer-events:none;transform:translateY(calc(100% + 12px));transition:transform .32s cubic-bezier(.22,1,.36,1)}
-.im-research-tab[data-open]{transform:translateY(0)}
-.im-research-tab[data-pinned]{pointer-events:auto}
-.im-research-tab>div:nth-child(2){overflow:auto;min-height:0}
 .im-research-row-live{cursor:pointer;transition:background .15s}
 .im-research-row-live:hover{background:var(--surface-2)}
 .im-ev-dot{animation:im-evPulse 1.4s ease-in-out infinite}
 @keyframes im-evPulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.5);opacity:.55}}
-@media (prefers-reduced-motion:reduce){.im-research-tab{transition:none}.im-ev-dot{animation:none}.im-research-row-live{transition:none}}
+@media (prefers-reduced-motion:reduce){.im-ev-dot{animation:none}.im-research-row-live{transition:none}}
+
+/* ---- Research card, grown from the clicked evidence node (ResearchCard.tsx) ----
+   .rc-anchor sits at the node's centre in map units; .rc-local undoes the zoom (--k) so everything inside is
+   in screen px. Node half-width on screen = 88px * k, so the vine starts at the node's edge at any zoom.
+   Phases: measure → vine (250ms) → card (200ms) → open; closing reverses faster.
+   Only transform, opacity and stroke-dashoffset animate. */
+.rc-anchor{position:absolute;width:0;height:0;z-index:5}
+.rc-local{position:absolute;left:0;top:0;transform:scale(calc(1 / var(--k, 1)));transform-origin:0 0;--edge:calc(88px * var(--k, 1))}
+.rc-vine{position:absolute;top:-20px;left:var(--edge);overflow:visible;pointer-events:none}
+.rc-vine path{fill:none;stroke:var(--accent);stroke-width:2;stroke-linecap:round;stroke-dasharray:1;stroke-dashoffset:1;vector-effect:non-scaling-stroke}
+.rc-rider{position:absolute;top:-10px;left:calc(var(--edge) - 7px);opacity:0;pointer-events:none;transform:translateX(0)}
+.rc-card{position:absolute;top:-22px;left:calc(var(--edge) + 44px);display:flex;flex-direction:column;max-height:min(420px,60vh);overflow:hidden;box-sizing:border-box;
+  border-radius:16px;background:var(--surface);border:1px solid var(--border);color:var(--text);box-shadow:0 16px 48px var(--shadow),0 2px 8px var(--shadow);
+  transform-origin:0 22px;opacity:0;transform:scale(.88);outline:none}
+.rc-card:focus-visible{box-shadow:0 0 0 3px var(--focus-ring),0 16px 48px var(--shadow)}
+/* Left of the node: mirror the vine and the rider, open the card from its right edge. */
+.rc-local[data-side="left"] .rc-vine{left:auto;right:var(--edge);transform:scaleX(-1)}
+.rc-local[data-side="left"] .rc-rider{left:auto;right:calc(var(--edge) - 7px)}
+.rc-local[data-side="left"] .rc-card{left:auto;right:calc(var(--edge) + 44px);transform-origin:100% 22px}
+
+/* measure: laid out but invisible, no motion */
+.rc-local[data-phase="measure"] .rc-card{visibility:hidden;transition:none}
+/* vine grows, the sprout rides its tip */
+.rc-vine path{transition:stroke-dashoffset .25s cubic-bezier(.2,.8,.2,1)}
+.rc-rider{transition:transform .25s cubic-bezier(.2,.8,.2,1),opacity .12s ease-out}
+.rc-local[data-phase="vine"] .rc-vine path,.rc-local[data-phase="card"] .rc-vine path,.rc-local[data-phase="open"] .rc-vine path{stroke-dashoffset:0}
+.rc-local[data-phase="vine"] .rc-rider{opacity:1;transform:translateX(44px)}
+.rc-local[data-side="left"][data-phase="vine"] .rc-rider{transform:translateX(-44px)}
+/* card unfolds from the tip; the rider hands over to the header icon */
+.rc-card{transition:transform .2s cubic-bezier(.2,.8,.2,1),opacity .2s cubic-bezier(.2,.8,.2,1)}
+.rc-local[data-phase="card"] .rc-card,.rc-local[data-phase="open"] .rc-card{opacity:1;transform:scale(1)}
+.rc-local[data-phase="card"] .rc-rider{opacity:0;transform:translateX(44px)}
+.rc-local[data-side="left"][data-phase="card"] .rc-rider{transform:translateX(-44px)}
+.rc-head-sprout{display:inline-flex;opacity:0;transform:scale(.4) translateY(4px);transition:transform .2s cubic-bezier(.34,1.56,.64,1),opacity .15s}
+.rc-local[data-phase="card"] .rc-head-sprout,.rc-local[data-phase="open"] .rc-head-sprout{opacity:1;transform:none}
+/* closing: card folds (110ms), then the vine retracts (140ms) */
+.rc-local[data-phase="closing"] .rc-card{opacity:0;transform:scale(.88);transition-duration:.11s;transition-timing-function:ease-in}
+.rc-local[data-phase="closing"] .rc-vine path{stroke-dashoffset:1;transition-duration:.14s;transition-delay:.08s;transition-timing-function:ease-in}
+
+.rc-head{display:flex;align-items:center;gap:8px;height:44px;padding:0 10px 0 14px;border-bottom:1px solid var(--border);background:var(--surface-2);flex:none}
+.rc-head-label{flex:1;font-family:'Geist Mono',monospace;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--text);white-space:nowrap}
+.rc-count{display:inline-flex;align-items:center;gap:6px;height:22px;padding:0 9px;border-radius:999px;background:var(--surface);border:1px solid var(--border);font-family:'Geist Mono',monospace;font-size:10px;letter-spacing:.08em;color:var(--green-text);white-space:nowrap}
+.rc-close{width:28px;height:28px;border-radius:999px;border:none;background:transparent;color:var(--muted);font-size:16px;line-height:1;cursor:pointer}
+.rc-body{padding:14px 14px 10px;display:flex;flex-direction:column;gap:10px;overflow:auto;min-height:0;overscroll-behavior:contain}
+.rc-card .im-research-row{display:flex;gap:12px;align-items:flex-start;padding:9px 6px;margin:0 -6px;border-radius:8px}
+.im-research-row[data-active]{background:var(--accent-tint)}
+
+/* Reduced motion: no growing. The vine and card just appear (the rider never shows). */
+@media (prefers-reduced-motion:reduce){
+  .rc-vine path,.rc-rider,.rc-card,.rc-head-sprout{transition:none !important}
+  .rc-rider{display:none}
+}
+
+/* ---- Source chips (SourceChip.tsx): favicon + domain + type + ↗, the same everywhere on the map ---- */
+.src-chip{display:inline-flex;align-items:center;gap:6px;max-width:100%;min-height:28px;box-sizing:border-box;padding:3px 9px 3px 4px;border-radius:999px;
+  border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:12px;line-height:1.2;text-decoration:none;
+  transition:background .15s,border-color .15s,box-shadow .15s}
+a.src-chip{cursor:pointer}
+a.src-chip:hover{background:var(--surface-2);border-color:var(--muted)}
+a.src-chip:hover .src-out{color:var(--text);transform:translate(1px,-1px)}
+a.src-chip:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-color:var(--accent)}
+.src-chip-static{background:var(--surface-2);border-color:transparent}
+.src-fav{width:20px;height:20px;flex:none;border-radius:6px;object-fit:cover;background:var(--surface-2)}
+.src-fav-letter{display:inline-flex;align-items:center;justify-content:center;border-radius:50%;background:var(--accent-tint);color:var(--green-text);font-size:11px;font-weight:700}
+.src-fav-sprout{display:inline-flex;align-items:center;justify-content:center;border-radius:50%;background:var(--surface)}
+.src-domain{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500}
+.src-type{flex:none;font-size:10.5px;color:var(--muted)}
+.src-out{flex:none;color:var(--muted);transition:transform .15s,color .15s}
+/* Research card rows: the text is the button; the chip sits under it */
+.rc-card .im-research-row{cursor:default}
+.rc-row-main{display:block;width:100%;padding:0;border:none;background:none;font:inherit;font-size:12px;line-height:1.35;color:var(--text);text-align:left;cursor:pointer;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rc-row-main:hover{text-decoration:underline;text-underline-offset:2px}
+@media (prefers-reduced-motion:reduce){.src-chip,.src-out{transition:none}}

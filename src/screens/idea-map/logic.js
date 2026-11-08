@@ -173,6 +173,7 @@ class Component extends DCLogic {
     const w = this.worldRef.current, pane = this._pane;
     if (w) {
       w.style.transform = `translate3d(${x}px,${y}px,0) scale(${k})`;
+      w.style.setProperty('--k', String(k)); // ResearchCard counter-scales by this so it stays screen-sized
       // will-change only while moving: it keeps frames cheap, and dropping it afterwards lets text re-rasterize crisply.
       w.style.willChange = 'transform'; clearTimeout(this._settle); this._settle = setTimeout(() => { if (this.worldRef.current) this.worldRef.current.style.willChange = 'auto'; }, 160);
     }
@@ -201,6 +202,21 @@ class Component extends DCLogic {
     const off = [...keys, 'orbit'].map(key => boxes[key]).filter(Boolean).some(b => b.minX * k + x < m || b.maxX * k + x > pane.clientWidth - this.occupied() - m || b.minY * k + y < 56 || b.maxY * k + y > pane.clientHeight - 72);
     if (off) this.fit();
   }
+  // App: for the Research card. The visible canvas in client px (left of the panel, clear of the controls),
+  // and a pan just big enough to bring a client-px box into it (both the node and its card).
+  researchView = {
+    viewport: () => {
+      const pane = this._pane; if (!pane) return null; const r = pane.getBoundingClientRect();
+      return { left: r.left + 16, top: r.top + 60, right: r.left + pane.clientWidth - this.occupied() - 16, bottom: r.top + pane.clientHeight - 80 };
+    },
+    ensureVisible: (box) => {
+      const v = this.researchView.viewport(); if (!v) return;
+      const fit = (lo, hi, a, b) => (b - a > hi - lo ? lo - a : a < lo ? lo - a : b > hi ? hi - b : 0);
+      const dx = fit(v.left, v.right, box.left, box.right), dy = fit(v.top, v.bottom, box.top, box.bottom);
+      if (Math.abs(dx) < 1 && Math.abs(dy) < 1) return;
+      const c = this.camera; c.animateTo({ x: c.x + dx, y: c.y + dy, k: c.k }, 250);
+    },
+  };
   zoomStep(f) { const pane = this._pane; if (!pane) return; this.camera.zoomAtAnimated(pane.clientWidth / 2, pane.clientHeight / 2, f, 180); }
   // Callback ref for the canvas: attaches input listeners whenever the element mounts (including after
   // Next re-shows this page), and frames the map the first time.
@@ -244,6 +260,7 @@ class Component extends DCLogic {
       if (g && (g.id === e.pointerId || !pts.size)) { if (g.active) this._suppressClick = true; this._drag = null; this._dragging = false; pane.classList.remove('im-grabbing'); }
     };
     const wheel = e => {
+      if (!(e.ctrlKey || e.metaKey) && e.target && e.target.closest && e.target.closest('[data-scroll]')) return; // let the Research card's list scroll
       e.preventDefault();
       const m = e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? pane.clientHeight : 1;
       if (e.ctrlKey || e.metaKey) { // trackpad pinch arrives as ctrl+wheel; ⌘/ctrl + mouse wheel too
@@ -330,24 +347,23 @@ class Component extends DCLogic {
 
     const orbit = []; const seen = {}; const uniq = k => (seen[k] = (seen[k] || 0) + 1) > 1 ? k + '#' + seen[k] : k;
     const evItem = (c, e, i) => { const key = c.id + ':' + i; return { text: e.text, kind: e.k === 'support' ? 'for' : 'against', accent: e.k === 'support' ? 'var(--green)' : 'var(--red)', kindColor: e.k === 'support' ? 'var(--green-text)' : 'var(--red-text)', key, ev: e, choice: c, enter: this.hoverOn('e:' + key), leave: this.hoverOff('e:' + key), select: (ev) => { ev.stopPropagation(); this.setState(s => ({ pinEv: s.pinEv && s.pinEv.cid === c.id && s.pinEv.idx === i ? null : { cid: c.id, idx: i } })); } }; };
-    const fan = (items, cx, cy, ang, step) => items.forEach((it, i) => { const a = ang + (i - (items.length - 1) / 2) * step; const [x, y] = pol(R3x, a); const active = mode === 'evidence' && it.key === sel.cid + ':' + sel.idx; const oid = uniq('o:' + it.key); orbit.push({ ...it, id: oid, x, y, delay: (i * .06) + 's', scale: 1, enter: it.enter || null, leave: it.leave || null, border: active ? 'var(--accent)' : 'var(--border)', shadow: active ? ACTIVE_SHADOW : '0 2px 8px var(--shadow)' }); edges.push(seg([cx, cy], [x, y], { id: 'f' + oid, stroke: active ? 'var(--accent)' : 'var(--border)', w: 1.25, dash: false, op: .85 })); });
+    const fan = (items, cx, cy, ang, step) => items.forEach((it, i) => { const a = ang + (i - (items.length - 1) / 2) * step; const [x, y] = pol(R3x, a); const pinKey = this.state.pinEv ? this.state.pinEv.cid + ':' + this.state.pinEv.idx : null; const pinned = pinKey === it.key; const active = pinned || (mode === 'evidence' && it.key === sel.cid + ':' + sel.idx); const oid = uniq('o:' + it.key); orbit.push({ ...it, id: oid, pinned, x, y, delay: (i * .06) + 's', scale: 1, enter: it.enter || null, leave: it.leave || null, border: active ? 'var(--accent)' : 'var(--border)', shadow: active ? ACTIVE_SHADOW : '0 2px 8px var(--shadow)' }); edges.push(seg([cx, cy], [x, y], { id: 'f' + oid, stroke: active ? 'var(--accent)' : 'var(--border)', w: 1.25, dash: false, op: .85 })); });
     if (selC) { const r = rowOf(selC.id); if (r) fan(selC.ev.map((e, i) => evItem(selC, e, i)), r.x, r.y, r.ang, 15); }
     if (mode === 'pillar') { view.filter(c => c.pillar === sel.id).forEach(c => { const r = rowOf(c.id); const items = c.ev.map((e, i) => evItem(c, e, i)).slice(0, 4); fan(items, r.x, r.y, r.ang, 12); }); }
 
-    // App: the Research card. Pinned by clicking an evidence card, previewed by hovering one. It lists every
-    // source behind that evidence's choice, like the landing page's card; rows open the evidence when pinned.
+    // App: the Research card. Opened by clicking an evidence node; it grows out of that node on a vine and is
+    // anchored to it (ResearchCard.tsx). It lists every source behind that evidence's choice, like the landing
+    // page's card; rows open the evidence. Closes with ×, Escape, or a click on empty canvas.
     let evCard = null;
     const pin = this.state.pinEv && find(this.state.pinEv.cid) ? this.state.pinEv : null;
-    const hovKey = H && H.startsWith('e:') ? H.slice(2) : null;
-    const target = pin || (hovKey ? { cid: hovKey.slice(0, hovKey.lastIndexOf(':')), idx: +hovKey.slice(hovKey.lastIndexOf(':') + 1) } : null);
-    const cardC = target && find(target.cid);
-    if (cardC && cardC.ev.length) {
-      const pinned = !!pin;
-      evCard = { pinned, title: cardC.text, count: cardC.ev.length, pillar: cardC.pillar,
-        rows: cardC.ev.map((e, i) => ({ text: e.text, source: e.source, tag: e.k === 'support' ? 'FOR' : 'AGAINST', accent: e.k === 'support' ? 'var(--green)' : 'var(--red)', tagColor: e.k === 'support' ? 'var(--green-text)' : 'var(--red-text)', active: i === target.idx,
-          select: pinned ? (ev) => { this.pick({t:'evidence', cid:cardC.id, idx:i})(ev); this.setState({ pinEv: { cid: cardC.id, idx: i } }); } : null })),
-        close: (ev) => { ev.stopPropagation(); this.setState({ pinEv: null }); } };
-      this._lastEvCard = evCard; // the card keeps its content while it slides away
+    const cardC = pin && find(pin.cid);
+    const pinKey = pin ? pin.cid + ':' + pin.idx : null;
+    const anchorNode = pinKey ? orbit.find(o => o.key === pinKey) : null; // the node must be on the map to anchor to
+    if (cardC && cardC.ev.length && anchorNode) {
+      evCard = { key: pinKey, title: cardC.text, count: cardC.ev.length, pillar: cardC.pillar, anchor: { x: anchorNode.x, y: anchorNode.y },
+        rows: cardC.ev.map((e, i) => ({ text: e.text, source: e.source, url: e.url, tier: e.tier, tag: e.k === 'support' ? 'FOR' : 'AGAINST', accent: e.k === 'support' ? 'var(--green)' : 'var(--red)', tagColor: e.k === 'support' ? 'var(--green-text)' : 'var(--red-text)', active: i === pin.idx,
+          select: (ev) => { this.pick({t:'evidence', cid:cardC.id, idx:i})(ev); this.setState({ pinEv: { cid: cardC.id, idx: i } }); } })),
+        close: (ev) => { if (ev) ev.stopPropagation(); this.setState({ pinEv: null }); } };
     }
 
         const particles = [], flows = [];
@@ -405,7 +421,7 @@ class Component extends DCLogic {
       const links = LINKS.filter(l => l[0] === c.id || l[1] === c.id).map(l => { const o = find(l[0] === c.id ? l[1] : l[0]); if (!o) return null; const s = STATUS[o.status]; return { text: o.text, note: l[2] + ' · ' + s.label, dot: s.dot, dotBorder: s.dotBorder, select: this.pick({t:'choice', id:o.id}) }; }).filter(Boolean);
       cv = { pillar: c.pillar, selectPillar: this.pick({t:'pillar', id:c.pillar}), text: c.text, statusLabel: st.label, chipBg: st.chipBg, chipFg: st.chipFg, summary: SUMMARY[c.status], since: wkLabel(c.hist[c.hist.length - 1].wk), isSuggested: c.status === 'suggested',
         nFor, nAgainst: nAg, forPct: Math.round(nFor / tot * 100), againstPct: Math.round(nAg / tot * 100), evCount: c.ev.length, noEvidence: !c.ev.length,
-        evidence: c.ev.map((e, i) => ({ text: e.text, source: e.source, accent: e.k === 'support' ? 'var(--green)' : 'var(--red)', select: this.pick({t:'evidence', cid:c.id, idx:i}) })),
+        evidence: c.ev.map((e, i) => ({ text: e.text, source: e.source, url: e.url, tier: e.tier, accent: e.k === 'support' ? 'var(--green)' : 'var(--red)', select: this.pick({t:'evidence', cid:c.id, idx:i}) })),
         canEdit: c.status !== 'removed' && c.status !== 'suggested', test: c.test === '—' ? 'Removed. No further tests planned.' : c.test,
         hasLinks: !!links.length, links,
         history: c.hist.slice().reverse().map(h => histRow(c, h)), canRemove: c.status !== 'removed' && c.status !== 'suggested',
@@ -419,7 +435,7 @@ class Component extends DCLogic {
     if (mode === 'evidence' && selC) {
       const c = selC; const e = c.ev[sel.idx] || c.ev[0]; const st = STATUS[c.status];
       const h = c.hist.find(x => x.wk === e.wk && x.type !== 'Added'); const sup = e.k === 'support';
-      ev = { pillar: c.pillar, selectPillar: this.pick({t:'pillar', id:c.pillar}), selectChoice: this.pick({t:'choice', id:c.id}), text: e.text, source: e.source + ' · ' + wkLabel(e.wk), kindLabel: sup ? 'Supports' : 'Undermines', chipBg: sup ? 'var(--green-tint)' : 'var(--red-tint)', chipFg: sup ? 'var(--green-text)' : 'var(--red-text)',
+      ev = { pillar: c.pillar, selectPillar: this.pick({t:'pillar', id:c.pillar}), selectChoice: this.pick({t:'choice', id:c.id}), text: e.text, source: e.source + ' · ' + wkLabel(e.wk), src: { url: e.url, tier: e.tier, source: e.source }, week: wkLabel(e.wk), kindLabel: sup ? 'Supports' : 'Undermines', chipBg: sup ? 'var(--green-tint)' : 'var(--red-tint)', chipFg: sup ? 'var(--green-text)' : 'var(--red-text)',
         impact: h ? `${h.type} “${c.text}” in week ${h.wk}. ${h.note}.` : `Logged in week ${e.wk}. On its own it did not change the status of “${c.text}”.`,
         choiceText: c.text, dot: st.dot, dotBorder: st.dotBorder,
         siblings: c.ev.map((s, i) => ({ s, i })).filter(x => x.i !== sel.idx).map(x => ({ text: x.s.text, accent: x.s.k === 'support' ? 'var(--green)' : 'var(--red)', select: this.pick({t:'evidence', cid:c.id, idx:x.i}) })) };
@@ -437,7 +453,7 @@ class Component extends DCLogic {
     return {
       ideaName: this.name, ideaPitch: this.pitch, ideaInitial: (this.name || '?').trim().charAt(0).toUpperCase(),
       loading: this.state.loading, missing: this.state.missing,
-      paneRef: this.setPane, worldRef: this.worldRef, pctRef: this.pctRef, edges, curves, pillars, choices, orbit, evCard: evCard || this._lastEvCard || null, evCardOpen: !!evCard, particles, flows,
+      paneRef: this.setPane, worldRef: this.worldRef, pctRef: this.pctRef, edges, curves, pillars, choices, orbit, evCard, researchView: this.researchView, particles, flows,
       zoomIn: (e) => { e.stopPropagation(); this.zoomStep(1.25); }, zoomOut: (e) => { e.stopPropagation(); this.zoomStep(1 / 1.25); },
       zoomFit: (e) => { e.stopPropagation(); this.fit(); },
       counts: `${active.length} choices · ${evTotal} evidence`,
