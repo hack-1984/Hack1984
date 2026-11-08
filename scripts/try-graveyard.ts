@@ -3,10 +3,14 @@
 import type { GraveyardRes } from "../src/server/conversation/deps";
 import type { GraveyardDetailRes } from "../src/server/graveyard/types";
 import { post } from "./_http";
-import { PITCHES } from "./_pitches";
+import { modeArg, NONPROFIT_PITCHES, positional } from "./_nonprofit";
+import { PITCHES as STARTUP_PITCHES } from "./_pitches";
+
+// Add --mode nonprofit to run the five nonprofit test ideas instead.
+const PITCHES = modeArg() === "nonprofit" ? NONPROFIT_PITCHES : STARTUP_PITCHES;
 
 async function main() {
-  const only = process.argv[2];
+  const only = positional()[0];
   for (const idea of PITCHES.filter((p) => !only || p.id === only)) {
     console.log(`\n=== ${idea.id}: ${idea.pitch}`);
     const g = await post<GraveyardRes>("/api/graveyard", { idea });

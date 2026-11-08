@@ -1,16 +1,25 @@
 // Builds a persona for the fixture, plays a scripted 6-message conversation through /api/chat,
 // runs /api/extract after each exchange, and prints every update with its quote.
-// Usage: npx tsx scripts/try-chat.ts [customer|investor|competitor|advisor]
+// Usage: npx tsx scripts/try-chat.ts [customer|investor|competitor|advisor] [--mode nonprofit]
 import type { ChatMessage, Persona, PersonaRole, TreeUpdate } from "../src/server/conversation/deps";
-import { FIXTURE_IDEA as idea } from "../src/server/conversation/fixture";
+import { fixtureForMode, modeArg, positional } from "./_nonprofit";
 import { post } from "./_http";
 
-const role = (process.argv[2] ?? "customer") as PersonaRole;
-const FOUNDER_LINES = [
-  "Hi! I'm building CatchCast, an app that tells you where and when fish are biting near you.",
-  "Premium is $8 a month and unlocks the hourly bite forecast and private spots.",
-  "We'd get the forecast right by combining weather, moon phase and catch logs from local anglers.",
-];
+const mode = modeArg();
+const idea = fixtureForMode(mode);
+const role = (positional()[0] ?? "customer") as PersonaRole;
+const FOUNDER_LINES =
+  mode === "nonprofit"
+    ? [
+        "Hi! I'm starting a free after-school coding club for middle schoolers here in Dorchester.",
+        "We'd run it two afternoons a week in the school library, with college students and local engineers as mentors.",
+        "Our first year would be funded by a single grant from one family foundation.",
+      ]
+    : [
+        "Hi! I'm building CatchCast, an app that tells you where and when fish are biting near you.",
+        "Premium is $8 a month and unlocks the hourly bite forecast and private spots.",
+        "We'd get the forecast right by combining weather, moon phase and catch logs from local anglers.",
+      ];
 
 async function main() {
   const { data: p, ms: pms } = await post<{ persona: Persona }>("/api/persona", { idea, role, choiceId: "rev-1" });
