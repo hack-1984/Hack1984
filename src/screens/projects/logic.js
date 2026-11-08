@@ -5,12 +5,12 @@
 import React from "react";
 import { DCLogic } from "../dc";
 import { Session } from "@/session";
-// Project list mirrors the main screen's store (Pantry). Pillar scores are the
-// week-6 averages shown on the map; replace with a shared store when one exists.
+import { ideaStore } from "@/lib/db";
+// App change: the list comes from the store (Supabase for accounts, browser
+// storage for guests). No canned projects.
 const PILLARS = ['Customer','Problem','Solution','Approach','Edge','Reach','Revenue','Risks'];
-const PROJECTS = [
-  { id: 'pantry', title: 'A $8/month meal-planning app for college students on tight budgets.', subtitle: 'Pantry · week 6', scores: [.82, .76, .58, .64, .7, .52, .6, .38], edited: 'Edited this week', href: '/map' },
-];
+const DAY = 86400000;
+const edited = (t) => { const d = Math.floor((Date.now() - t) / DAY); return d <= 0 ? 'Edited today' : d === 1 ? 'Edited yesterday' : d < 7 ? 'Edited this week' : d < 30 ? 'Edited this month' : 'Edited ' + new Date(t).toLocaleDateString(); };
 const confColor = v => v >= .75 ? '#15803d' : v >= .45 ? '#eab308' : '#dc2626';
 const confText = v => v >= .75 ? '#15803d' : v >= .45 ? '#a16207' : '#b91c1c';
 const confBg = v => v >= .75 ? '#dcfce7' : v >= .45 ? '#fef9c3' : '#fee2e2';
@@ -20,13 +20,18 @@ class Component extends DCLogic {
     const S = Session; await S.ready(); const s = S.getSession();
     if (!s) { location.replace('/login'); return; }
     this.setState({ session: s });
+    try { this.setState({ list: await ideaStore().list() }); }
+    catch (err) { console.error('[sessions] list', err); this.setState({ list: [] }); }
   }
   renderVals() {
     const s = this.state.session || Session.getSession() || { name: 'Guest', mode: 'full' };
-    const projects = PROJECTS.map((p, i) => {
-      const avg = p.scores.reduce((a, b) => a + b, 0) / p.scores.length;
-      return { ...p, delay: (i * .06) + 's', readiness: Math.round(avg * 100), pillBg: confBg(avg), pillFg: confText(avg),
-        bars: p.scores.map((v, k) => ({ h: Math.round(v * 100) + '%', color: confColor(v), title: PILLARS[k] + ' ' + Math.round(v * 100) + '%' })) };
+    const projects = (this.state.list || []).map((p, i) => {
+      const scores = p.pillarScores && p.pillarScores.length === 8 ? p.pillarScores : PILLARS.map(() => 0);
+      const avg = scores.reduce((a, b) => a + b, 0) / scores.length;
+      const desc = p.description || '';
+      return { id: p.id, title: p.title || desc.slice(0, 60) || 'Untitled idea', subtitle: desc.length > 90 ? desc.slice(0, 90) + '…' : desc, edited: edited(p.updatedAt), href: '/map?id=' + encodeURIComponent(p.id),
+        delay: (i * .06) + 's', readiness: Math.round(avg * 100), pillBg: confBg(avg), pillFg: confText(avg),
+        bars: scores.map((v, k) => ({ h: Math.round(v * 100) + '%', color: confColor(v), title: PILLARS[k] + ' ' + Math.round(v * 100) + '%' })) };
     });
     return {
       name: s.name, initial: (s.name || 'G').charAt(0).toUpperCase(), isDemo: s.mode === 'demo',

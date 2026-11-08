@@ -113,7 +113,7 @@ export default function LoginScreen(props: Record<string, unknown>) {
           <div style={{ position: "relative", maxWidth: "420px" }}>
             {" "}
             <div style={{ fontSize: "11px", fontFamily: "'Geist Mono',monospace", letterSpacing: ".08em", textTransform: "uppercase", color: "#9ca3af", marginBottom: "10px" }}>
-              Pantry · week 6
+              Example map · week 6
             </div>
             {" "}
             <div style={{ fontSize: "clamp(22px,2.4vw,30px)", fontWeight: "600", letterSpacing: "-.02em", lineHeight: "1.2", textWrap: "balance" }}>

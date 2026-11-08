@@ -1,11 +1,17 @@
-// Logic for the IdeaMap screen, verbatim from the Claude Design file "Idea Map.dc.html".
-// Only changes: page links point at app routes, keyframe names carry the "im-" prefix,
-// and anything noted inline below.
+// Logic for the IdeaMap screen, from the Claude Design file "Idea Map.dc.html".
+// Changes from the design: page links point at app routes, keyframe names carry the
+// "im-" prefix, and the canned Pantry data is gone (see the import block below).
 /* eslint-disable */
 import React from "react";
 import { DCLogic } from "../dc";
+import { Session } from "@/session";
+import { PILLAR_KEYS } from "@/lib/pillars";
+import { adopt, applyUpdates, ideaStore, pitchFrom, reject as rejectChoice, toMapModel, toStored } from "@/lib/db";
+// App change: no canned data. The idea comes from the store (?id=), the map
+// shape from toMapModel(idea, team), and every founder action is a TreeUpdate
+// applied with applyUpdates and saved. ?new=1 shows a minimal probe
+// (title + description) until the real probe screen lands.
 const PILLARS = ['Customer','Problem','Solution','Approach','Edge','Reach','Revenue','Risks'];
-const NOW = 6;
 const FX = {
   Customer:{glyph:'●', sizes:['6px'], dur:'4s', inner:'none'},
   Problem:{glyph:'?', sizes:['10px'], dur:'4s', inner:'none'},
@@ -16,57 +22,6 @@ const FX = {
   Revenue:{glyph:'$', sizes:['10px'], dur:'4s', inner:'none'},
   Risks:{glyph:'!', sizes:['10px'], dur:'4s', inner:'none'},
 };
-const RESOURCES0 = [
-  {id:'ios', name:'2 iOS engineers', have:true},
-  {id:'nutri', name:'Nutrition intern', have:true},
-  {id:'cash', name:'$40k runway', have:true},
-  {id:'recipes', name:'Recipe DB license', have:false},
-  {id:'ambass', name:'Campus ambassadors', have:false},
-];
-const CHOICES0 = [
-  {id:'c1', pillar:'Customer', text:'Target college students', res:[], test:'Run 10 more interviews at a second campus to check this isn’t one school’s culture.', ev:[
-    {k:'support', wk:2, text:'27 of 30 interviewees cook ≥3 nights/week on a budget', source:'Interviews, wk 2'},
-    {k:'support', wk:2, text:'Dorm meal plans average $2,400/semester', source:'NACUFS 2025'},
-    {k:'support', wk:2, text:'“I’d pay for anything that stops the 11pm DoorDash”', source:'Interview #14'}],
-    hist:[{wk:1, type:'Added', note:'Initial hypothesis'},{wk:2, type:'Strengthened', note:'Interview round 1 confirmed budget pressure'}]},
-  {id:'c2', pillar:'Customer', text:'Focus on off-campus renters', res:[], test:'Split the waitlist by housing type and compare activation after the first plan.', ev:[], hist:[{wk:4, type:'Added', note:'Emerged from dorm-kitchen access problem'}]},
-  {id:'c3', pillar:'Problem', text:'Overspend on takeout', res:[], test:'Ask 20 students to share a month of bank statements; confirm the $200+ median.', ev:[
-    {k:'support', wk:3, text:'Median takeout spend $212/month in survey', source:'Survey n=118, wk 3'},
-    {k:'support', wk:3, text:'“I know it’s bad, I just don’t have a plan by 6pm”', source:'Interview #7'}],
-    hist:[{wk:1, type:'Added', note:'Initial hypothesis'},{wk:3, type:'Strengthened', note:'Survey data matched interview claims'}]},
-  {id:'c4', pillar:'Problem', text:'Don’t know how to cook', res:[], test:'Watch 5 students cook a 3-step recipe unassisted. If 4+ finish, drop this.', ev:[
-    {k:'against', wk:2, text:'22 of 30 rated themselves “can follow a recipe”', source:'Interviews, wk 2'},
-    {k:'support', wk:5, text:'Top search in-app prototype: “how long to boil pasta”', source:'Prototype logs'}],
-    hist:[{wk:1, type:'Added', note:'Initial hypothesis'},{wk:2, type:'Weakened', note:'Skill is not the blocker; planning is'}]},
-  {id:'c5', pillar:'Solution', text:'Plan from a pantry photo', res:['ios','recipes'], test:'Ship photo-to-plan to 30 waitlist users; measure plans completed per week.', ev:[
-    {k:'support', wk:5, text:'Prototype: 9 of 12 completed first plan in <4 min', source:'Usability test, wk 5'}],
-    hist:[{wk:3, type:'Added', note:'Replaced manual ingredient entry'}]},
-  {id:'c6', pillar:'Solution', text:'Grocery list synced to store', res:['ios'], test:'Fake-door the sync button; count taps before building the integration.', ev:[
-    {k:'support', wk:5, text:'8 of 12 testers asked for it unprompted', source:'Usability test, wk 5'}],
-    hist:[{wk:5, type:'Added', note:'Requested repeatedly in usability sessions'}]},
-  {id:'c7', pillar:'Approach', text:'Mobile-first, iOS first', res:['ios'], test:'Check Android share on the waitlist; revisit if it passes 40%.', ev:[
-    {k:'support', wk:3, text:'71% of survey respondents on iPhone', source:'Survey n=118'}],
-    hist:[{wk:1, type:'Added', note:'Matches team skills'},{wk:3, type:'Strengthened', note:'Device split from survey'}]},
-  {id:'c8', pillar:'Edge', text:'Recipes tuned to dorm kitchens', res:['nutri','recipes'], test:'Publish 10 hot-plate recipes; compare saves vs. standard recipes.', ev:[], hist:[{wk:2, type:'Added', note:'Hot plate + microwave constraint'}]},
-  {id:'c9', pillar:'Edge', text:'Partner with campus dining', res:[], test:'—', ev:[
-    {k:'against', wk:4, text:'3 of 3 dining directors said procurement cycle is 18+ months', source:'Calls, wk 4'}],
-    hist:[{wk:1, type:'Added', note:'Initial hypothesis'},{wk:4, type:'Removed', note:'Sales cycle incompatible with runway'}]},
-  {id:'c10', pillar:'Reach', text:'Campus ambassador program', res:['ambass','cash'], test:'Recruit 3 ambassadors at one campus; target 50 signups each in 2 weeks.', ev:[], hist:[{wk:2, type:'Added', note:'Borrowed from fintech playbooks'}]},
-  {id:'c11', pillar:'Reach', text:'Short-form recipe videos', res:['nutri'], test:'Post daily for 2 more weeks; does waitlist CAC stay under $1?', ev:[
-    {k:'support', wk:6, text:'Test account: 40k views, 310 waitlist signups in 10 days', source:'TikTok, wk 5–6'}],
-    hist:[{wk:5, type:'Added', note:'Ambassador program slow to start; tried content'}]},
-  {id:'c12', pillar:'Revenue', text:'Charge $8/month', res:[], test:'Put a real checkout at $8 in front of 100 waitlist users; measure conversion.', ev:[
-    {k:'against', wk:6, text:'12 of 15 balked at $8; $4–5 was the common ceiling', source:'Pricing interviews, wk 6'},
-    {k:'support', wk:6, text:'3 of 15 said “cheaper than one takeout order”', source:'Pricing interviews, wk 6'}],
-    hist:[{wk:1, type:'Added', note:'Initial hypothesis'},{wk:6, type:'Weakened', note:'Price sensitivity higher than expected'}]},
-  {id:'c13', pillar:'Revenue', text:'$4/month or $29/year', res:[], test:'A/B a $4 vs $8 checkout page on the waitlist.', ev:[
-    {k:'support', wk:6, text:'Derived from the $4–5 ceiling in pricing interviews', source:'Pricing interviews, wk 6'}],
-    hist:[{wk:6, type:'Suggested', note:'Possible replacement for $8/month'}]},
-  {id:'c14', pillar:'Risks', text:'Students churn over summer', res:[], test:'Design a summer mode (home kitchen recipes) and pre-test interest in May.', ev:[
-    {k:'support', wk:4, text:'Comparable student apps lose 40–60% MAU June–Aug', source:'Public metrics, 3 apps'}],
-    hist:[{wk:1, type:'Added', note:'Initial hypothesis'},{wk:4, type:'Strengthened', note:'Seasonality confirmed in comps'}]},
-];
-const LINKS = [['c12','c13','Proposed replacement'],['c10','c11','Alternative channel'],['c4','c5','Shapes onboarding']];
 const SCORE = {strengthened:1, added:.6, guess:.4, weakened:.2, removed:0};
 const STATUS = {
   strengthened:{label:'Strengthened', dot:'#15803d', dotBorder:'transparent', border:'#e5e7eb', bg:'#fff', color:'#111827', style:'solid', chipBg:'#dcfce7', chipFg:'#15803d'},
@@ -104,9 +59,9 @@ const statusAt = (c, W) => {
 };
 
 class Component extends DCLogic {
-  state = { sel:null, week:NOW, hoverIdea:false, hover:null, draft:'', toast:null, expanded:[], zoom:1, choices: CHOICES0.map(c => ({...c, ev:[...c.ev], hist:[...c.hist]})), resources: RESOURCES0.map(r => ({...r})), replaying:false };
+  state = { sel:null, week:1, now:1, hoverIdea:false, hover:null, draft:'', toast:null, expanded:[], zoom:1, choices: [], resources: [], links: [], replaying:false, loading:true, idea:null, team:null, title:'', description:'', probe:null, busy:false, missing:false };
   paneRef = React.createRef();
-  componentDidMount() {
+  async componentDidMount() {
     const fit = () => { const el = this.paneRef.current; if (!el || !el.clientWidth) return false; this.setZoom(Math.min(el.clientWidth / 1340, el.clientHeight / 1100, 1.5)); return true; };
     if (!fit()) requestAnimationFrame(() => { if (!fit()) setTimeout(fit, 300); });
     setTimeout(fit, 50);
@@ -119,9 +74,61 @@ class Component extends DCLogic {
       if (e.key === '-') this.setZoom(this.state.zoom / 1.2);
       if (e.key === '0') { const el = this.paneRef.current; if (el) this.setZoom(Math.min(el.clientWidth / 1340, el.clientHeight / 1100, 1.5)); }
       if (e.key === 'ArrowLeft') this.setState(s => ({week: Math.max(1, s.week - 1)}));
-      if (e.key === 'ArrowRight') this.setState(s => ({week: Math.min(NOW, s.week + 1)}));
+      if (e.key === 'ArrowRight') this.setState(s => ({week: Math.min(s.now, s.week + 1)}));
     };
     window.addEventListener('keydown', this._key);
+
+    // App change: load the idea.
+    await Session.ready(); if (!Session.getSession()) { location.replace('/login'); return; }
+    const params = new URLSearchParams(location.search);
+    const store = ideaStore();
+    let team = null; try { team = await store.getTeam(); } catch (err) { console.warn('[map] team', err); }
+    if (params.get('new') === '1') { this.setState({ loading: false, team, probe: { title: '', description: '' } }); return; }
+    let id = params.get('id');
+    try {
+      if (!id) {
+        const list = await store.list();
+        if (!list.length) { this.setState({ loading: false, team, probe: { title: '', description: '' } }); return; }
+        id = list[0].id; history.replaceState(null, '', `/map?id=${id}`);
+      }
+      const idea = await store.get(id);
+      if (!idea) { this.setState({ loading: false, team, missing: true }); return; }
+      this.load(idea, team);
+    } catch (err) { console.error('[map] load', err); this.setState({ loading: false, team, missing: true }); }
+  }
+  /** Derive the map from a stored Idea. Pillar names stay the design's startup labels, which key FX and angles. */
+  load(idea, team) {
+    const m = toMapModel(idea, team);
+    this.setState({ idea, team, loading: false, probe: null, missing: false,
+      choices: m.choices.map(c => ({ ...c, pillar: PILLARS[PILLAR_KEYS.indexOf(c.pillarKey)] })),
+      resources: m.resources, links: m.links, now: m.now, week: m.now, title: m.title, description: m.description });
+  }
+  /** Save an already-changed idea, then re-derive. */
+  async persist(idea, patch, msg) {
+    this.setState({ busy: true, ...(patch || {}) });
+    try { await ideaStore().save(idea); this.load(idea, this.state.team); if (msg) this.say(msg); }
+    catch (err) { console.error('[map] save', err); this.say('Could not save. Check your connection.'); }
+    finally { this.setState({ busy: false }); }
+  }
+  /** Apply TreeUpdates to the idea and save. */
+  commit(updates, msg, patch) { return this.persist(applyUpdates(this.state.idea, updates), patch, msg); }
+  /** The placeholder probe: POST /api/tree, wrap with the probe fields, save, show. */
+  async createIdea(e) {
+    if (e && e.preventDefault) e.preventDefault();
+    const probe = this.state.probe; if (!probe || this.state.busy) return;
+    if (!probe.title.trim() && !probe.description.trim()) { this.say('Give the idea a title or a description first'); return; }
+    this.setState({ busy: true });
+    try {
+      const team = this.state.team || { roles: [], skills: [], tech: [] };
+      const res = await fetch('/api/tree', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ pitch: pitchFrom(probe), team, mode: 'startup' }) });
+      if (!res.ok) throw new Error(`tree ${res.status}`);
+      const { idea } = await res.json();
+      const stored = toStored(idea, probe);
+      await ideaStore().save(stored);
+      history.replaceState(null, '', `/map?id=${stored.id}`);
+      this.load(stored, team);
+    } catch (err) { console.error('[map] create', err); this.say('Could not grow the tree. Try again.'); }
+    finally { this.setState({ busy: false }); }
   }
   setZoom(z) {
     z = Math.max(.3, Math.min(2, z)); const el = this.paneRef.current; const prev = this.state.zoom;
@@ -141,6 +148,7 @@ class Component extends DCLogic {
   overall(W) { const s = PILLARS.map(p => this.pillarScore(W, p)).filter(x => x !== null); return s.length ? s.reduce((a, b) => a + b, 0) / s.length : 0; }
 
   renderVals() {
+    const NOW = this.state.now; const LINKS = this.state.links;
     const showRemoved = this.props.showRemoved ?? true;
     const dim = this.props.dimUnrelated ?? true;
     const { sel, week: W, choices: allC, resources: RES } = this.state;
@@ -261,7 +269,7 @@ class Component extends DCLogic {
       const users = view.filter(c => c.res.includes(selRes.id) && c.status !== 'removed');
       rv = { name: selRes.name, missing: !selRes.have, statusLabel: selRes.have ? 'Available' : 'Missing', chipBg: selRes.have ? '#f3f4f6' : '#fee2e2', chipFg: selRes.have ? '#4b5563' : '#b91c1c',
         summary: selRes.have ? `On hand. ${users.length} ${users.length === 1 ? 'choice depends' : 'choices depend'} on it.` : `Not on hand. ${users.length} ${users.length === 1 ? 'choice is' : 'choices are'} blocked until the team secures it.`,
-        acquire: (e) => { e.stopPropagation(); this.setState(s => ({ resources: s.resources.map(r => r.id === selRes.id ? { ...r, have: true } : r) })); this.say(`${selRes.name} marked as acquired · ${users.length} ${users.length === 1 ? 'choice' : 'choices'} unblocked`); },
+        acquire: (e) => { e.stopPropagation(); if (selRes.have) { this.say('Already on hand'); return; } const at = Date.now(); this.commit(users.map(c => ({ action: 'strengthen', choiceId: c.id, delta: 5, feasibility: { ok: true, note: selRes.name }, reason: `Team secured: ${selRes.name}`, source: 'feasibility', at })), `${selRes.name} marked as acquired · ${users.length} ${users.length === 1 ? 'choice' : 'choices'} unblocked`, { sel: null }); },
         n: users.length, choices: users.map(choiceRow),
         all: RES.map(r => { const n = view.filter(c => c.res.includes(r.id) && c.status !== 'removed').length; return { name: r.name, dot: r.have ? '#15803d' : '#dc2626', weight: r.id === selRes.id ? 600 : 400, sub: `${n} ${n === 1 ? 'choice' : 'choices'}`, select: this.pick({t:'resource', id:r.id}) }; }) };
     }
@@ -284,21 +292,28 @@ class Component extends DCLogic {
       isIdea: mode === 'idea', isPillar: mode === 'pillar', isChoice: mode === 'choice', isEvidence: mode === 'evidence', isResource: mode === 'resource',
       ov, pv, cv, ev, rv,
       hasToast: !!this.state.toast, toast: this.state.toast,
+      // App change: real idea, loading and probe states.
+      title: this.state.title, description: this.state.description, initial: (this.state.title || 'I').trim().charAt(0).toUpperCase(),
+      loading: this.state.loading, missing: this.state.missing, busy: this.state.busy,
+      probe: !!this.state.probe, probeTitle: this.state.probe ? this.state.probe.title : '', probeDesc: this.state.probe ? this.state.probe.description : '',
+      setProbeTitle: (e) => this.setState(s => ({ probe: { ...s.probe, title: e.target.value } })),
+      setProbeDesc: (e) => this.setState(s => ({ probe: { ...s.probe, description: e.target.value } })),
+      createIdea: (e) => this.createIdea(e),
       draft: this.state.draft, setDraft: (e) => this.setState({ draft: e.target.value }),
       clearSel: () => this.setState({ sel: null }), selIdea: this.pick({t:'idea'}), goNow: (e) => { e.stopPropagation(); this.setState({ week: NOW }); },
       replay: (e) => { e.stopPropagation(); if (this.state.replaying) { clearInterval(this._replay); this.setState({ replaying: false }); return; } this.setState({ week: 1, sel: null, replaying: true, expanded: [...PILLARS] }); this._replay = setInterval(() => { this.setState(s => { if (s.week >= NOW) { clearInterval(this._replay); return { replaying: false }; } return { week: s.week + 1 }; }); }, 1400); },
       addFor: (e) => this.addEvidence(e, 'support'), addAgainst: (e) => this.addEvidence(e, 'against'),
-      removeChoice: (e) => { e.stopPropagation(); const c = selC; this.setState(s => ({ sel: {t:'pillar', id:c.pillar}, choices: s.choices.map(x => x.id === c.id ? { ...x, hist: [...x.hist, { wk: NOW, type: 'Removed', note: 'Removed by founder' }] } : x) })); this.say(`“${c.text}” removed · ${c.pillar} recalculated`); },
-      accept: (e) => { e.stopPropagation(); this.setState(s => ({ sel: {t:'choice', id:'c13'}, choices: s.choices.map(c => c.id === 'c13' ? { ...c, hist: [...c.hist, { wk: NOW, type: 'Added', note: 'Founder accepted replacement' }] } : c.id === 'c12' ? { ...c, hist: [...c.hist, { wk: NOW, type: 'Removed', note: 'Replaced by $4/month or $29/year' }] } : c) })); this.say('Replacement accepted · “Charge $8/month” retired'); },
-      reject: (e) => { e.stopPropagation(); this.setState(s => ({ sel: {t:'choice', id:'c12'}, choices: s.choices.filter(c => c.id !== 'c13') })); this.say('Suggestion rejected · “Charge $8/month” stays weakened'); },
+      removeChoice: (e) => { e.stopPropagation(); const c = selC; if (!c) return; this.commit([{ action: 'kill', choiceId: c.id, reason: 'Removed by founder', source: 'plan', at: Date.now() }], `“${c.text}” removed · ${c.pillar} recalculated`, { sel: {t:'pillar', id:c.pillar} }); },
+      accept: (e) => { e.stopPropagation(); const c = selC; if (!c) return; const link = LINKS.find(l => l[1] === c.id); const parent = link && find(link[0]); this.persist(adopt(this.state.idea, c.id), { sel: {t:'choice', id:c.id} }, parent ? `Replacement accepted · “${parent.text}” retired` : `“${c.text}” accepted`); },
+      reject: (e) => { e.stopPropagation(); const c = selC; if (!c) return; const link = LINKS.find(l => l[1] === c.id); this.persist(rejectChoice(this.state.idea, c.id), { sel: link ? {t:'choice', id:link[0]} : {t:'pillar', id:c.pillar} }, 'Suggestion rejected'); },
     };
   }
   addEvidence(e, k) {
     e.stopPropagation(); const text = this.state.draft.trim(); if (!text) { this.say('Write what you learned first'); return; }
-    const id = this.state.sel.id; const c = this.state.choices.find(x => x.id === id); const type = k === 'support' ? 'Strengthened' : 'Weakened';
-    this.setState(s => ({ draft: '', choices: s.choices.map(x => x.id === id ? { ...x, ev: [...x.ev, { k, wk: NOW, text, source: 'Added by you, wk ' + NOW }], hist: [...x.hist, { wk: NOW, type, note: k === 'support' ? 'New supporting evidence' : 'New evidence against' }] } : x) }));
-    this.say(`${type} “${c.text}” · ${c.pillar} recalculated`);
+    const id = this.state.sel.id; const c = this.state.choices.find(x => x.id === id); if (!c) return; const type = k === 'support' ? 'Strengthened' : 'Weakened';
+    this.commit([{ action: k === 'support' ? 'strengthen' : 'weaken', choiceId: id, delta: k === 'support' ? 5 : -5, evidence: [{ type: 'quote', text, origin: 'Added by you', tier: 'real' }], reason: k === 'support' ? 'New supporting evidence' : 'New evidence against', source: 'plan', at: Date.now() }], `${type} “${c.text}” · ${c.pillar} recalculated`, { draft: '' });
   }
+
 }
 
 export default Component;
