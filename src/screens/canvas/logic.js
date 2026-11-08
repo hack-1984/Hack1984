@@ -50,13 +50,13 @@ class Component extends DCLogic {
     // aboutCopy: placeholder — copy to be written
     this.aboutCopy = 'We spent years building things nobody asked for, and learned the expensive way that the right question at week two beats the right answer at month nine. Sprout is the mentor we wish we had: patient, well-read, and unwilling to let a weak assumption slide. It started as an internal tool for a university accelerator and grew into a product when founders kept asking to keep using it after demo day. We are a small team of engineers, researchers, and former program directors. We believe most ideas deserve a fair test, and most founders deserve it sooner.';
     // team: placeholder developer data
-    // The team, in order. photo: put a square image in public/team/ and set its path here, e.g.
-    // photo: '/team/nicholas.jpg'. Until then the card shows the initials.
+    // The team, in order. photo: a square image in public/team/. If it's missing (or fails to load),
+    // the card shows the initials instead.
     this.team = [
-      { name: 'Nicholas Vocatura', initials: 'NV', role: 'Backend', photo: null, linkedin: 'https://www.linkedin.com/in/nicholas-vocatura/', github: 'https://github.com/nick11255' },
-      { name: 'Antonio Feng', initials: 'AF', role: 'Backend', photo: null, linkedin: 'https://www.linkedin.com/in/antonio-feng/', github: 'https://github.com/porpol' },
-      { name: 'Gregory Courtney', initials: 'GC', role: 'Fullstack', photo: null, linkedin: 'https://www.linkedin.com/in/greg-courtney/', github: 'https://github.com/gregco7' },
-      { name: 'Ethan Chilel', initials: 'EC', role: 'Frontend', photo: null, linkedin: 'https://www.linkedin.com/in/ethan-chilel', github: 'https://github.com/Ethanchilel' },
+      { name: 'Nicholas Vocatura', initials: 'NV', role: 'Backend', photo: '/team/nick.png', linkedin: 'https://www.linkedin.com/in/nicholas-vocatura/', github: 'https://github.com/nick11255' },
+      { name: 'Antonio Feng', initials: 'AF', role: 'Backend', photo: '/team/tony.png', linkedin: 'https://www.linkedin.com/in/antonio-feng/', github: 'https://github.com/porpol' },
+      { name: 'Gregory Courtney', initials: 'GC', role: 'Fullstack', photo: '/team/greg.png', linkedin: 'https://www.linkedin.com/in/greg-courtney/', github: 'https://github.com/gregco7' },
+      { name: 'Ethan Chilel', initials: 'EC', role: 'Frontend', photo: '/team/ethan.png', linkedin: 'https://www.linkedin.com/in/ethan-chilel', github: 'https://github.com/Ethanchilel' },
     ];
     this.footerCols = [
       { title: 'Product', links: [['How it works', '#how'], ['For Founders', '#founders'], ['For Accelerators', '#accelerators'], ['Demo', '/map']] },

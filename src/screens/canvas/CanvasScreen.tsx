@@ -4,7 +4,8 @@
 // (claude.ai/design project 64b283df-0e77-4c88-936d-707b3f0b3f61).
 // Markup and inline styles are the design's, converted 1:1; behaviour is in ./logic.js.
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { Fragment, type CSSProperties } from "react";
+import { Fragment, useState, type CSSProperties } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { useLogic } from "../dc";
 import Logic from "./logic";
@@ -51,6 +52,23 @@ function SponsorLogo({ sponsor: s, scale = 1, role }: { sponsor: Sponsor; scale?
   );
   // In the strip each logo is a list item; the wrapper keeps the img role on the logo itself.
   return role ? <span role={role} className="cv-sponsor-item">{logo}</span> : logo;
+}
+
+/** A founder's photo through next/image (resized and lazy-loaded, so big PNGs stay fast), filling the
+ *  square box. Falls back to the initials when there's no photo path or the file fails to load. */
+function TeamPhoto({ src, name, initials }: { src?: string | null; name: string; initials: string }) {
+  const [failed, setFailed] = useState(false);
+  if (!src || failed) return <>{initials}</>;
+  return (
+    <Image
+      src={src}
+      alt={name}
+      fill
+      sizes="(max-width: 600px) 90vw, (max-width: 1100px) 45vw, 280px"
+      style={{ objectFit: "cover", objectPosition: "50% 30%" }}
+      onError={() => setFailed(true)}
+    />
+  );
 }
 
 // Strip speed: the old placeholder strip moved ~33px/s; keep that pace for however many logos there are.
@@ -669,15 +687,9 @@ export default function CanvasScreen(props: Record<string, unknown>) {
             {(team ?? []).map((m: any) => (
               <Fragment key={m?.name}>
                 <div style={{ border: "1px solid #B9D4C4", borderRadius: "16px", background: "#fff", padding: "20px", display: "flex", flexDirection: "column", gap: "12px", minHeight: "100%" }}>
-                  {/* Photo box: shows m.photo once it's set in logic.js (team[]), the initials until then. */}
-                  <div style={{ aspectRatio: "1", borderRadius: "12px", background: "#E6ECE8", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Geist Mono',monospace", fontSize: "22px", letterSpacing: ".08em", color: "#4A5E53", overflow: "hidden" }}>
-                    {m?.photo ? (
-                      // The name is printed right below, so the photo itself is decorative (alt="").
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={m.photo} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
-                    ) : (
-                      m?.initials
-                    )}
+                  {/* Photo box: the person's photo (logic.js team[].photo), or their initials if there's none. */}
+                  <div style={{ position: "relative", aspectRatio: "1", borderRadius: "12px", background: "#E6ECE8", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Geist Mono',monospace", fontSize: "22px", letterSpacing: ".08em", color: "#4A5E53", overflow: "hidden" }}>
+                    <TeamPhoto src={m?.photo} name={m?.name} initials={m?.initials} />
                   </div>
                   <div style={{ fontSize: "16px", fontWeight: "600", color: "#000", marginTop: "4px" }}>
                     {m?.name}
@@ -842,7 +854,7 @@ SWAP GUIDE
   #map-slot          → real idea-map component (Idea Map.dc.html via <dc-import>)
   slabA / slabB      → real feature components (#slab-a-card, #slab-b visual)
   aboutCopy          → real description (logic class)
-  team[].photo       → add a photo path per person (logic class); initials show until then
+  team[].photo       → each person's photo in public/team/ (logic class); initials show if it's missing
 */}
     </div>
   );
