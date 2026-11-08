@@ -10,6 +10,31 @@ import { useLogic } from "../dc";
 import Logic from "./logic";
 import "./canvas.css";
 
+// Sponsor logos in public/sponsors/. name: from the file name, in each brand's own casing.
+// w/h: sized by visual area, so a long wordmark and a square mark look equally big (tall marks cap at 60px,
+// wordmarks at 176px wide). size/pos: crop the mask to the visible mark, since some files carry uneven
+// empty space (SSOJet, Within3). Measured from each file's alpha channel; the images are not edited.
+const SPONSORS: { file: string; name: string; w: number; h: number; size: string; pos: string }[] = [
+  { file: "adobe.webp", name: "Adobe", w: 134, h: 34, size: "100.00% 100.00%", pos: "0.0% 0.0%" },
+  { file: "anthropic.webp", name: "Anthropic", w: 176, h: 20, size: "100.00% 101.77%", pos: "0.0% 50.0%" },
+  { file: "bravado.webp", name: "Bravado", w: 47, h: 60, size: "100.00% 100.00%", pos: "0.0% 0.0%" },
+  { file: "codecrafters.webp", name: "CodeCrafters", w: 114, h: 41, size: "100.00% 100.00%", pos: "0.0% 0.0%" },
+  { file: "elisity.webp", name: "Elisity", w: 143, h: 32, size: "100.91% 103.23%", pos: "40.0% 50.0%" },
+  { file: "exa.webp", name: "Exa", w: 121, h: 38, size: "100.00% 100.00%", pos: "0.0% 0.0%" },
+  { file: "fuzionx.webp", name: "FuzionX", w: 165, h: 28, size: "100.00% 100.00%", pos: "0.0% 0.0%" },
+  { file: "gradium.webp", name: "Gradium", w: 60, h: 60, size: "100.00% 100.00%", pos: "0.0% 0.0%" },
+  { file: "jca.webp", name: "JC&A", w: 110, h: 42, size: "100.00% 100.00%", pos: "0.0% 0.0%" },
+  { file: "kaleidoscope.webp", name: "Kaleidoscope", w: 53, h: 60, size: "100.00% 100.00%", pos: "0.0% 0.0%" },
+  { file: "misneach.webp", name: "Misneach", w: 147, h: 31, size: "100.00% 100.00%", pos: "0.0% 0.0%" },
+  { file: "northeastern-sga.webp", name: "Northeastern SGA", w: 77, h: 60, size: "100.00% 100.00%", pos: "0.0% 0.0%" },
+  { file: "partiful.webp", name: "Partiful", w: 53, h: 60, size: "100.00% 101.01%", pos: "0.0% 0.0%" },
+  { file: "ssojet.webp", name: "SSOJet", w: 142, h: 32, size: "154.80% 188.44%", pos: "97.7% 52.3%" },
+  { file: "tavily.webp", name: "Tavily", w: 123, h: 37, size: "100.00% 100.00%", pos: "0.0% 0.0%" },
+  { file: "team-impact.webp", name: "Team IMPACT", w: 52, h: 60, size: "100.00% 100.00%", pos: "0.0% 0.0%" },
+  { file: "techcxo.webp", name: "TechCXO", w: 126, h: 36, size: "100.00% 100.00%", pos: "0.0% 0.0%" },
+  { file: "within3.webp", name: "Within3", w: 149, h: 31, size: "100.29% 180.28%", pos: "0.0% 50.9%" },
+];
+
 export default function CanvasScreen(props: Record<string, unknown>) {
   const v = useLogic(Logic, props);
   if (!v) return <div className="pg-cv" />;
@@ -644,6 +669,27 @@ export default function CanvasScreen(props: Record<string, unknown>) {
                   </div>
                 </div>
               </Fragment>
+            ))}
+          </div>
+        </div>
+      </section>
+      {/* Sponsors (public/sponsors/*.webp). The files are white on transparent, so each is drawn as a CSS
+          mask filled with a soft Sprout green (canvas.css .cv-sponsor), and turns full green on hover. */}
+      <section aria-labelledby="cv-sponsors-h" data-sec="1" style={{ background: "transparent", color: "#000", padding: "96px 20px" }}>
+        <div style={{ maxWidth: "1120px", margin: "0 auto", display: "flex", flexDirection: "column", alignItems: "center", gap: "40px" }}>
+          <h2 id="cv-sponsors-h" style={{ margin: "0", fontFamily: "'Geist Mono',monospace", fontSize: "12px", fontWeight: "400", letterSpacing: ".16em", textTransform: "uppercase", color: "#4A5E53" }}>
+            Sponsored by
+          </h2>
+          <div className="cv-sponsors">
+            {SPONSORS.map((s) => (
+              <span
+                key={s.file}
+                className="cv-sponsor"
+                role="img"
+                aria-label={s.name}
+                title={s.name}
+                style={{ "--src": `url(/sponsors/${s.file})`, "--w": `${s.w}px`, "--h": `${s.h}px`, "--msize": s.size, "--mpos": s.pos } as CSSProperties}
+              />
             ))}
           </div>
         </div>
