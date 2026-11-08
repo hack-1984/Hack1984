@@ -40,19 +40,25 @@ const ChoiceOut = z.object({
 });
 
 /**
- * Fixed keys force every pillar in the half to come back.
+ * Fixed keys force every pillar in the group to come back.
  *
- * We ask for four pillars at a time in two parallel calls rather than all
- * eight in one. One call for all eight measured ~20s against a 10s target —
- * it is output-bound, so halving the output per call halves the wall time.
- * The prompt is sent twice, but input is the cheap half of the bill.
+ * Generation is output-bound, so the wall time is set by the longest single
+ * call, not by the total work. One call for all eight pillars measured ~20s;
+ * two calls of four measured ~18s; four calls of two measure ~10s. The prompt
+ * goes out four times, but input is the cheap half of the bill — about
+ * 3k extra tokens a tree, well under a cent.
+ *
+ * A smaller group also fails smaller: a dropped call now costs two pillars
+ * that fall back to placeholders instead of four.
  */
-const HALVES: readonly (readonly PillarKey[])[] = [
-  PILLAR_KEYS.slice(0, 4),
-  PILLAR_KEYS.slice(4),
-];
+const GROUP_SIZE = 2;
 
-function halfSchema(keys: readonly PillarKey[]) {
+const GROUPS: readonly (readonly PillarKey[])[] = Array.from(
+  { length: Math.ceil(PILLAR_KEYS.length / GROUP_SIZE) },
+  (_, i) => PILLAR_KEYS.slice(i * GROUP_SIZE, (i + 1) * GROUP_SIZE)
+);
+
+function groupSchema(keys: readonly PillarKey[]) {
   return z.object(
     Object.fromEntries(keys.map((k) => [k, z.array(ChoiceOut)])) as Record<
       PillarKey,
@@ -177,16 +183,18 @@ export async function generateChoices(
   // This never throws.
   for (let attempt = 0; attempt < 2; attempt++) {
     try {
-      // allSettled, not all: one bad half should cost us four pillars that
+      // allSettled, not all: one bad group should cost us two pillars that
       // fall back to placeholders, not the entire tree.
       const settled = await Promise.allSettled(
-        HALVES.map((keys) =>
+        GROUPS.map((keys) =>
           askJSON({
             system: system(keys),
             prompt,
-            schema: halfSchema(keys),
+            schema: groupSchema(keys),
             effort: "low",
-            maxTokens: 8000,
+            // Two pillars of output, not four. A ceiling this far above what
+            // the call actually needs is only a stop, never a target.
+            maxTokens: 4000,
           })
         )
       );
@@ -194,9 +202,9 @@ export async function generateChoices(
       const good: unknown[] = [];
       for (const r of settled) {
         if (r.status === "fulfilled") good.push(r.value);
-        else console.warn(`[generateTree] half failed: ${r.reason}`);
+        else console.warn(`[generateTree] group failed: ${r.reason}`);
       }
-      if (good.length === 0) throw new Error("both halves failed");
+      if (good.length === 0) throw new Error("every group failed");
 
       const out = Object.assign({}, ...good) as Record<
         PillarKey,

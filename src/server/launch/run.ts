@@ -13,7 +13,8 @@ import type {
 } from "@/lib/types";
 import { launchMode, type LaunchMode } from "./modes";
 
-const BATCHES = 10;
+/** 20 calls of 5 rather than 10 of 10, for the reason given in personas.ts. */
+const BATCHES = 20;
 
 const JudgeOut = z.object({
   verdicts: z.array(
@@ -223,10 +224,14 @@ export function toUpdates(idea: Idea, summary: LaunchSummary, results: SimResult
   // and says nothing at all about whether a grant renews.
   const rate = top(remap(m.ratePillar, m));
   if (rate) {
+    // The action has to follow the number. 5 of 100 joining is a weaken with
+    // a negative delta, not a "strengthen" that quietly subtracts 12 — Ethan's
+    // tree draws the two differently, and the arrow must match the movement.
+    const delta = Math.round((buyRate - 40) / 3);
     updates.push({
-      action: "strengthen",
+      action: delta < 0 ? "weaken" : "strengthen",
       choiceId: rate.id,
-      delta: Math.round((buyRate - 40) / 3),
+      delta,
       reason: nonprofit
         ? `Open House uptake at ${m.unitLabel(summary.price)}.`
         : `Launch Day conversion at $${summary.price}.`,

@@ -115,9 +115,11 @@ const NONPROFIT: LaunchMode = {
   unitLabel: (n) => `${n} hrs/month`,
   prompts: {
     sceneRules: [
-      "The groups are the people this programme serves, plus the volunteers it needs to run.",
-      "2 to 3 groups, every figure 'person', about 100 people in total.",
-      "Counts must sum to about 100. Serve-the-most-people group first.",
+      "The groups are the people this programme serves, plus the volunteers or staff who run it.",
+      "Exactly 3 groups where possible, every figure 'person', about 100 people in total:",
+      "the people served first and largest, then whoever decides for them when they are children",
+      "or dependents, then the volunteers or staff — the smallest group. Counts must sum to about 100.",
+      "The groups must not overlap: never split the same people twice by different attributes.",
     ],
     sceneSubject: "People served",
     sceneIcons: "e.g. HeartHandshake, Users, BookOpen, Soup, Sprout",
@@ -128,11 +130,15 @@ const NONPROFIT: LaunchMode = {
       "Vary them: shift work, caring for someone else, no transport, already overcommitted.",
     ],
     personaSubject: "Programme",
-    budgetMeans: "the number of hours a month they could realistically give",
+    // "Hours they could give" reads as volunteering, so a parent deciding for
+    // a child answered 0 and the whole scene emptied out. Say whose hours.
+    budgetMeans:
+      "the number of hours a month they could realistically spend at this programme — their own hours if they attend or volunteer, the child's hours if they are deciding for a child",
     judgeRules: [
       "You judge whether each person would commit a number of hours a month to a free programme.",
       "For each, give: reason (at most 8 words, in their voice),",
-      "maxPrice — the most hours a month they would actually give, 0 if they would not come —",
+      "maxPrice — the most hours a month they would actually spend there, counting the child's",
+      "hours when they are deciding for a child, and 0 only if they would not come at all —",
       "and tellsFriend. Be harsh: most people do not turn up. Respect their stated hours.",
       "The programme is free, so never give price or cost as a reason. Reasons are about",
       "time, transport, scheduling, trust and whether it fits their life.",
