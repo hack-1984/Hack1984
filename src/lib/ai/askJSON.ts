@@ -2,16 +2,11 @@ import Anthropic from "@anthropic-ai/sdk";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { z } from "zod";
 import { MODELS } from "./models";
-import { askJSONOpenAI } from "./openai";
-import { provider, resolveModel } from "./provider";
 
 /**
- * One model call that returns schema-valid JSON.
+ * One Claude call that returns schema-valid JSON.
  *
  * Signature is fixed — Tony and Greg import this. Add to it, don't change it.
- *
- * Runs on Claude or on OpenAI depending on the env (see provider.ts). The
- * Anthropic path below is unchanged; the OpenAI path lives in openai.ts.
  *
  * Keep schemas to plain objects, strings, numbers, booleans, arrays and enums,
  * and clamp numbers in your own code: the model treats ranges as suggestions.
@@ -50,12 +45,7 @@ function isTransient(err: unknown): boolean {
   );
 }
 
-export async function askJSON<S extends z.ZodType>(args: AskJSONArgs<S>): Promise<z.infer<S>> {
-  if (provider() === "openai") return askJSONOpenAI(args);
-  return askJSONAnthropic(args);
-}
-
-async function askJSONAnthropic<S extends z.ZodType>({
+export async function askJSON<S extends z.ZodType>({
   system,
   prompt,
   schema,
@@ -63,7 +53,6 @@ async function askJSONAnthropic<S extends z.ZodType>({
   effort = "medium",
   maxTokens = 8192,
 }: AskJSONArgs<S>): Promise<z.infer<S>> {
-  model = resolveModel(model, "anthropic");
   let lastErr: unknown;
 
   // The SDK validates the response against the schema for us, so the only
