@@ -1,6 +1,6 @@
-// Logic for the Login screen, verbatim from the Claude Design file "Login.dc.html".
-// Only changes: page links point at app routes, keyframe names carry the "lg-" prefix,
-// and anything noted inline below.
+// Logic for the Login screen, from the Claude Design file "Login.dc.html".
+// Changes: page links point at app routes, keyframe names carry the "lg-" prefix,
+// ring colors come from the Sprout theme, and anything noted inline below.
 /* eslint-disable */
 import React from "react";
 import { DCLogic } from "../dc";
@@ -14,8 +14,10 @@ class Component extends DCLogic {
     const S = Session; // design: window.Session
     const P = ['Customer','Problem','Solution','Approach','Edge','Reach','Revenue','Risks'];
     const V = [.82, .76, .58, .64, .7, .52, .6, .38];
-    const col = v => v >= .75 ? '#15803d' : v >= .45 ? '#eab308' : '#dc2626';
-    const treeNodes = P.map((name, i) => { const a = -Math.PI / 2 + i * Math.PI / 4; const x = 300 + Math.cos(a) * 230, y = 300 + Math.sin(a) * 230; return { name, x: x.toFixed(1), y: y.toFixed(1), fx: (x - 30).toFixed(1), fy: (y - 30).toFixed(1), color: col(V[i]), delay: (.4 + i * .08).toFixed(2) + 's' }; });
+    const col = v => v >= .75 ? 'var(--green)' : v >= .45 ? 'var(--amber)' : 'var(--red)';
+    // App change: each pillar is a ring on a --border track, filled to its score (r=30 → circumference 188.5).
+    const C = 2 * Math.PI * 30;
+    const treeNodes = P.map((name, i) => { const a = -Math.PI / 2 + i * Math.PI / 4; const x = 300 + Math.cos(a) * 230, y = 300 + Math.sin(a) * 230; return { name, x: x.toFixed(1), y: y.toFixed(1), fx: (x - 30).toFixed(1), fy: (y - 30).toFixed(1), color: col(V[i]), arc: `${(V[i] * C).toFixed(1)} ${C.toFixed(1)}`, delay: (.4 + i * .08).toFixed(2) + 's' }; });
     const host = location.hostname;
     return {
       email: this.state.email, password: this.state.password,

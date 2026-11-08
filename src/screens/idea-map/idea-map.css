@@ -1,13 +1,13 @@
 /* Page CSS from the design's <helmet>, scoped to this page: body/html rules use :has(),
    element rules use :where() so their specificity matches the original. */
-body:has(.pg-im){margin:0;background:#f9fafb;font-family:'Geist',system-ui,sans-serif;color:#111827;-webkit-font-smoothing:antialiased}
-:where(.pg-im) a{color:#111827}:where(.pg-im) a:hover{color:#4b5563}
+body:has(.pg-im){margin:0;background:var(--bg);font-family:'Geist',system-ui,sans-serif;color:var(--text);-webkit-font-smoothing:antialiased}
+:where(.pg-im) a{color:var(--text)}:where(.pg-im) a:hover{color:var(--text)}
 :where(.pg-im) textarea,:where(.pg-im) button{font-family:inherit}
 @keyframes im-fxTravel{0%{offset-distance:0%;opacity:0}12%{opacity:1}88%{opacity:1}100%{offset-distance:100%;opacity:0}}
 @keyframes im-fxCoin{0%,100%{transform:scaleX(1)}50%{transform:scaleX(.15)}}
 @keyframes im-fxWobble{0%,100%{transform:rotate(-16deg)}50%{transform:rotate(16deg)}}
 @keyframes im-fxPop{0%,55%{transform:scale(.5);opacity:.3}70%{transform:scale(1.5);opacity:1}100%{transform:scale(1);opacity:1}}
-@keyframes im-fxGlint{0%,100%{transform:scale(1) rotate(0deg);filter:none}50%{transform:scale(1.4) rotate(90deg);filter:drop-shadow(0 0 3px #111827)}}
+@keyframes im-fxGlint{0%,100%{transform:scale(1) rotate(0deg);filter:none}50%{transform:scale(1.4) rotate(90deg);filter:drop-shadow(0 0 3px var(--accent))}}
 @keyframes im-fxJitter{0%,100%{transform:translate(0,0)}20%{transform:translate(1.5px,-1px)}40%{transform:translate(-1.5px,1px)}60%{transform:translate(1px,1.5px)}80%{transform:translate(-1px,-1.5px)}}
 @keyframes im-fxBob{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
 @keyframes im-fxMarch{to{stroke-dashoffset:-28}}
@@ -17,11 +17,26 @@ body:has(.pg-im){margin:0;background:#f9fafb;font-family:'Geist',system-ui,sans-
 @keyframes im-edgeIn{from{clip-path:inset(0 100% 0 0)}to{clip-path:inset(0 0 0 0)}}
 @keyframes im-panelIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
 @keyframes im-rowIn{from{opacity:0;transform:translateX(8px)}to{opacity:1;transform:translateX(0)}}
-@keyframes im-breathe{0%,100%{box-shadow:0 0 0 10px #11182710,0 12px 32px #11182733}50%{box-shadow:0 0 0 18px #11182708,0 12px 32px #11182733}}
+@keyframes im-breathe{0%,100%{box-shadow:0 0 0 10px color-mix(in srgb,var(--accent) 10%,transparent),0 12px 32px var(--shadow)}50%{box-shadow:0 0 0 18px color-mix(in srgb,var(--accent) 5%,transparent),0 12px 32px var(--shadow)}}
 @keyframes im-badgePop{0%{opacity:0}100%{opacity:1}}
 @keyframes im-countUp{from{opacity:0;transform:translateY(6px) scale(.9)}to{opacity:1;transform:translateY(0) scale(1)}}
 
 /* style-hover / style-focus from the design */
 .im-hover0:hover{transform:translate(-50%,-50%) scale(1.06) !important}
-.im-hover1:hover{background:#f3f4f6 !important}
-.im-hover2:hover{border-color:#111827 !important}
+.im-hover1:hover{background:var(--surface-2) !important}
+.im-hover2:hover{border-color:var(--muted) !important}
+
+/* App additions */
+.im-back:hover{background:var(--surface-2) !important;border-color:var(--muted) !important}
+.im-primary:hover{filter:brightness(1.25)}
+:where(.pg-im) textarea::placeholder{color:var(--muted)}
+.im-input:focus{outline:none;border-color:var(--accent) !important;box-shadow:0 0 0 3px var(--focus-ring)}
+
+/* Pan and zoom: the canvas grabs, nodes keep their pointer cursor, touch gestures are ours. */
+.im-pane{cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none}
+.im-pane.im-grabbing{cursor:grabbing}
+.im-pane.im-grabbing [data-node]{cursor:grabbing !important}
+/* The idea's breathing halo animates transform + opacity only, so it never forces a repaint. */
+.im-breathe-ring{position:absolute;inset:-12px;border-radius:50%;background:color-mix(in srgb,var(--accent) 12%,transparent);z-index:-1;pointer-events:none;animation:im-halo 3.2s ease-in-out infinite}
+@keyframes im-halo{0%,100%{transform:scale(.92);opacity:.9}50%{transform:scale(1.06);opacity:.45}}
+@media (prefers-reduced-motion:reduce){.im-breathe-ring{animation:none}}

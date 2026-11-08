@@ -1,0 +1,43 @@
+/* "Plant a new seed" screen. Sprout theme variables only (globals.css). */
+body:has(.pg-new){margin:0;background:var(--bg);font-family:'Geist',system-ui,sans-serif;color:var(--text);-webkit-font-smoothing:antialiased}
+:where(.pg-new) input,:where(.pg-new) textarea,:where(.pg-new) button{font-family:inherit}
+
+.nw-main{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:48px 16px;box-sizing:border-box}
+.nw-card{width:100%;max-width:520px;display:flex;flex-direction:column;gap:28px;padding:32px;box-sizing:border-box;border-radius:16px;background:var(--surface);border:1px solid var(--border)}
+.nw-logo{display:flex;width:fit-content;min-height:28px}
+.nw-logo img{display:block}
+.nw-form{display:flex;flex-direction:column;gap:20px}
+.nw-head{display:flex;flex-direction:column;gap:6px}
+.nw-h1{margin:0;font-size:26px;font-weight:600;letter-spacing:-.02em;line-height:1.2}
+.nw-sub{margin:0;font-size:14px;line-height:1.5;color:var(--muted)}
+.nw-sub strong{color:var(--text);font-weight:600}
+
+.nw-field{display:flex;flex-direction:column;gap:6px}
+.nw-label{font-size:12px;font-weight:500;color:var(--muted)}
+.nw-input{box-sizing:border-box;width:100%;min-height:44px;padding:10px 12px;border-radius:10px;border:1px solid var(--border);background:var(--surface-2);color:var(--text);font-size:14px;line-height:1.45;outline:none;transition:border-color .15s,box-shadow .15s}
+.nw-input::placeholder{color:var(--muted)}
+.nw-input:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--focus-ring)}
+.nw-input[aria-invalid="true"]{border-color:var(--red)}
+.nw-textarea{resize:vertical;min-height:104px}
+.nw-row{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.nw-hint{font-size:12px;line-height:1.4;color:var(--muted)}
+.nw-count{flex:none;font-size:11px;font-family:'Geist Mono',monospace;color:var(--muted);padding-top:1px}
+.nw-count-ok{color:var(--green-text)}
+.nw-hint-bad{color:var(--red-text)}
+
+.nw-error{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 12px;border-radius:10px;background:var(--red-tint);color:var(--red-text);font-size:13px;line-height:1.4}
+.nw-retry{flex:none;min-height:36px;color:var(--text)}
+
+.nw-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:4px}
+.nw-btn{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:0 18px;border-radius:999px;font-size:14px;font-weight:600;cursor:pointer;text-decoration:none;box-sizing:border-box;transition:background .15s,border-color .15s,filter .15s,opacity .15s}
+.nw-btn-secondary{border:1px solid var(--border);background:var(--surface);color:var(--text)}
+.nw-btn-secondary:hover{background:var(--surface-2);border-color:var(--muted)}
+.nw-btn-primary{border:none;background:var(--primary);color:var(--on-primary)}
+.nw-btn-primary:hover:not(:disabled){filter:brightness(1.25)}
+.nw-btn-primary:disabled{opacity:.4;cursor:not-allowed}
+
+.nw-planting{display:flex;flex-direction:column;align-items:flex-start;gap:10px;padding:8px 0 4px}
+.nw-seed{color:var(--accent);animation:nw-grow 1.6s ease-in-out infinite;transform-origin:50% 90%}
+@keyframes nw-grow{0%,100%{transform:scale(.85);opacity:.7}50%{transform:scale(1.05);opacity:1}}
+@media (prefers-reduced-motion:reduce){.nw-seed{animation:none}}
+@media (max-width:480px){.nw-card{padding:24px 20px}.nw-actions{flex-direction:column-reverse}.nw-btn{width:100%}}
