@@ -131,11 +131,13 @@ export default function CanvasScreen(props: Record<string, unknown>) {
           </div>
           <div style={{ display: "flex", gap: "10px" }}>
             {session ? (
-              <Link className="cv-hover2 cv-dash" href="/sessions" style={{ display: "inline-flex", alignItems: "center", gap: "6px", whiteSpace: "nowrap", flex: "none", minHeight: "40px", padding: "0 14px 0 18px", borderRadius: "999px", border: "1px solid #0F2E20", color: "#0F2E20", fontSize: "14px", fontWeight: "500", transition: "transform .2s,box-shadow .2s" }}>
-                Dashboard
-                <svg className="cv-dash-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                  <path d="M5 12h14M13 6l6 6-6 6" />
-                </svg>
+              // Avatar chip: the same initial circle + name the ideas page header uses, so a
+              // signed-in visitor recognises themselves at a glance. Links to their ideas.
+              <Link className="cv-hover2 cv-dash" href="/sessions" aria-label={`${session.name}: your ideas`} title="Your ideas" style={{ display: "inline-flex", alignItems: "center", gap: "8px", whiteSpace: "nowrap", flex: "none", minHeight: "40px", padding: "0 16px 0 6px", borderRadius: "999px", border: "1px solid #0F2E20", color: "#0F2E20", fontSize: "14px", fontWeight: "500", transition: "transform .2s,box-shadow .2s" }}>
+                <span aria-hidden="true" style={{ width: "28px", height: "28px", borderRadius: "50%", background: "#2E9E5B", color: "#0F2E20", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: "12px", fontWeight: "600", flex: "none" }}>
+                  {(session.name || "G").charAt(0).toUpperCase()}
+                </span>
+                {(session.name || "").split(/\s+/)[0]}
               </Link>
             ) : (
               <Link className="cv-hover2" href="/login" style={{ display: "inline-flex", alignItems: "center", whiteSpace: "nowrap", flex: "none", minHeight: "40px", padding: "0 18px", borderRadius: "999px", border: "1px solid #0F2E20", color: "#0F2E20", fontSize: "14px", fontWeight: "500", transition: "transform .2s,box-shadow .2s" }}>
