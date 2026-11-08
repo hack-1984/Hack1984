@@ -8,11 +8,11 @@ import { DCLogic } from "../dc";
 import { Session } from "@/session";
 import { ideaStore, weekOf } from "@/lib/db";
 const PILLARS = ['Customer','Problem','Solution','Approach','Edge','Reach','Revenue','Risks'];
-// Same thresholds as the map: strong ≥ 75%, mixed ≥ 45%, weak below.
-const confColor = v => v >= .75 ? 'var(--green)' : v >= .45 ? 'var(--amber)' : 'var(--red)';
-const confBg = v => v >= .75 ? 'var(--green-tint)' : v >= .45 ? 'var(--amber-tint)' : 'var(--red-tint)';
+// Same thresholds as the map and the landing page: strong ≥ 70%, mixed ≥ 45%, weak below.
+const confColor = v => v >= .70 ? 'var(--green)' : v >= .45 ? 'var(--amber)' : 'var(--red)';
+const confBg = v => v >= .70 ? 'var(--green-tint)' : v >= .45 ? 'var(--amber-tint)' : 'var(--red-tint)';
 // Small text ("62% ready") uses the darker -text shades so it stays readable on the tint.
-const confText = v => v >= .75 ? 'var(--green-text)' : v >= .45 ? 'var(--amber-text)' : 'var(--red-text)';
+const confText = v => v >= .70 ? 'var(--green-text)' : v >= .45 ? 'var(--amber-text)' : 'var(--red-text)';
 const planted = t => { const d = new Date(t); return d.toDateString() === new Date().toDateString() ? 'Planted today' : 'Planted ' + d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }); };
 class Component extends DCLogic {
   // App change: wait for the session to load (real auth is async) before the sign-in check.

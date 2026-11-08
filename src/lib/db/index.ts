@@ -31,5 +31,4 @@ export {
   type MapHistType,
   type MapLink,
   type MapModel,
-  type MapResource,
 } from "./mapModel";
