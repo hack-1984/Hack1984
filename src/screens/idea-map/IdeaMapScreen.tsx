@@ -12,14 +12,18 @@ import Logic from "./logic";
 import "./idea-map.css";
 import "./widgets/widgets.css";
 import WidgetRail, { type WidgetKey } from "./widgets/WidgetRail";
+import BuildWidget from "./widgets/BuildWidget";
+import DiscussionWidget from "./widgets/DiscussionWidget";
 import GraveyardWidget from "./widgets/GraveyardWidget";
+import LaunchWidget from "./widgets/LaunchWidget";
+import TeamWidget from "./widgets/TeamWidget";
 import type { WidgetCtx } from "./widgets/types";
 
 export default function IdeaMapScreen(props: Record<string, unknown>) {
   // clientOnly: which idea to show comes from the URL and this browser's saved ideas.
   const v = useLogic(Logic, props, { clientOnly: true });
   if (!v) return <div className="pg-im" />;
-  const { loading, missing, widget, setWidget, showBadge, ideaId, wmem, setWmem, pillarPct, buildIdea, applyWidget, openOverview, ideaInitial, ideaName, ideaPitch, now, accept, addAgainst, addFor, choices, clearSel, counts, curves, cv, draft, edges, ev, goNow, hasToast, hoverIdea, hoverOff, hoverOn, ideaShadow, isChoice, isEvidence, isIdea, isPast, isPillar, isResource, orbit, ov, paneRef, pctRef, particles, pillars, pv, reject, removeChoice, replay, replayLabel, rv, selIdea, setDraft, showHint, toast, toggleAll, toggleAllLabel, week, weeks, worldRef, zoomFit, zoomIn, zoomOut } = v;
+  const { loading, missing, widget, setWidget, showBadge, ideaId, wmem, setWmem, pillarPct, buildIdea, applyWidget, openOverview, team, saveTeam, focus, ideaInitial, ideaName, ideaPitch, now, accept, addAgainst, addFor, choices, clearSel, counts, curves, cv, draft, edges, ev, goNow, hasToast, hoverIdea, hoverOff, hoverOn, ideaShadow, isChoice, isEvidence, isIdea, isPast, isPillar, isResource, orbit, ov, paneRef, pctRef, particles, pillars, pv, reject, removeChoice, replay, replayLabel, rv, selIdea, setDraft, showHint, toast, toggleAll, toggleAllLabel, week, weeks, worldRef, zoomFit, zoomIn, zoomOut } = v;
   // App: no canned idea. While the stored idea loads, or if it isn't this account's, say so instead of drawing an empty map.
   if (loading || missing) {
     return (
@@ -822,6 +826,23 @@ export default function IdeaMapScreen(props: Record<string, unknown>) {
                     {" "}
                   </div>
                   {" "}
+                  {/* App: pressure-test this choice (Challenge → Discussions, Research and Plan → /api/node/*). */}
+                  {cv?.canAct ? (
+                    <div style={{ padding: "12px 20px", borderBottom: "1px solid var(--border)" }}>
+                      <div style={{ fontSize: "11px", fontWeight: "600", color: "var(--muted)", marginBottom: "8px" }}>Pressure-test it</div>
+                      <div className="im-actions">
+                        <button type="button" className="im-action" onClick={cv?.challenge} disabled={!!cv?.nodeBusy}>
+                          Challenge
+                        </button>
+                        <button type="button" className="im-action" onClick={cv?.research} disabled={!!cv?.nodeBusy}>
+                          {cv?.nodeBusy === "research" ? "Researching…" : "Research"}
+                        </button>
+                        <button type="button" className="im-action" onClick={cv?.plan} disabled={!!cv?.nodeBusy}>
+                          {cv?.nodeBusy === "plan" ? "Planning…" : "Plan"}
+                        </button>
+                      </div>
+                    </div>
+                  ) : null}
                   <div style={{ padding: "16px 20px", borderBottom: "1px solid var(--border)" }}>
                     {" "}
                     <div style={{ fontSize: "11px", fontWeight: "600", color: "var(--muted)", marginBottom: "8px" }}>
@@ -1128,8 +1149,8 @@ export default function IdeaMapScreen(props: Record<string, unknown>) {
                 </div>
               </>
             ) : null}
-            {widget === "launch" || widget === "graveyard" || widget === "customer" ? (
-              <WidgetSlot widget={widget} ctx={{ ideaId, wmem, setWmem, pillarPct, buildIdea, applyWidget, openOverview }} />
+            {widget !== "overview" ? (
+              <WidgetSlot widget={widget} ctx={{ ideaId, wmem, setWmem, pillarPct, buildIdea, applyWidget, openOverview, team, saveTeam, focus }} />
             ) : null}
           </div>
           </div>
@@ -1139,11 +1160,15 @@ export default function IdeaMapScreen(props: Record<string, unknown>) {
   );
 }
 
-const TITLES: Record<string, string> = { launch: "Launch day", graveyard: "Graveyard", customer: "Customer discussion" };
+const TITLES: Record<string, string> = { launch: "Launch day", graveyard: "Graveyard", customer: "Discussions", build: "Build", team: "Team" };
 
 function WidgetSlot({ widget, ctx }: { widget: string; ctx: WidgetCtx }) {
   // key: a different idea starts the widget fresh.
   if (widget === "graveyard") return <GraveyardWidget key={ctx.ideaId} ctx={ctx} />;
+  if (widget === "customer") return <DiscussionWidget key={`${ctx.ideaId}:${ctx.focus?.key ?? 0}`} ctx={ctx} />;
+  if (widget === "launch") return <LaunchWidget key={ctx.ideaId} ctx={ctx} />;
+  if (widget === "build") return <BuildWidget key={ctx.ideaId} ctx={ctx} />;
+  if (widget === "team") return <TeamWidget key={ctx.ideaId} ctx={ctx} />;
   return (
     <section className="wg-panel" aria-label={TITLES[widget]}>
       <h2 className="wg-title">{TITLES[widget]}</h2>

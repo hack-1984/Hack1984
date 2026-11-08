@@ -1,6 +1,7 @@
 import type { Change } from "@/lib/db";
 import type { WireUpdate } from "@/ideas/wire";
-import type { Idea } from "@/lib/types";
+import type { WireRole } from "@/ideas/wire";
+import type { Idea, TeamProfile } from "@/lib/types";
 
 export type { Change };
 
@@ -19,4 +20,9 @@ export interface WidgetCtx {
   /** The one path into the tree. Returns what changed. */
   applyWidget: (updates: WireUpdate[], sourceLabel: string, toast?: string | false) => Change[];
   openOverview: () => void;
+  /** The founder's team (null until they save one); saving also redraws the map's resources. */
+  team: TeamProfile | null;
+  saveTeam: (team: TeamProfile) => Promise<void>;
+  /** Set by a choice's Challenge button: open Discussions on this role, focused on this choice. */
+  focus: { role: WireRole; choiceId: string; label: string; key: number } | null;
 }
