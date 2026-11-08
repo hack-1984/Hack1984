@@ -36,7 +36,7 @@ const ghostOf = (u: TreeUpdate): string | undefined => (u as { ghost?: string })
  * aimed at a choice that no longer exists, so the diary stays complete.
  */
 export function applyUpdates(idea: StoredIdea, updates: TreeUpdate[]): StoredIdea {
-  let next: StoredIdea = { ...idea, choices: [...idea.choices], history: [...idea.history] };
+  const next: StoredIdea = { ...idea, choices: [...idea.choices], history: [...idea.history] };
 
   for (const u of updates) {
     next.history.push(u);
