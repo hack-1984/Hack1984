@@ -12,6 +12,8 @@ import Logic from "./logic";
 import "./idea-map.css";
 import "./widgets/widgets.css";
 import WidgetRail, { type WidgetKey } from "./widgets/WidgetRail";
+import GraveyardWidget from "./widgets/GraveyardWidget";
+import type { WidgetCtx } from "./widgets/types";
 
 export default function IdeaMapScreen(props: Record<string, unknown>) {
   // clientOnly: which idea to show comes from the URL and this browser's saved ideas.
@@ -366,21 +368,22 @@ export default function IdeaMapScreen(props: Record<string, unknown>) {
                   {ov?.hasSuggestion ? (
                     <>
                       {" "}
-                      <div style={{ margin: "16px 20px 0", padding: "12px 14px", borderRadius: "10px", border: "1.5px dashed var(--accent)", background: "var(--accent-tint)", cursor: "pointer" }} onClick={ov?.openSuggestion}>
-                        {" "}
-                        <div style={{ fontSize: "10px", fontFamily: "'Geist Mono',monospace", color: "var(--muted)", textTransform: "uppercase", letterSpacing: ".06em" }}>
-                          Waiting on you
+                      {/* Every pending suggestion (widgets can add several), newest first. */}
+                      {(ov?.suggestions ?? []).map((sg: any, i: number) => (
+                        <div key={sg.id} style={{ margin: "16px 20px 0", padding: "12px 14px", borderRadius: "10px", border: "1.5px dashed var(--accent)", background: "var(--accent-tint)", cursor: "pointer" }} onClick={sg.open}>
+                          {i === 0 ? (
+                            <div style={{ fontSize: "10px", fontFamily: "'Geist Mono',monospace", color: "var(--muted)", textTransform: "uppercase", letterSpacing: ".06em", marginBottom: "4px" }}>
+                              {ov?.suggestions.length > 1 ? `Waiting on you · ${ov.suggestions.length}` : "Waiting on you"}
+                            </div>
+                          ) : null}
+                          <div style={{ fontSize: "12.5px", fontWeight: "600", lineHeight: "1.35" }}>
+                            {sg.text}
+                          </div>
+                          <div style={{ fontSize: "11px", color: "var(--muted)", marginTop: "3px" }}>
+                            {sg.note}
+                          </div>
                         </div>
-                        {" "}
-                        <div style={{ fontSize: "12.5px", fontWeight: "600", marginTop: "4px", lineHeight: "1.35" }}>
-                          {ov?.suggestionText}
-                        </div>
-                        {" "}
-                        <div style={{ fontSize: "11px", color: "var(--muted)", marginTop: "3px" }}>
-                          {ov?.suggestionNote}
-                        </div>
-                        {" "}
-                      </div>
+                      ))}
                       {" "}
                     </>
                   ) : null}
@@ -1118,21 +1121,11 @@ export default function IdeaMapScreen(props: Record<string, unknown>) {
   );
 }
 
-/** Context every widget gets from the map. */
-export interface WidgetCtx {
-  ideaId: string;
-  isPantry: boolean;
-  wmem: Record<string, any>;
-  setWmem: (key: string, patch: Record<string, any>) => void;
-  pillarPct: Record<string, number>;
-  buildIdea: () => import("@/lib/types").Idea;
-  applyWidget: (updates: import("@/ideas/wire").WireUpdate[], sourceLabel: string, toast?: string | false) => import("@/ideas/applyUpdates").Change[];
-  openOverview: () => void;
-}
-
 const TITLES: Record<string, string> = { launch: "Launch day", graveyard: "Graveyard", customer: "Customer discussion" };
 
-function WidgetSlot({ widget }: { widget: string; ctx: WidgetCtx }) {
+function WidgetSlot({ widget, ctx }: { widget: string; ctx: WidgetCtx }) {
+  // key: a different idea starts the widget fresh.
+  if (widget === "graveyard") return <GraveyardWidget key={ctx.ideaId} ctx={ctx} />;
   return (
     <section className="wg-panel" aria-label={TITLES[widget]}>
       <h2 className="wg-title">{TITLES[widget]}</h2>

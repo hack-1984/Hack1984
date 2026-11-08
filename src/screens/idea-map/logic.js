@@ -381,7 +381,8 @@ class Component extends DCLogic {
     const ovColor = confColor(score / 100);
     const ov = { score, ring: `conic-gradient(${ovColor} ${Math.round(score * 3.6)}deg, var(--border) 0)`, scoreColor: confText(score / 100), delta: dlt === null ? 'First week' : dlt === 0 ? 'No change since last week' : `${dlt > 0 ? '+' : ''}${dlt} since week ${W - 1}`, deltaColor: dlt > 0 ? 'var(--green-text)' : dlt < 0 ? 'var(--red-text)' : 'var(--muted)',
       nSup: active.filter(c => c.status === 'strengthened').length, nUnt: active.filter(c => c.status === 'guess' || c.status === 'added').length, nWeak: active.filter(c => c.status === 'weakened').length, nSug: active.filter(c => c.status === 'suggested').length,
-      hasSuggestion: !!sug, suggestionText: sug ? sug.text : '', suggestionFor: sugFor && find(sugFor[0]) ? find(sugFor[0]).text : '', suggestionNote: sugFor && find(sugFor[0]) ? `Replacement for “${find(sugFor[0]).text}” · tap to review` : sug ? `New choice under ${sug.pillar} · tap to review` : '', openSuggestion: sug ? this.pick({t:'choice', id:sug.id}) : null,
+      hasSuggestion: !!sug, suggestionText: sug ? sug.text : '', suggestionFor: sugFor && find(sugFor[0]) ? find(sugFor[0]).text : '',
+      suggestions: view.filter(c => c.status === 'suggested').reverse().map(c => { const l = LINKS.find(x => x[1] === c.id); const o = l && find(l[0]); return { id: c.id, text: c.text, note: o ? `Replacement for “${o.text}” · tap to review` : `New choice under ${c.pillar} · tap to review`, open: this.pick({t:'choice', id:c.id}) }; }), suggestionNote: sugFor && find(sugFor[0]) ? `Replacement for “${find(sugFor[0]).text}” · tap to review` : sug ? `New choice under ${sug.pillar} · tap to review` : '', openSuggestion: sug ? this.pick({t:'choice', id:sug.id}) : null,
       weakest: ranked.length ? ranked[0].p : '—', gaps, noGaps: !gaps.length, changes, noChanges: !changes.length, changesTitle: `Changes in week ${W}` };
 
     // pillar view
