@@ -41,3 +41,16 @@ body:has(.pg-new){margin:0;background:var(--bg);font-family:'Geist',system-ui,sa
 @keyframes nw-grow{0%,100%{transform:scale(.85);opacity:.7}50%{transform:scale(1.05);opacity:1}}
 @media (prefers-reduced-motion:reduce){.nw-seed{animation:none}}
 @media (max-width:480px){.nw-card{padding:24px 20px}.nw-actions{flex-direction:column-reverse}.nw-btn{width:100%}}
+
+/* Startup / Nonprofit picker. Mode decides which research runs, so it is
+   chosen before the description, not after. */
+.nw-modes-field{border:0;margin:0;padding:0;min-width:0}
+.nw-modes-field .nw-label{display:block;padding:0;margin-bottom:6px}
+.nw-modes{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.nw-mode{display:flex;flex-direction:column;align-items:flex-start;gap:2px;min-height:44px;padding:9px 12px;border-radius:10px;box-sizing:border-box;cursor:pointer;text-align:left;border:1px solid var(--border);background:var(--surface-2);color:var(--text);transition:border-color .15s,background .15s,box-shadow .15s}
+.nw-mode:hover{border-color:var(--muted)}
+.nw-mode:focus-visible{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--focus-ring)}
+.nw-mode-on{border-color:var(--accent);background:var(--surface);box-shadow:0 0 0 3px var(--focus-ring)}
+.nw-mode-label{font-size:14px;font-weight:600;line-height:1.2}
+.nw-mode-hint{font-size:11px;line-height:1.3;color:var(--muted)}
+@media (max-width:420px){.nw-modes{grid-template-columns:1fr}}

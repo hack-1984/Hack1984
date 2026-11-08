@@ -10,10 +10,57 @@ import { useLogic } from "../dc";
 import Logic from "./logic";
 import "./canvas.css";
 
+// Sponsor logos in public/sponsors/. name: from the file name, in each brand's own casing.
+// w/h: sized by visual area, so a long wordmark and a square mark look equally big (tall marks cap at 60px,
+// wordmarks at 176px wide). size/pos: crop the mask to the visible mark, since some files carry uneven
+// empty space (SSOJet, Within3). Measured from each file's alpha channel; the images are not edited.
+const SPONSORS: { file: string; name: string; w: number; h: number; size: string; pos: string }[] = [
+  { file: "adobe.webp", name: "Adobe", w: 134, h: 34, size: "100.00% 100.00%", pos: "0.0% 0.0%" },
+  { file: "anthropic.webp", name: "Anthropic", w: 176, h: 20, size: "100.00% 101.77%", pos: "0.0% 50.0%" },
+  { file: "bravado.webp", name: "Bravado", w: 47, h: 60, size: "100.00% 100.00%", pos: "0.0% 0.0%" },
+  { file: "codecrafters.webp", name: "CodeCrafters", w: 114, h: 41, size: "100.00% 100.00%", pos: "0.0% 0.0%" },
+  { file: "elisity.webp", name: "Elisity", w: 143, h: 32, size: "100.91% 103.23%", pos: "40.0% 50.0%" },
+  { file: "exa.webp", name: "Exa", w: 121, h: 38, size: "100.00% 100.00%", pos: "0.0% 0.0%" },
+  { file: "fuzionx.webp", name: "FuzionX", w: 165, h: 28, size: "100.00% 100.00%", pos: "0.0% 0.0%" },
+  { file: "gradium.webp", name: "Gradium", w: 60, h: 60, size: "100.00% 100.00%", pos: "0.0% 0.0%" },
+  { file: "jca.webp", name: "JC&A", w: 110, h: 42, size: "100.00% 100.00%", pos: "0.0% 0.0%" },
+  { file: "kaleidoscope.webp", name: "Kaleidoscope", w: 53, h: 60, size: "100.00% 100.00%", pos: "0.0% 0.0%" },
+  { file: "misneach.webp", name: "Misneach", w: 147, h: 31, size: "100.00% 100.00%", pos: "0.0% 0.0%" },
+  { file: "northeastern-sga.webp", name: "Northeastern SGA", w: 77, h: 60, size: "100.00% 100.00%", pos: "0.0% 0.0%" },
+  { file: "partiful.webp", name: "Partiful", w: 53, h: 60, size: "100.00% 101.01%", pos: "0.0% 0.0%" },
+  { file: "ssojet.webp", name: "SSOJet", w: 142, h: 32, size: "154.80% 188.44%", pos: "97.7% 52.3%" },
+  { file: "tavily.webp", name: "Tavily", w: 123, h: 37, size: "100.00% 100.00%", pos: "0.0% 0.0%" },
+  { file: "team-impact.webp", name: "Team IMPACT", w: 52, h: 60, size: "100.00% 100.00%", pos: "0.0% 0.0%" },
+  { file: "techcxo.webp", name: "TechCXO", w: 126, h: 36, size: "100.00% 100.00%", pos: "0.0% 0.0%" },
+  { file: "within3.webp", name: "Within3", w: 149, h: 31, size: "100.29% 180.28%", pos: "0.0% 50.9%" },
+];
+
+type Sponsor = (typeof SPONSORS)[number];
+
+/** One sponsor logo: the white file drawn as a mask in soft Sprout green (full green on hover, canvas.css).
+ *  Used by both the top strip and the bottom row, so adding to SPONSORS updates both. */
+function SponsorLogo({ sponsor: s, scale = 1, role }: { sponsor: Sponsor; scale?: number; role?: string }) {
+  const logo = (
+    <span
+      className="cv-sponsor"
+      role="img"
+      aria-label={s.name}
+      title={s.name}
+      style={{ "--src": `url(/sponsors/${s.file})`, "--w": `${s.w * scale}px`, "--h": `${s.h * scale}px`, "--msize": s.size, "--mpos": s.pos } as CSSProperties}
+    />
+  );
+  // In the strip each logo is a list item; the wrapper keeps the img role on the logo itself.
+  return role ? <span role={role} className="cv-sponsor-item">{logo}</span> : logo;
+}
+
+// Strip speed: the old placeholder strip moved ~33px/s; keep that pace for however many logos there are.
+const MARQUEE_GAP = 40;
+const MARQUEE_SECONDS = Math.round(SPONSORS.reduce((a, sp) => a + sp.w * 0.75 + MARQUEE_GAP, 0) / 33);
+
 export default function CanvasScreen(props: Record<string, unknown>) {
   const v = useLogic(Logic, props);
   if (!v) return <div className="pg-cv" />;
-  const { aboutCopy, ann, barOn, barOp, barPe, barY, burst, cards, dismiss, edges, evidence, feed, feedCount, footerCols, gCaption, gDot, grid, h1a, h1b, h1c, leaves, navOp, navPe, navY, pillars, pills, progress, pulseOp, pulseR, sponsorTrack, sproutBright, sproutScale, stepLabel, stepNum, tabs, team } = v;
+  const { aboutCopy, ann, barOn, barOp, barPe, barY, burst, cards, dismiss, edges, evidence, feed, feedCount, footerCols, gCaption, gDot, grid, h1a, h1b, h1c, leaves, navOp, navPe, navY, pillars, pills, progress, pulseOp, pulseR, sproutBright, sproutScale, stepLabel, stepNum, tabs, team } = v;
   return (
     <div className="pg-cv">
       <header style={{ position: "sticky", top: "0", zIndex: "50", opacity: `${navOp ?? ""}`, transform: `translateY(${navY ?? ""})`, transition: "opacity .12s linear,transform .12s linear", pointerEvents: `${navPe ?? ""}` } as CSSProperties}>
@@ -282,22 +329,26 @@ export default function CanvasScreen(props: Record<string, unknown>) {
       </section>
       <section data-sec="1" style={{ background: "#fff", color: "#000", padding: "40px 20px 44px", marginTop: "0", position: "relative", zIndex: "2", borderRadius: "28px 28px 0 0", boxShadow: "0 -16px 40px -8px #0F2E201A,0 1px 0 #DDE3DC inset", clipPath: "inset(-80px 0 0 0)" }}>
         {" "}
-        <div style={{ maxWidth: "1200px", margin: "0 auto", display: "flex", flexDirection: "column", alignItems: "center", gap: "14px" }}>
+        <div style={{ maxWidth: "1200px", margin: "0 auto", display: "flex", flexDirection: "column", alignItems: "center", gap: "30px" }}>
           <div style={{ fontFamily: "'Geist Mono',monospace", fontSize: "12px", letterSpacing: ".16em", textTransform: "uppercase", color: "#4A5E53" }}>
-            HACK1984 — Sponsors
+            HACK1984 Sponsors
           </div>
-          <div style={{ width: "100%", maxWidth: "1120px", overflow: "hidden", maskImage: "linear-gradient(90deg,transparent,#000 18%,#000 82%,transparent)", WebkitMaskImage: "linear-gradient(90deg,transparent,#000 18%,#000 82%,transparent)" }}>
-            {" "}
-            <div data-marquee="1" style={{ display: "flex", gap: "40px", width: "max-content", animation: "cv-marquee 32s linear infinite", pointerEvents: "none" }}>
-              {(sponsorTrack ?? []).map((s: any, $index: number) => (
-                <Fragment key={$index}>
-                  <div style={{ width: "136px", height: "48px", flex: "none", borderRadius: "12px", background: "#E6ECE8", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Geist Mono',monospace", fontSize: "11px", letterSpacing: ".14em", color: "#4A5E53", opacity: ".55", filter: "grayscale(1)" }}>
-                    {s?.alt}
-                  </div>
-                </Fragment>
-              ))}
+          {/* Auto-scrolling strip. Two copies of the list slide left by exactly one copy (50%) for a seamless loop;
+              the second copy is aria-hidden so each sponsor is announced once. Keeps moving on hover; with reduced
+              motion it stops and wraps (canvas.css .cv-marquee). Faded edges as in the design. */}
+          <div className="cv-marquee" style={{ width: "100%", maxWidth: "1120px", overflow: "hidden", maskImage: "linear-gradient(90deg,transparent,#000 18%,#000 82%,transparent)", WebkitMaskImage: "linear-gradient(90deg,transparent,#000 18%,#000 82%,transparent)" }}>
+            <div data-marquee="1" className="cv-marquee-track" style={{ "--cv-loop": `${MARQUEE_SECONDS}s` } as CSSProperties}>
+              <div className="cv-marquee-copy" role="list" aria-label="Sponsors">
+                {SPONSORS.map((sp) => (
+                  <SponsorLogo key={sp.file} sponsor={sp} scale={0.75} role="listitem" />
+                ))}
+              </div>
+              <div className="cv-marquee-copy" aria-hidden="true">
+                {SPONSORS.map((sp) => (
+                  <SponsorLogo key={sp.file} sponsor={sp} scale={0.75} />
+                ))}
+              </div>
             </div>
-            {" "}
           </div>
         </div>
       </section>
@@ -615,11 +666,18 @@ export default function CanvasScreen(props: Record<string, unknown>) {
             </p>
           </div>
           <div style={{ width: "100%", display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: "20px", alignItems: "stretch" }}>
-            {(team ?? []).map((m: any, $index: number) => (
-              <Fragment key={$index}>
+            {(team ?? []).map((m: any) => (
+              <Fragment key={m?.name}>
                 <div style={{ border: "1px solid #B9D4C4", borderRadius: "16px", background: "#fff", padding: "20px", display: "flex", flexDirection: "column", gap: "12px", minHeight: "100%" }}>
-                  <div style={{ aspectRatio: "1", borderRadius: "12px", background: "#E6ECE8", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Geist Mono',monospace", fontSize: "22px", letterSpacing: ".08em", color: "#4A5E53" }}>
-                    {m?.initials}
+                  {/* Photo box: shows m.photo once it's set in logic.js (team[]), the initials until then. */}
+                  <div style={{ aspectRatio: "1", borderRadius: "12px", background: "#E6ECE8", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Geist Mono',monospace", fontSize: "22px", letterSpacing: ".08em", color: "#4A5E53", overflow: "hidden" }}>
+                    {m?.photo ? (
+                      // The name is printed right below, so the photo itself is decorative (alt="").
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={m.photo} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                    ) : (
+                      m?.initials
+                    )}
                   </div>
                   <div style={{ fontSize: "16px", fontWeight: "600", color: "#000", marginTop: "4px" }}>
                     {m?.name}
@@ -627,16 +685,15 @@ export default function CanvasScreen(props: Record<string, unknown>) {
                   <div style={{ fontFamily: "'Geist Mono',monospace", fontSize: "13px", letterSpacing: ".1em", textTransform: "uppercase", color: "#4A5E53" }}>
                     {m?.role}
                   </div>
-                  <p style={{ margin: "0", fontSize: "14px", lineHeight: "1.5", color: "#4A5E53", display: "-webkit-box", WebkitLineClamp: "2", WebkitBoxOrient: "vertical", overflow: "hidden", flex: "1" }}>
-                    {m?.bio}
-                  </p>
+                  {/* Bio space, left empty for now. */}
+                  <div aria-hidden="true" style={{ flex: "1", minHeight: "21px" }} />
                   <div style={{ display: "flex", gap: "12px", color: "#4A5E53", marginTop: "auto" }}>
-                    <a className="cv-hover1" href="#about" aria-label="GitHub" style={{ width: "32px", height: "32px", display: "inline-flex", alignItems: "center", justifyContent: "center", borderRadius: "8px", transition: "color .2s" }}>
+                    <a className="cv-hover1" href={m?.github} target="_blank" rel="noopener noreferrer" aria-label={`${m?.name} on GitHub`} title={`${m?.name} on GitHub`} style={{ width: "32px", height: "32px", display: "inline-flex", alignItems: "center", justifyContent: "center", borderRadius: "8px", transition: "color .2s" }}>
                       <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                         <path d="M12 .5C5.65.5.5 5.65.5 12c0 5.08 3.29 9.39 7.86 10.91.58.1.79-.25.79-.56v-2.17c-3.2.7-3.87-1.37-3.87-1.37-.52-1.33-1.28-1.68-1.28-1.68-1.05-.72.08-.7.08-.7 1.16.08 1.77 1.19 1.77 1.19 1.03 1.76 2.7 1.25 3.36.96.1-.75.4-1.25.73-1.54-2.55-.29-5.24-1.28-5.24-5.69 0-1.26.45-2.28 1.19-3.09-.12-.29-.52-1.46.11-3.04 0 0 .97-.31 3.17 1.18a11 11 0 0 1 5.78 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.58.23 2.75.11 3.04.74.81 1.19 1.83 1.19 3.09 0 4.42-2.69 5.39-5.26 5.68.41.36.78 1.06.78 2.13v3.16c0 .31.21.67.8.56C20.21 21.38 23.5 17.08 23.5 12 23.5 5.65 18.35.5 12 .5z" />
                       </svg>
                     </a>
-                    <a className="cv-hover1" href="#about" aria-label="LinkedIn" style={{ width: "32px", height: "32px", display: "inline-flex", alignItems: "center", justifyContent: "center", borderRadius: "8px", transition: "color .2s" }}>
+                    <a className="cv-hover1" href={m?.linkedin} target="_blank" rel="noopener noreferrer" aria-label={`${m?.name} on LinkedIn`} title={`${m?.name} on LinkedIn`} style={{ width: "32px", height: "32px", display: "inline-flex", alignItems: "center", justifyContent: "center", borderRadius: "8px", transition: "color .2s" }}>
                       <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                         <path d="M20.45 20.45h-3.55v-5.57c0-1.33-.03-3.04-1.85-3.04-1.85 0-2.14 1.45-2.14 2.94v5.67H9.36V9h3.41v1.56h.05c.47-.9 1.63-1.85 3.36-1.85 3.6 0 4.27 2.37 4.27 5.45v6.29zM5.34 7.43a2.06 2.06 0 1 1 0-4.12 2.06 2.06 0 0 1 0 4.12zM7.12 20.45H3.56V9h3.56v11.45zM22.22 0H1.77C.79 0 0 .77 0 1.73v20.54C0 23.23.79 24 1.77 24h20.45c.98 0 1.78-.77 1.78-1.73V1.73C24 .77 23.2 0 22.22 0z" />
                       </svg>
@@ -644,6 +701,20 @@ export default function CanvasScreen(props: Record<string, unknown>) {
                   </div>
                 </div>
               </Fragment>
+            ))}
+          </div>
+        </div>
+      </section>
+      {/* Sponsors (public/sponsors/*.webp). The files are white on transparent, so each is drawn as a CSS
+          mask filled with a soft Sprout green (canvas.css .cv-sponsor), and turns full green on hover. */}
+      <section aria-labelledby="cv-sponsors-h" data-sec="1" style={{ background: "transparent", color: "#000", padding: "96px 20px" }}>
+        <div style={{ maxWidth: "1120px", margin: "0 auto", display: "flex", flexDirection: "column", alignItems: "center", gap: "40px" }}>
+          <h2 id="cv-sponsors-h" style={{ margin: "0", fontFamily: "'Geist Mono',monospace", fontSize: "12px", fontWeight: "400", letterSpacing: ".16em", textTransform: "uppercase", color: "#4A5E53" }}>
+            Sponsored by
+          </h2>
+          <div className="cv-sponsors">
+            {SPONSORS.map((sp) => (
+              <SponsorLogo key={sp.file} sponsor={sp} />
             ))}
           </div>
         </div>
@@ -769,9 +840,9 @@ export default function CanvasScreen(props: Record<string, unknown>) {
       {/*
 SWAP GUIDE
   #map-slot          → real idea-map component (Idea Map.dc.html via <dc-import>)
-  sponsorLogos[]     → real sponsor marks (logic class)
   slabA / slabB      → real feature components (#slab-a-card, #slab-b visual)
-  aboutCopy, team[]  → real description and developer data (logic class)
+  aboutCopy          → real description (logic class)
+  team[].photo       → add a photo path per person (logic class); initials show until then
 */}
     </div>
   );

@@ -41,8 +41,6 @@ class Component extends DCLogic {
       ...this.pillsBase.map((c, i) => ({ d: bez(sol, { x: c.x - 88, y: c.y }, (i - 1) * .18), base: .7, at: 2, delay: (i * .15).toFixed(2) + 's' })),
       ...this.cardsBase.map((k, i) => ({ d: bez({ x: this.pillsBase[i].x + 88, y: this.pillsBase[i].y }, { x: k.x, y: k.y }, (i - 1) * .15), base: .5, at: k.at, delay: '.15s' })),
     ];
-    // sponsorLogos: replace each {alt, src} with a real monochrome mark
-    this.sponsorLogos = ['LOGO','LOGO','LOGO','LOGO','LOGO','LOGO'].map(alt => ({ alt, src: null }));
     this.evidenceBase = [
       { accent: '#4CC27E', l1: '61% of surveyed students cook three or more nights a week', l2: 'Campus dining survey · n=214 · Week 2', tag: 'FOR', w1: '78%', w2: '52%' },
       { accent: '#F26D6D', l1: 'Shared dorm kitchens serve 40+ students each', l2: 'Housing office interview · Week 3', tag: 'AGAINST', w1: '64%', w2: '44%' },
@@ -52,11 +50,13 @@ class Component extends DCLogic {
     // aboutCopy: placeholder — copy to be written
     this.aboutCopy = 'We spent years building things nobody asked for, and learned the expensive way that the right question at week two beats the right answer at month nine. Sprout is the mentor we wish we had: patient, well-read, and unwilling to let a weak assumption slide. It started as an internal tool for a university accelerator and grew into a product when founders kept asking to keep using it after demo day. We are a small team of engineers, researchers, and former program directors. We believe most ideas deserve a fair test, and most founders deserve it sooner.';
     // team: placeholder developer data
+    // The team, in order. photo: put a square image in public/team/ and set its path here, e.g.
+    // photo: '/team/nicholas.jpg'. Until then the card shows the initials.
     this.team = [
-      { name: 'Avery Lindqvist', initials: 'AL', role: 'Co-founder · Engineering', bio: 'Built research pipelines for two accelerators before writing the first version of the map engine.' },
-      { name: 'Rowan Adeyemi', initials: 'RA', role: 'Co-founder · Product', bio: 'Former program director. Ran 140 office hours a semester and kept a spreadsheet of what went wrong.' },
-      { name: 'Mira Castellanos', initials: 'MC', role: 'Design', bio: 'Draws the map and argues about every pixel of it.' },
-      { name: 'Theo Nakamura', initials: 'TN', role: 'Research', bio: 'Turns a one-line idea into fourteen sources, and decides which of them count.' },
+      { name: 'Nicholas Vocatura', initials: 'NV', role: 'Backend', photo: null, linkedin: 'https://www.linkedin.com/in/nicholas-vocatura/', github: 'https://github.com/nick11255' },
+      { name: 'Antonio Feng', initials: 'AF', role: 'Backend', photo: null, linkedin: 'https://www.linkedin.com/in/antonio-feng/', github: 'https://github.com/porpol' },
+      { name: 'Gregory Courtney', initials: 'GC', role: 'Fullstack', photo: null, linkedin: 'https://www.linkedin.com/in/greg-courtney/', github: 'https://github.com/gregco7' },
+      { name: 'Ethan Chilel', initials: 'EC', role: 'Frontend', photo: null, linkedin: 'https://www.linkedin.com/in/ethan-chilel', github: 'https://github.com/Ethanchilel' },
     ];
     this.footerCols = [
       { title: 'Product', links: [['How it works', '#how'], ['For Founders', '#founders'], ['For Accelerators', '#accelerators'], ['Demo', '/map']] },
@@ -187,7 +187,6 @@ class Component extends DCLogic {
       pulseR: step === 0 ? 30 : 110, pulseOp: step === 0 ? .9 : 0,
       progress: ['4%', '28%', '52%', '76%', '100%'][step],
       stepLabel: stories[0], stepNum: stories[1] + ' / 04', statusText: stories[2],
-      sponsorTrack: [...this.sponsorLogos, ...this.sponsorLogos],
       feed: (() => { const pool = this.feedPool || (this.feedPool = [...this.evidenceBase,
           { accent: '#4CC27E', l1: 'Grocery delivery to campus up 31% since 2023', l2: 'Regional retail data · Week 2', tag: 'FOR', w1: '74%', w2: '50%' },
           { accent: '#F26D6D', l1: 'Average student food budget is $62 a week', l2: 'Financial aid office survey · Week 3', tag: 'AGAINST', w1: '68%', w2: '40%' },

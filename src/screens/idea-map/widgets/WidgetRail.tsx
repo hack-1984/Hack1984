@@ -1,6 +1,7 @@
 "use client";
 
-// Vertical icon rail on the left edge of the map's sidebar. One widget shows at a time.
+// Vertical tab strip on the far right edge of the map, outside the floating panel. One widget shows at a time;
+// clicking the active tab collapses the panel.
 // Icons and sizes from design/sprout-mocks/App.dc.html; colors from the Sprout theme.
 import type { ReactNode } from "react";
 
@@ -77,16 +78,16 @@ const ITEMS: { key: WidgetKey; label: string; icon: ReactNode }[] = [
   },
 ];
 
-export default function WidgetRail({ active, onPick, badge }: { active: WidgetKey; onPick: (w: WidgetKey) => void; badge: boolean }) {
+export default function WidgetRail({ active, open, onPick, badge }: { active: WidgetKey; open: boolean; onPick: (w: WidgetKey) => void; badge: boolean }) {
   return (
     <nav aria-label="Widgets" className="wg-rail">
       {ITEMS.map((it) => (
         <button
           key={it.key}
           type="button"
-          className={`wg-rail-btn${active === it.key ? " is-active" : ""}`}
+          className={`wg-rail-btn${active === it.key && open ? " is-active" : ""}`}
           aria-label={it.label + (it.key === "overview" && badge ? " (a suggestion is waiting)" : "")}
-          aria-pressed={active === it.key}
+          aria-pressed={active === it.key && open}
           title={it.label}
           onClick={() => onPick(it.key)}
         >

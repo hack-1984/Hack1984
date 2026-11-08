@@ -13,8 +13,10 @@ export interface WidgetCtx {
   wmem: Record<string, any>;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   setWmem: (key: string, patch: Record<string, any>) => void;
-  /** Current score per pillar label, e.g. { Revenue: 30 }. */
+  /** Current score per pillar, keyed by the label shown on screen, e.g. { Revenue: 30 } or { Funding: 30 }. */
   pillarPct: Record<string, number>;
+  /** The label shown for a pillar key in this idea's mode ("revenue" → "Revenue" or "Funding"). */
+  showPillar: (key: string) => string;
   /** The Idea to send to a route: the stored one, exactly as the backend shaped it. */
   buildIdea: () => Idea;
   /** The one path into the tree. Returns what changed. */

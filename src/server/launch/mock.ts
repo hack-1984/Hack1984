@@ -1,6 +1,5 @@
 import { decide } from "@/lib/decide";
 import type {
-  LaunchSummary,
   Mode,
   SceneSpec,
   SimPersona,
@@ -8,6 +7,7 @@ import type {
   TreeUpdate,
 } from "@/lib/types";
 import { NONPROFIT_PERSONAS, NONPROFIT_REASONS, launchMode } from "./modes";
+import { bestGroup, byGroup, dropOffPrice, type LaunchSummaryPlus } from "./summary";
 
 /** Deterministic pseudo-random, so mock runs are reproducible across requests. */
 function rng(seed: number) {
@@ -105,38 +105,18 @@ export function summarise(
   scene: SceneSpec,
   price: number,
   mode?: Mode
-): LaunchSummary {
+): LaunchSummaryPlus {
   const count = (d: SimResult["decision"]) => results.filter((r) => r.decision === d).length;
 
-  const nonZero = results
-    .map((r) => r.maxPrice)
-    .filter((m) => m > 0)
-    .sort((a, b) => a - b);
-  const mid = Math.floor(nonZero.length / 2);
-  const dropOffPrice =
-    nonZero.length === 0
-      ? 0
-      : nonZero.length % 2
-        ? nonZero[mid]
-        : Math.round((nonZero[mid - 1] + nonZero[mid]) / 2);
-
-  const groupOf = new Map(personas.map((p) => [p.id, p.groupId]));
-  const byGroup = scene.groups.map((g) => {
-    const inGroup = results.filter((r) => groupOf.get(r.personaId) === g.id);
-    const buys = inGroup.filter((r) => r.decision === "buy").length;
-    return {
-      groupId: g.id,
-      buyRate: inGroup.length === 0 ? 0 : Math.round((buys / inGroup.length) * 100),
-    };
-  });
-
+  // The same two helpers the live path uses. Mocking the shape by hand is how
+  // a field ends up present under MOCK_AI and missing in the demo.
   return {
     price,
     buy: count("buy"),
     curious: count("curious"),
     leave: count("leave"),
-    dropOffPrice,
-    byGroup,
+    dropOffPrice: dropOffPrice(results),
+    byGroup: byGroup(results, personas, scene),
     topObjections: launchMode(mode).objections,
   };
 }
@@ -148,12 +128,12 @@ export function summarise(
  * never at Funding: whether 31 neighbours can spare four hours says nothing
  * about whether a grant renews.
  */
-export function mockUpdates(summary: LaunchSummary, mode?: Mode): TreeUpdate[] {
+export function mockUpdates(summary: LaunchSummaryPlus, mode?: Mode): TreeUpdate[] {
   const at = Date.now();
   const m = launchMode(mode);
   const total = Math.max(1, summary.buy + summary.curious + summary.leave);
   const joinRate = Math.round((summary.buy / total) * 100);
-  const best = [...summary.byGroup].sort((a, b) => b.buyRate - a.buyRate)[0];
+  const best = bestGroup(summary.byGroup);
   const nonprofit = mode === "nonprofit";
 
   const rateDelta = Math.round((joinRate - 40) / 3);
@@ -175,7 +155,12 @@ export function mockUpdates(summary: LaunchSummary, mode?: Mode): TreeUpdate[] {
       action: "strengthen",
       choiceId: m.targets.group,
       delta: 8,
-      reason: `Best ${nonprofit ? "joining" : "converting"} group: ${best?.groupId ?? "unknown"} at ${best?.buyRate ?? 0}%.`,
+      reason:
+        `Best ${nonprofit ? "joining" : "converting"} group: ${best?.name ?? "unknown"} at ${best?.buyRate ?? 0}%.` +
+        (best && best.dropOffPrice > 0 ? ` They stop at ${m.unitLabel(best.dropOffPrice)}.` : ""),
+      // Same fields as the live path: a mock that is missing a key the real
+      // response carries is a bug the client only meets on demo day.
+      quote: `${best?.size ?? 0} of ${total} were ${best?.name ?? "unknown"}`,
       source: "launch",
       at,
     },

@@ -3,13 +3,13 @@
 // Graveyard: similar startups that shut down, shown as gravestones.
 // Opening a grave the first time haunts the choice it threatens (once per grave per idea).
 // "Learn from this" adds the grave's fix as a suggested choice in Overview's "Waiting on you".
-// Every idea calls /api/graveyard/detail; results are cached per idea in this browser.
+// Graves stream in from /api/graveyard/stream and rise into the yard one by one as they're found,
+// with a live status line while the search runs. Finished results are cached per idea in this browser.
 // Layout from design/sprout-mocks/App.dc.html; colors from the Sprout theme.
-import { useCallback, useEffect, useRef, useState } from "react";
-import { fetchGraveyard } from "@/ideas/api";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { streamGraveyard } from "@/ideas/api";
 import { loadWidgetCache, saveWidgetCache } from "@/ideas/store";
-import { PILLAR_BY_KEY } from "@/lib/pillars";
-import type { GraveyardDetailResponse, WireUpdate } from "@/ideas/wire";
+import type { GraveRecord, GraveyardDetailResponse, WireUpdate } from "@/ideas/wire";
 import type { WidgetCtx } from "./types";
 
 interface Grave {
@@ -30,11 +30,11 @@ interface Grave {
   learn?: WireUpdate;
 }
 
-const label = (k: string) => PILLAR_BY_KEY[k as keyof typeof PILLAR_BY_KEY]?.startup ?? k;
-// Where API graves stand in the yard (the demo set has its own positions).
+// Where graves stand in the yard: x as % of the yard's width, y as % of its height (the stone's base).
+// Back row higher and smaller-looking, front row lower, staggered like the mock.
 const SLOTS = [
-  { x: 50, y: 40, rot: -3 }, { x: 20, y: 44, rot: 4 }, { x: 80, y: 42, rot: -5 },
-  { x: 36, y: 86, rot: 3 }, { x: 66, y: 88, rot: -2 }, { x: 88, y: 86, rot: 4 },
+  { x: 50, y: 52, rot: -3 }, { x: 22, y: 58, rot: 4 }, { x: 78, y: 56, rot: -5 },
+  { x: 36, y: 86, rot: 3 }, { x: 64, y: 88, rot: -2 }, { x: 88, y: 84, rot: 4 },
 ];
 const money = (n?: number) => (!n ? "Not disclosed" : n >= 1e9 ? `$${+(n / 1e9).toFixed(1)}B` : n >= 1e6 ? `$${+(n / 1e6).toFixed(1)}M` : `$${Math.round(n / 1e3)}K`);
 const host = (u: string) => {
@@ -45,8 +45,8 @@ const host = (u: string) => {
   }
 };
 
-function apiGraves(res: GraveyardDetailResponse): Grave[] {
-  return res.records.slice(0, SLOTS.length).map((r, i) => ({
+function toGraves(records: GraveRecord[], adjacent: boolean, label: (key: string) => string): Grave[] {
+  return records.slice(0, SLOTS.length).map((r, i) => ({
     name: r.name,
     years: r.founded && r.died ? `${r.founded}–${r.died}` : r.died ? `Shut down ${r.died}` : "",
     epitaph: r.epitaph,
@@ -55,7 +55,7 @@ function apiGraves(res: GraveyardDetailResponse): Grave[] {
     story: r.story,
     fix: r.lesson,
     sources: r.sources ?? [],
-    adjacent: res.adjacent,
+    adjacent,
     similarity: r.similarity,
     ...SLOTS[i],
     haunt: r.updates.find((u) => u.action === "haunt"),
@@ -63,34 +63,75 @@ function apiGraves(res: GraveyardDetailResponse): Grave[] {
   }));
 }
 
-type Load = { state: "loading" } | { state: "error"; message: string } | { state: "ready"; graves: Grave[] };
+type Phase = "searching" | "done" | "error";
 
 export default function GraveyardWidget({ ctx }: { ctx: WidgetCtx }) {
   const { ideaId, buildIdea } = ctx;
-  const [load, setLoad] = useState<Load>(() => {
-    const cached = loadWidgetCache<GraveyardDetailResponse>(ideaId, "graveyard");
-    return cached ? { state: "ready", graves: apiGraves(cached) } : { state: "loading" };
-  });
+  const kind = buildIdea()?.mode === "nonprofit" ? ["organization", "organizations"] : ["startup", "startups"];
+  const [cached] = useState(() => loadWidgetCache<GraveyardDetailResponse>(ideaId, "graveyard"));
+  const [records, setRecords] = useState<GraveRecord[]>(cached?.records ?? []);
+  const [adjacent, setAdjacent] = useState(cached?.adjacent ?? false);
+  const [phase, setPhase] = useState<Phase>(cached ? "done" : "searching");
+  const [status, setStatus] = useState(`Looking for similar ${kind[1]} that shut down…`);
+  const [error, setError] = useState<string | null>(null);
   const [sel, setSel] = useState<number | null>(null);
   const mem = (ctx.wmem.graveyard ?? {}) as { haunted?: Record<string, boolean>; learned?: Record<string, boolean> };
-
-  const fetchNow = useCallback(() => {
-    setLoad({ state: "loading" });
-    fetchGraveyard(buildIdea())
-      .then((res) => {
-        saveWidgetCache(ideaId, "graveyard", res);
-        setLoad({ state: "ready", graves: apiGraves(res) });
-      })
-      .catch((e: Error) => setLoad({ state: "error", message: e.message }));
-  }, [buildIdea, ideaId]);
-
-  // Fetch once if this idea has nothing cached.
-  const started = useRef(false);
+  const abort = useRef<AbortController | null>(null);
+  // ctx.buildIdea is a new function every render; read it through a ref so the search isn't restarted by re-renders.
+  const buildRef = useRef(buildIdea);
   useEffect(() => {
-    if (load.state !== "loading" || started.current) return;
-    started.current = true;
-    fetchNow();
-  }, [load.state, fetchNow]);
+    buildRef.current = buildIdea;
+  });
+
+  // Follow the search live: each grave is added the moment the server finds it.
+  // State only changes inside the stream's callbacks.
+  const follow = useCallback(() => {
+    abort.current?.abort();
+    const ac = new AbortController();
+    abort.current = ac;
+    const found: GraveRecord[] = [];
+    let adj = false;
+    streamGraveyard(
+      buildRef.current(),
+      (e) => {
+        if (e.type === "status") setStatus(e.text);
+        else if (e.type === "grave") {
+          if (found.some((r) => r.name === e.record.name)) return;
+          found.push(e.record);
+          setRecords([...found]);
+        } else if (e.type === "done") {
+          adj = e.adjacent;
+          setAdjacent(adj);
+          setPhase("done");
+          saveWidgetCache(ideaId, "graveyard", { records: found, adjacent: adj } satisfies GraveyardDetailResponse);
+        } else if (e.type === "error") {
+          setError(e.message);
+          setPhase("error");
+        }
+      },
+      ac.signal
+    ).catch((err: Error) => {
+      if (ac.signal.aborted) return;
+      setError(err.message);
+      setPhase("error");
+    });
+  }, [ideaId]);
+
+  /** "Search again": reset the yard's status, then follow a fresh stream. */
+  function search() {
+    setPhase("searching");
+    setError(null);
+    follow();
+  }
+
+  // Search if this idea has nothing cached, and stop listening when the widget closes. Starting again
+  // (React's dev double-mount, or reopening mid-search) costs nothing: the server shares one run per
+  // idea and replays the graves already found.
+  useEffect(() => {
+    if (cached) return;
+    follow();
+    return () => abort.current?.abort();
+  }, [cached, follow]);
 
   // The haunt lands a moment after the grave opens, so the founder sees the grave first.
   // If the widget closes before then, apply it straight away rather than losing it.
@@ -106,7 +147,7 @@ export default function GraveyardWidget({ ctx }: { ctx: WidgetCtx }) {
     }
   }, []);
 
-  const graves = load.state === "ready" ? load.graves : [];
+  const graves = useMemo(() => toGraves(records, adjacent, ctx.showPillar), [records, adjacent, ctx.showPillar]);
   const g = sel !== null ? graves[sel] : null;
 
   function pick(i: number) {
@@ -143,60 +184,69 @@ export default function GraveyardWidget({ ctx }: { ctx: WidgetCtx }) {
     <section className="wg-panel" aria-label="Graveyard">
       <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
         <h2 className="wg-title">Graveyard</h2>
-        {load.state === "ready" ? (
+        {phase === "done" ? (
           <span className="wg-eyebrow">
-            {graves.length} similar {graves.length === 1 ? "startup" : "startups"} that shut down
+            {graves.length} similar {graves.length === 1 ? kind[0] : kind[1]} that shut down
           </span>
         ) : null}
       </div>
 
-      {load.state === "loading" ? (
-        <p className="wg-muted" role="status">
-          Digging up similar startups…
-        </p>
+      {phase === "searching" ? (
+        <div className="gy-status" role="status" aria-live="polite">
+          <span className="gy-spin" aria-hidden="true" />
+          <span>
+            {status}
+            {graves.length ? ` ${graves.length} found so far.` : ""}
+          </span>
+        </div>
       ) : null}
 
-      {load.state === "error" ? (
+      {phase === "error" ? (
         <div className="wg-error" role="alert">
-          <span>{load.message}</span>
-          <button type="button" className="wg-btn" style={{ alignSelf: "flex-start", minHeight: "36px" }} onClick={fetchNow}>
-            Try again
+          <span>
+            {error}
+            {graves.length ? ` The ${graves.length} found so far are below.` : ""}
+          </span>
+          <button type="button" className="wg-btn" style={{ alignSelf: "flex-start", minHeight: "36px" }} onClick={search}>
+            Search again
           </button>
         </div>
       ) : null}
 
-      {load.state === "ready" && !graves.length ? <p className="wg-muted">No similar shutdowns found for this idea.</p> : null}
+      {phase === "done" && adjacent && graves.length ? <p className="wg-muted">No close matches. These shut down in nearby markets.</p> : null}
+      {phase === "done" && !graves.length ? <p className="wg-muted">No similar shutdowns found for this idea.</p> : null}
 
       {graves.length ? (
         <>
-          <div aria-hidden="true" style={{ height: sel === null ? "54px" : "4px", transition: "height .5s cubic-bezier(.3,1,.4,1)" }} />
-          <div className="gy-yard" style={{ height: sel === null ? "200px" : "150px" }}>
+          {/* The yard: stones scattered on a patch of ground. Size follows similarity; the open one grows.
+              Names show on hover / keyboard focus, and stay under the open stone. */}
+          <div className={`gy-yard${sel !== null ? " has-sel" : ""}`}>
             {graves.map((gr, i) => {
-              const w = Math.round(16 + gr.similarity / 5);
+              const w = Math.round(22 + gr.similarity / 4);
               const on = sel === i;
               const other = sel !== null && !on;
+              const tip = `gy-tip-${i}`;
               return (
-                <div key={gr.name}>
+                <div key={gr.name} className={`gy-plot${on ? " is-on" : ""}${other ? " is-other" : ""}`} style={{ left: `${gr.x}%`, top: `${gr.y}%`, zIndex: Math.round(gr.y) }}>
                   <button
                     type="button"
                     className="gy-stone"
-                    aria-label={`${gr.name}, ${gr.years}${mem.haunted?.[gr.name] ? ", visited" : ""}`}
+                    aria-label={`${gr.name}, ${gr.years}${mem.haunted?.[gr.name] ? ", opened" : ""}`}
+                    aria-describedby={tip}
                     aria-pressed={on}
                     onClick={() => pick(i)}
-                    style={{
-                      left: `${gr.x}%`, top: `${gr.y}%`, width: `${w}px`, height: `${Math.round(w * 1.3)}px`,
-                      background: on ? "var(--text)" : other ? "color-mix(in srgb, var(--muted) 35%, var(--surface))" : "color-mix(in srgb, var(--muted) 75%, var(--surface))",
-                      transform: `translate(-50%, -100%) rotate(${gr.rot}deg) scale(${on ? 1.15 : other ? 0.75 : 1})`,
-                    }}
-                  />
-                  <span className="gy-name" style={{ left: `${gr.x}%`, top: `${gr.y}%`, fontWeight: on ? 700 : 400, color: other ? "var(--muted)" : "var(--text)" }}>
+                    style={{ width: `${w}px`, height: `${Math.round(w * 1.3)}px`, transform: `translate(-50%, -100%) rotate(${gr.rot}deg) scale(${on ? 1.4 : other ? 0.82 : 1})` }}
+                  >
+                    <span className="gy-engrave" aria-hidden="true" />
+                  </button>
+                  <span id={tip} role="tooltip" className="gy-tip">
                     {gr.name}
                   </span>
                 </div>
               );
             })}
           </div>
-          {sel === null ? <p className="wg-muted">Tap a gravestone to see why it shut down.</p> : null}
+          {sel === null ? <p className="wg-muted">Hover a gravestone to see its name. Open one to learn why it shut down.</p> : null}
         </>
       ) : null}
 

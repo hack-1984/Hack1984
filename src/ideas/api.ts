@@ -13,7 +13,7 @@ import type {
   LaunchSceneResponse,
 } from "@/lib/contracts";
 import type { Idea, SceneSpec, SimPersona, TeamProfile } from "@/lib/types";
-import type { BuildResponse, ChatResponse, ExtractResponse, GraveyardDetailResponse, WireChatMessage, WirePersona, WireRole, WireUpdate } from "./wire";
+import type { BuildResponse, ChatResponse, ExtractResponse, GraveRecord, GraveyardDetailResponse, WireChatMessage, WirePersona, WireRole, WireUpdate } from "./wire";
 
 async function postJSON<T>(path: string, body: unknown, what: string): Promise<T> {
   let res: Response;
@@ -89,4 +89,53 @@ export function researchChoice(idea: Idea, choiceId: string, team?: TeamProfile 
 /** POST /api/node/plan: 3-5 next steps to test one choice. */
 export function planChoice(idea: Idea, choiceId: string, team?: TeamProfile | null) {
   return postJSON<{ steps: string[] }>("/api/node/plan", { idea, choiceId, ...(team ? { team } : {}) }, "a plan").then((r) => r.steps);
+}
+
+// ---------- Graveyard, streamed ----------
+
+/** One line of POST /api/graveyard/stream. */
+export type GraveyardEvent =
+  | { type: "status"; text: string }
+  | { type: "grave"; record: GraveRecord }
+  | { type: "done"; adjacent: boolean; count: number }
+  | { type: "error"; message: string };
+
+/**
+ * POST /api/graveyard/stream: calls `onEvent` for each line as it arrives (graves pop in one by one).
+ * Resolves when the stream ends; rejects if it can't connect or drops before `done` / `error`.
+ * Abort with `signal` when the widget closes (the search keeps running on the server and stays cached).
+ */
+export async function streamGraveyard(idea: Idea, onEvent: (e: GraveyardEvent) => void, signal?: AbortSignal): Promise<void> {
+  let res: Response;
+  try {
+    res = await fetch("/api/graveyard/stream", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ idea }), signal });
+  } catch (e) {
+    if ((e as Error).name === "AbortError") return;
+    throw new Error("Couldn't reach Sprout to load the graveyard. Check your connection and try again.");
+  }
+  if (!res.ok || !res.body) throw new Error(`Couldn't load the graveyard (error ${res.status}). Try again.`);
+  const reader = res.body.getReader();
+  const dec = new TextDecoder();
+  let buf = "";
+  let ended = false;
+  try {
+    for (;;) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buf += dec.decode(value, { stream: true });
+      let nl: number;
+      while ((nl = buf.indexOf("\n")) >= 0) {
+        const line = buf.slice(0, nl).trim();
+        buf = buf.slice(nl + 1);
+        if (!line) continue;
+        const e = JSON.parse(line) as GraveyardEvent;
+        if (e.type === "done" || e.type === "error") ended = true;
+        onEvent(e);
+      }
+    }
+  } catch (e) {
+    if ((e as Error).name === "AbortError") return;
+    throw new Error("The graveyard search was interrupted. Try again.");
+  }
+  if (!ended && !signal?.aborted) throw new Error("The graveyard search was interrupted. Try again.");
 }

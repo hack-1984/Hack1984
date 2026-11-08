@@ -9,7 +9,8 @@
  * (hours a month in nonprofit mode, dollars a month otherwise).
  */
 import { launchMode } from "../src/server/launch/modes";
-import type { Idea, LaunchSummary, Mode, SceneSpec, SimPersona, SimResult, TreeUpdate } from "../src/lib/types";
+import type { LaunchSummaryPlus } from "../src/server/launch/summary";
+import type { Idea, Mode, SceneSpec, SimPersona, SimResult, TreeUpdate } from "../src/lib/types";
 
 const BASE = process.env.BASE ?? "http://localhost:3000";
 
@@ -70,7 +71,7 @@ async function main() {
   );
   console.log(`            e.g. ${ps[0].name}: ${ps[0].blurb.slice(0, 70)}`);
 
-  const run = await post<{ results: SimResult[]; summary: LaunchSummary; updates: TreeUpdate[] }>(
+  const run = await post<{ results: SimResult[]; summary: LaunchSummaryPlus; updates: TreeUpdate[] }>(
     "/api/launch/run",
     { idea, scene: s, personas: ps, price: PRICE }
   );
@@ -79,7 +80,14 @@ async function main() {
     `run       ${String(run.ms).padStart(6)}ms  buy=${summary.buy} curious=${summary.curious} ` +
       `leave=${summary.leave}  drop-off=${M.unitLabel(summary.dropOffPrice)}`
   );
-  console.log(`            byGroup ${JSON.stringify(summary.byGroup)}`);
+  // The shape the founder is actually pricing against: one line per segment,
+  // with the price each one stops at. A single median across all 100 hides it.
+  for (const g of summary.byGroup) {
+    console.log(
+      `            ${String(g.name).padEnd(28)} ${String(g.size).padStart(3)} people  ` +
+        `${String(g.buyRate).padStart(3)}% buy  stops at ${M.unitLabel(g.dropOffPrice)}`
+    );
+  }
 
   console.log("\nobjections:");
   for (const o of summary.topObjections) console.log(`  ${String(o.count).padStart(3)}x [${o.pillar}] ${o.text}`);

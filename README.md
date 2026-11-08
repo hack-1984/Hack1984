@@ -128,5 +128,34 @@ name, `409` if the record threatens no resolvable active choice.
 }
 ```
 
+## POST /api/graveyard/stream
+
+The same research as `/detail`, streamed so graves appear as they're found
+instead of all at once. Newline-delimited JSON, one event per line:
+
+```ts
+// request
+{ idea: Idea }
+
+// response: application/x-ndjson
+{ type: "status", text: string }              // what the search is doing now
+{ type: "grave", record: DetailedRecord }     // same shape as /detail, updates included
+{ type: "done", adjacent: boolean, count: number }
+{ type: "error", message: string }            // graves already sent stay valid
+```
+
+All four graveyard routes share **one research run per idea**. A stream opened
+mid-search is replayed the graves found so far, then gets the rest live, so
+nothing is searched twice. Each web search is extracted the moment it returns
+(four smaller calls in parallel instead of one big one), which is what lets the
+first grave arrive early. `MOCK_AI=1` drips the mock graves ~400ms apart.
+
+## POST /api/graveyard/prefetch
+
+`{ idea }` → `202`, no body. Starts the idea's run after responding (`after()`),
+so the Graveyard is usually ready when opened. `/new` calls it fire-and-forget
+right after planting. A no-op with `MOCK_AI=1`. The run lives in one server's
+memory, so on a multi-instance host the later request may search again.
+
 Tuning (grave count, haunt delta range, `learnConfidence`, cache TTL) lives in
 `src/server/graveyard/config.ts`.

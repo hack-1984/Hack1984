@@ -60,7 +60,10 @@ export async function POST(req: Request) {
     console.log(
       `[api/launch/run] ${mode ?? "startup"}: ${Date.now() - t0}ms — buy ${summary.buy}, ` +
         `curious ${summary.curious}, leave ${summary.leave}, ` +
-        `drop-off ${unit(summary.dropOffPrice)}, ${updates.length} updates`
+        `drop-off ${unit(summary.dropOffPrice)}, ${updates.length} updates\n` +
+        summary.byGroup
+          .map((g) => `    ${g.name} (${g.size}): ${g.buyRate}% buy, stops at ${unit(g.dropOffPrice)}`)
+          .join("\n")
     );
     return NextResponse.json(payload satisfies LaunchRunResponse);
   } catch (err) {

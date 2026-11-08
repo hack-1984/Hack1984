@@ -12,6 +12,7 @@ import type {
   TreeUpdate,
 } from "@/lib/types";
 import { launchMode, type LaunchMode } from "./modes";
+import { bestGroup, byGroup, dropOffPrice, type LaunchSummaryPlus } from "./summary";
 
 /** 20 calls of 5 rather than 10 of 10, for the reason given in personas.ts. */
 const BATCHES = 20;
@@ -137,28 +138,14 @@ export async function summarise(
   personas: SimPersona[],
   scene: SceneSpec,
   price: number
-): Promise<LaunchSummary> {
+): Promise<LaunchSummaryPlus> {
   const m = launchMode(idea.mode);
   const count = (d: SimResult["decision"]) => results.filter((r) => r.decision === d).length;
 
-  const nonZero = results
-    .map((r) => r.maxPrice)
-    .filter((m) => m > 0)
-    .sort((a, b) => a - b);
-  const mid = Math.floor(nonZero.length / 2);
-  const dropOffPrice =
-    nonZero.length === 0
-      ? 0
-      : nonZero.length % 2
-        ? nonZero[mid]
-        : Math.round((nonZero[mid - 1] + nonZero[mid]) / 2);
-
-  const groupOf = new Map(personas.map((p) => [p.id, p.groupId]));
-  const byGroup = scene.groups.map((g) => {
-    const inGroup = results.filter((r) => groupOf.get(r.personaId) === g.id);
-    const buys = inGroup.filter((r) => r.decision === "buy").length;
-    return { groupId: g.id, buyRate: inGroup.length === 0 ? 0 : Math.round((buys / inGroup.length) * 100) };
-  });
+  // Both of these live in ./summary, shared with the mocks so the two paths
+  // cannot drift apart.
+  const overallDropOff = dropOffPrice(results);
+  const groups = byGroup(results, personas, scene);
 
   // One fast call groups the leave reasons into three themed objections.
   const leaveReasons = results.filter((r) => r.decision === "leave").map((r) => r.reason);
@@ -199,14 +186,14 @@ export async function summarise(
     buy: count("buy"),
     curious: count("curious"),
     leave: count("leave"),
-    dropOffPrice,
-    byGroup,
+    dropOffPrice: overallDropOff,
+    byGroup: groups,
     topObjections,
   };
 }
 
 /** The plan's summary -> TreeUpdate[] mapping. */
-export function toUpdates(idea: Idea, summary: LaunchSummary, results: SimResult[]): TreeUpdate[] {
+export function toUpdates(idea: Idea, summary: LaunchSummaryPlus, results: SimResult[]): TreeUpdate[] {
   const at = Date.now();
   const m = launchMode(idea.mode);
   const nonprofit = idea.mode === "nonprofit";
@@ -241,18 +228,26 @@ export function toUpdates(idea: Idea, summary: LaunchSummary, results: SimResult
     });
   }
 
-  // Customer: the best-converting group.
-  const best = [...summary.byGroup].sort((a, b) => b.buyRate - a.buyRate)[0];
+  // Customer: the best-converting group, and the price it stops at.
+  //
+  // The name, not the id: this sentence is read by a founder, and
+  // "volunteer-and-staff-tuto converted best" is the slug leaking onto the
+  // screen. The drop-off rides along because the rate alone does not say
+  // whether the group is cheap to win or simply willing.
+  const best = bestGroup(summary.byGroup);
   if (best) {
     const groupName = idea.choices.find(
       (c) => c.pillar === "customer" && c.status === "active"
     );
     if (groupName) {
+      const stops =
+        best.dropOffPrice > 0 ? ` They stop at ${m.unitLabel(best.dropOffPrice)}.` : "";
       updates.push({
         action: "strengthen",
         choiceId: groupName.id,
         delta: 8,
-        reason: `${best.groupId} converted best at ${best.buyRate}%.`,
+        reason: `${best.name} converted best at ${best.buyRate}%.${stops}`,
+        quote: `${best.size} of ${total} were ${best.name}`,
         source: "launch",
         at,
       });
