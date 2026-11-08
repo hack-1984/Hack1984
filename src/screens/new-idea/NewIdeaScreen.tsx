@@ -9,15 +9,30 @@ import { useRouter } from "next/navigation";
 import { useEffect, useLayoutEffect, useRef, useState, type FormEvent } from "react";
 import { Session } from "@/session";
 import { createIdea } from "@/ideas/store";
+import { profileFor } from "@/lib/modes";
+import type { Mode } from "@/lib/types";
 import "./new-idea.css";
 
 const MIN_DESCRIPTION = 20;
 
 type Phase = "idle" | "planting" | "error";
 
+/**
+ * What kind of thing is being planted.
+ *
+ * It has to be chosen here and not later: mode decides which research runs,
+ * and the tree is built once. The hint under each one is the real difference
+ * — a nonprofit's money and its people are not the same people.
+ */
+const MODES: { mode: Mode; label: string; hint: string }[] = [
+  { mode: "startup", label: "Startup", hint: "Customers pay for it" },
+  { mode: "nonprofit", label: "Nonprofit", hint: "Funders pay, a community benefits" },
+];
+
 export default function NewIdeaScreen() {
   const router = useRouter();
   const [name, setName] = useState("");
+  const [mode, setMode] = useState<Mode>("startup");
   const [description, setDescription] = useState("");
   const [phase, setPhase] = useState<Phase>("idle");
   const [error, setError] = useState("");
@@ -42,6 +57,7 @@ export default function NewIdeaScreen() {
       if (!planted.current) return;
       planted.current = false;
       setName("");
+      setMode("startup");
       setDescription("");
       setTouched({ name: false, description: false });
       setPhase("idle");
@@ -59,7 +75,7 @@ export default function NewIdeaScreen() {
     setPhase("planting");
     setError("");
     try {
-      const saved = await createIdea({ name, description });
+      const saved = await createIdea({ name, description, mode });
       planted.current = true;
       router.push(`/map?id=${encodeURIComponent(saved.id)}`);
     } catch (err) {
@@ -87,15 +103,38 @@ export default function NewIdeaScreen() {
               </svg>
               <h1 className="nw-h1">Planting your seed…</h1>
               <p className="nw-sub">
-                Researching the market for <strong>{name.trim()}</strong>. This can take up to a minute.
+                Researching {mode === "nonprofit" ? "the need" : "the market"} for{" "}
+                <strong>{name.trim()}</strong>. This can take up to a minute.
               </p>
             </div>
           ) : (
             <form onSubmit={plant} noValidate className="nw-form">
               <div className="nw-head">
                 <h1 className="nw-h1">Plant a new seed</h1>
-                <p className="nw-sub">Name your idea and describe it. Sprout researches your market from the description.</p>
+                <p className="nw-sub">
+                  Name your idea and describe it. Sprout researches{" "}
+                  {mode === "nonprofit" ? "the need and who else is serving it" : "your market"} from the description.
+                </p>
               </div>
+
+              <fieldset className="nw-field nw-modes-field">
+                <legend className="nw-label">Kind</legend>
+                <div className="nw-modes" role="radiogroup" aria-label="What kind of idea is this?">
+                  {MODES.map((m) => (
+                    <button
+                      key={m.mode}
+                      type="button"
+                      role="radio"
+                      aria-checked={mode === m.mode}
+                      className={`nw-mode${mode === m.mode ? " nw-mode-on" : ""}`}
+                      onClick={() => setMode(m.mode)}
+                    >
+                      <span className="nw-mode-label">{m.label}</span>
+                      <span className="nw-mode-hint">{m.hint}</span>
+                    </button>
+                  ))}
+                </div>
+              </fieldset>
 
               <label className="nw-field">
                 <span className="nw-label">Name</span>
@@ -123,7 +162,7 @@ export default function NewIdeaScreen() {
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   onBlur={() => setTouched((t) => ({ ...t, description: true }))}
-                  placeholder="A $8/month meal-planning app for college students on tight budgets."
+                  placeholder={profileFor(mode).pitchPlaceholder}
                   required
                   minLength={MIN_DESCRIPTION}
                   maxLength={600}
