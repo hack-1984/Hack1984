@@ -12,7 +12,9 @@ import Logic from "./logic";
 import "./idea-map.css";
 import "./widgets/widgets.css";
 import WidgetRail, { type WidgetKey } from "./widgets/WidgetRail";
+import CustomerWidget from "./widgets/CustomerWidget";
 import GraveyardWidget from "./widgets/GraveyardWidget";
+import LaunchWidget from "./widgets/LaunchWidget";
 import type { WidgetCtx } from "./widgets/types";
 
 export default function IdeaMapScreen(props: Record<string, unknown>) {
@@ -1144,6 +1146,8 @@ const TITLES: Record<string, string> = { launch: "Launch day", graveyard: "Grave
 function WidgetSlot({ widget, ctx }: { widget: string; ctx: WidgetCtx }) {
   // key: a different idea starts the widget fresh.
   if (widget === "graveyard") return <GraveyardWidget key={ctx.ideaId} ctx={ctx} />;
+  if (widget === "customer") return <CustomerWidget key={ctx.ideaId} ctx={ctx} />;
+  if (widget === "launch") return <LaunchWidget key={ctx.ideaId} ctx={ctx} />;
   return (
     <section className="wg-panel" aria-label={TITLES[widget]}>
       <h2 className="wg-title">{TITLES[widget]}</h2>

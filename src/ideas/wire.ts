@@ -63,3 +63,32 @@ export interface GraveyardDetailResponse {
   records: GraveRecord[];
   adjacent: boolean;
 }
+
+// ---------- Customer discussion: /api/persona, /api/chat, /api/extract ----------
+
+export type WireRole = "customer" | "competitor" | "investor" | "advisor";
+
+/** A persona from POST /api/persona. `basedOn` is the real complaint it was grounded in. */
+export interface WirePersona {
+  id: string;
+  role: WireRole;
+  name: string;
+  blurb: string;
+  basedOn?: { text: string; url: string; where: string };
+}
+
+export interface WireChatMessage {
+  from: "founder" | "persona";
+  text: string;
+}
+
+/** POST /api/chat. wouldBuy is 0-100 (customer: would buy / take part). */
+export interface ChatResponse {
+  reply: string;
+  wouldBuy: number;
+}
+
+/** POST /api/extract: 0-3 quoted updates from the newest exchange. */
+export interface ExtractResponse {
+  updates: WireUpdate[];
+}
