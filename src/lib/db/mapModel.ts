@@ -1,10 +1,9 @@
 // The shape the Idea Map screen renders, computed from an Idea.
 //
 // Agreed with the backend: the store keeps the backend's Idea (types.ts) and
-// this is derived from it, never stored. Field names follow the design's
-// canned data in src/screens/idea-map/logic.js (CHOICES0, RESOURCES0, LINKS),
-// so the screen can swap its constants for toMapModel(idea, team) with no
-// template changes. Each field says where it comes from.
+// this is derived from it, never stored. Field names follow the Idea Map
+// design's data shape (choices with ev/hist/res/test, resources, links), which
+// src/screens/idea-map/logic.js renders. Each field says where it comes from.
 import { PILLARS, PILLAR_BY_KEY } from "@/lib/pillars";
 import type { PillarKey, TeamProfile, TreeUpdate } from "@/lib/types";
 import { support, type StoredChoice, type StoredIdea } from "./schema";
