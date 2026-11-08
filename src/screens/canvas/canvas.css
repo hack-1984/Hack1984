@@ -28,3 +28,28 @@ body:has(.pg-cv){margin:0;background-color:#F5F7F2;background-image:linear-gradi
 .cv-hover6:hover{transform:translateY(-1px) !important;box-shadow:0 8px 24px #00000040 !important}
 .cv-hover7:hover{transform:translateY(-1px) !important;box-shadow:0 6px 18px #00000066 !important}
 .cv-hover8:hover{color:#F2F5F3 !important}
+
+/* Sponsors: white-on-transparent logos drawn as masks in a soft Sprout green; full green on hover. */
+.cv-sponsors{--s:1;width:100%;display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:36px 52px}
+.cv-sponsor{display:block;flex:none;width:calc(var(--w) * var(--s,1));height:calc(var(--h) * var(--s,1));
+  background-color:color-mix(in srgb,var(--accent) 70%,var(--bg));
+  -webkit-mask-image:var(--src);mask-image:var(--src);
+  -webkit-mask-size:var(--msize);mask-size:var(--msize);
+  -webkit-mask-position:var(--mpos);mask-position:var(--mpos);
+  -webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;
+  transition:background-color .2s}
+.cv-sponsor:hover{background-color:var(--accent)}
+@media (max-width:767px){.cv-sponsors{--s:.78;gap:28px 36px}}
+
+/* Top strip: two copies of the logos slide left by one copy (-50%). Each copy carries its own trailing
+   gap (padding-right), so -50% lands exactly on the start of copy 2: no seam. Keeps moving on hover. */
+.cv-marquee-track{display:flex;width:max-content;animation:cv-marquee var(--cv-loop,60s) linear infinite}
+.cv-marquee-copy{display:flex;align-items:center;gap:40px;padding-right:40px;flex:none;min-height:48px}
+.cv-sponsor-item{display:flex;flex:none}
+/* Reduced motion: no scrolling. Show the logos once, wrapped and centred, with no faded edges. */
+@media (prefers-reduced-motion:reduce){
+  .cv-marquee{-webkit-mask-image:none !important;mask-image:none !important}
+  .cv-marquee-track{width:auto;animation:none !important}
+  .cv-marquee-copy{flex:1;flex-wrap:wrap;justify-content:center;gap:24px 40px;padding-right:0}
+  .cv-marquee-copy[aria-hidden="true"]{display:none}
+}
