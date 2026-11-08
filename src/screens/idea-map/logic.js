@@ -88,6 +88,11 @@ const statusAt = (c, W) => {
   return W - last.wk <= 1 ? 'added' : 'guess';
 };
 
+// App: floating widget panel. Width is a per-viewer preference (320–560px); the tab strip sits outside it.
+export const PANEL_MIN = 320, PANEL_MAX = 560;
+// Space the panel + tab strip take on the right of the canvas: strip (56) + its 16px margin + 12px gap, and the open panel + 16px.
+export const STRIP_SPACE = 84;
+const readPanelW = () => { try { const w = Number(localStorage.getItem('sprout.panelW')); return w >= PANEL_MIN && w <= PANEL_MAX ? w : 400; } catch { return 400; } };
 const urlId = () => (typeof window === 'undefined' ? null : new URLSearchParams(window.location.search).get('id'));
 
 class Component extends DCLogic {
@@ -95,7 +100,7 @@ class Component extends DCLogic {
     super(p);
     this.idea = null; this.ideaId = null; this.team = null; this.now = 1; this.name = ''; this.pitch = '';
     this.state = { sel:null, hoverIdea:false, hover:null, draft:'', toast:null, expanded:[], replaying:false, loading:true, missing:false, discuss:null, nodeBusy:null,
-      choices: [], resources: [], links: [], wmem: {}, week: 1, widget: 'overview', flash: null };
+      choices: [], resources: [], links: [], wmem: {}, week: 1, widget: 'overview', flash: null, panelOpen: true, panelW: readPanelW() };
   }
   // App: the map's drawing data, derived from the stored Idea. Pillar names are the design's startup labels (they key FX and angles).
   derive(idea) {
@@ -104,7 +109,7 @@ class Component extends DCLogic {
     return { choices: m.choices.map(c => ({ ...c, pillar: LABEL[c.pillarKey] })), resources: m.resources, links: m.links, wmem: idea.widgets || {}, loading: false, missing: false };
   }
   // First load of an idea: derive and reset the view.
-  load(idea) { return { ...this.derive(idea), week: this.now, sel: null, expanded: [], widget: 'overview', flash: null }; }
+  load(idea) { return { ...this.derive(idea), week: this.now, sel: null, expanded: [], widget: 'overview', flash: null, panelOpen: true }; }
   // App: a changed Idea in, saved and re-drawn. Save failures surface as a toast; the map keeps the new state.
   persist(idea, patch, msg) {
     this.setState({ ...this.derive(idea), ...(patch || {}) });
@@ -158,10 +163,13 @@ class Component extends DCLogic {
     if (this.pctRef.current) this.pctRef.current.textContent = Math.round(k * 100) + '%';
   }
   // Frame every visible node. Bounds come from the last render (renderVals stores them).
+  // App: px on the right covered by the floating panel and tab strip (0 for the panel when collapsed).
+  // During a grip drag the screen sets _dragW so fitting uses the live width.
+  occupied() { const w = this._dragW || this.state.panelW; return STRIP_SPACE + (this.state.panelOpen ? Math.min(w, (this._pane ? this._pane.clientWidth : 1200) - STRIP_SPACE - 120) + 16 : 0); }
   fitView() {
     const pane = this._pane, b = this._bounds; if (!pane || !b || !pane.clientWidth) return null;
     const top = 64, bottom = 76, side = 40; // clear the zoom controls and the week bar
-    const vw = pane.clientWidth - side * 2, vh = pane.clientHeight - top - bottom;
+    const vw = Math.max(200, pane.clientWidth - this.occupied() - side * 2), vh = pane.clientHeight - top - bottom;
     const k = Math.min(Math.max(Math.min(vw / (b.maxX - b.minX), vh / (b.maxY - b.minY), 1.4), MIN_ZOOM), MAX_ZOOM);
     return { k, x: side + vw / 2 - (b.minX + b.maxX) / 2 * k, y: top + vh / 2 - (b.minY + b.maxY) / 2 * k };
   }
@@ -173,7 +181,7 @@ class Component extends DCLogic {
   reveal(keys) {
     const pane = this._pane, boxes = this._boxes || {}; if (!pane) return;
     const { x, y, k } = this.camera; const m = 12;
-    const off = [...keys, 'orbit'].map(key => boxes[key]).filter(Boolean).some(b => b.minX * k + x < m || b.maxX * k + x > pane.clientWidth - m || b.minY * k + y < 56 || b.maxY * k + y > pane.clientHeight - 72);
+    const off = [...keys, 'orbit'].map(key => boxes[key]).filter(Boolean).some(b => b.minX * k + x < m || b.maxX * k + x > pane.clientWidth - this.occupied() - m || b.minY * k + y < 56 || b.maxY * k + y > pane.clientHeight - 72);
     if (off) this.fit();
   }
   zoomStep(f) { const pane = this._pane; if (!pane) return; this.camera.zoomAtAnimated(pane.clientWidth / 2, pane.clientHeight / 2, f, 180); }
@@ -249,10 +257,10 @@ class Component extends DCLogic {
     if (this.state.hover || this.state.hoverIdea) this.setState({ hover: null, hoverIdea: false });
   }
   say(msg) { clearTimeout(this._toastT); this.setState({toast: msg}); this._toastT = setTimeout(() => this.setState({toast:null}), 2600); }
-  pick(sel) { return (e) => { if (e && e.stopPropagation) e.stopPropagation(); this.setState(s => { let expanded = s.expanded; const cid = sel && (sel.t === 'choice' ? sel.id : sel.t === 'evidence' ? sel.cid : null); if (cid) { const c = s.choices.find(x => x.id === cid); if (c && !expanded.includes(c.pillar)) expanded = [...expanded, c.pillar]; } if (sel && sel.t === 'pillar' && !expanded.includes(sel.id)) expanded = [...expanded, sel.id]; if (sel && sel.t === 'resource') { const ps = s.choices.filter(c => c.res.includes(sel.id)).map(c => c.pillar); expanded = [...new Set([...expanded, ...ps])]; } return { sel, draft:'', expanded, widget: 'overview' }; }, () => this.reveal(this.state.expanded)); }; }
+  pick(sel) { return (e) => { if (e && e.stopPropagation) e.stopPropagation(); this.setState(s => { let expanded = s.expanded; const cid = sel && (sel.t === 'choice' ? sel.id : sel.t === 'evidence' ? sel.cid : null); if (cid) { const c = s.choices.find(x => x.id === cid); if (c && !expanded.includes(c.pillar)) expanded = [...expanded, c.pillar]; } if (sel && sel.t === 'pillar' && !expanded.includes(sel.id)) expanded = [...expanded, sel.id]; if (sel && sel.t === 'resource') { const ps = s.choices.filter(c => c.res.includes(sel.id)).map(c => c.pillar); expanded = [...new Set([...expanded, ...ps])]; } return { sel, draft:'', expanded, widget: 'overview', panelOpen: true }; }, () => this.reveal(this.state.expanded)); }; }
   hoverOn(k) { return () => { if (!this._dragging) this.setState({ hover: k }); }; }
   hoverOff(k) { return () => this.setState(s => s.hover === k ? { hover: null } : null); }
-  togglePillar(p) { return (e) => { e.stopPropagation(); this.setState(s => { const open = s.expanded.includes(p); const selected = s.sel && s.sel.t === 'pillar' && s.sel.id === p; if (open && selected) return { expanded: s.expanded.filter(x => x !== p), sel: null }; return { expanded: open ? s.expanded : [...s.expanded, p], sel: {t:'pillar', id:p}, draft:'', widget: 'overview' }; }, () => this.reveal([p])); }; }
+  togglePillar(p) { return (e) => { e.stopPropagation(); this.setState(s => { const open = s.expanded.includes(p); const selected = s.sel && s.sel.t === 'pillar' && s.sel.id === p; if (open && selected) return { expanded: s.expanded.filter(x => x !== p), sel: null }; return { expanded: open ? s.expanded : [...s.expanded, p], sel: {t:'pillar', id:p}, draft:'', widget: 'overview', panelOpen: true }; }, () => this.reveal([p])); }; }
   pillarScore(W, p) {
     const cs = this.state.choices.map(c => ({c, st: statusAt(c, W)})).filter(x => x.c.pillar === p && x.st && x.st !== 'suggested' && x.st !== 'removed');
     return cs.length ? cs.reduce((a, x) => a + SCORE[x.st], 0) / cs.length : null;
@@ -421,7 +429,12 @@ class Component extends DCLogic {
       hoverIdea: this.state.hoverIdea, hoverOn: () => this.setState({ hoverIdea: true }), hoverOff: () => this.setState({ hoverIdea: false }),
       isIdea: ovOpen && mode === 'idea', isPillar: ovOpen && mode === 'pillar', isChoice: ovOpen && mode === 'choice', isEvidence: ovOpen && mode === 'evidence', isResource: ovOpen && mode === 'resource',
       // App: widgets. The rail switches what the sidebar shows; widgets feed the tree through applyWidget().
-      widget: this.state.widget, setWidget: (w) => this.setState({ widget: w }), showBadge: !!sug && !ovOpen,
+      widget: this.state.widget, panelOpen: this.state.panelOpen, panelW: this.state.panelW, occupied: this.occupied(),
+      setWidget: (w) => this.setState(s => s.widget === w && s.panelOpen ? { panelOpen: false } : { widget: w, panelOpen: true }),
+      closePanel: () => this.setState({ panelOpen: false }),
+      setPanelW: (w) => { const v = Math.round(Math.min(PANEL_MAX, Math.max(PANEL_MIN, w))); this._dragW = 0; try { localStorage.setItem('sprout.panelW', String(v)); } catch {} this.setState({ panelW: v }); },
+      setDragW: (w) => { this._dragW = w; },
+      showBadge: !!sug && !(ovOpen && this.state.panelOpen),
       ideaId: this.ideaId, wmem: this.state.wmem,
       // Widget memory rides along in the stored idea (StoredIdea.widgets), so it follows the founder across devices.
       setWmem: (key, patch) => { if (!this.idea) return; const widgets = { ...(this.idea.widgets || {}), [key]: { ...((this.idea.widgets || {})[key] || {}), ...patch } }; this.idea = { ...this.idea, widgets }; this.setState({ wmem: widgets }); ideaStore().save(this.idea).catch(err => console.error('[map] save widgets', err)); },
@@ -430,7 +443,7 @@ class Component extends DCLogic {
       team: this.team, saveTeam: (team) => this.saveTeam(team),
       focus: this.state.discuss,
       applyWidget: (updates, sourceLabel, toast) => this.applyWidget(updates, sourceLabel, toast),
-      openOverview: () => this.setState({ widget: 'overview', sel: null }),
+      openOverview: () => this.setState({ widget: 'overview', sel: null, panelOpen: true }),
       ov, pv, cv, ev, rv,
       hasToast: !!this.state.toast, toast: this.state.toast,
       draft: this.state.draft, setDraft: (e) => this.setState({ draft: e.target.value }),
@@ -452,7 +465,7 @@ class Component extends DCLogic {
   // App: open Discussions with the persona this pillar calls for, focused on the choice.
   challenge(c) {
     const role = ROLE_FOR_PILLAR[c.pillarKey] || 'customer';
-    this.setState({ widget: 'customer', discuss: { role, choiceId: c.id, label: c.text, key: Date.now() } });
+    this.setState({ widget: 'customer', panelOpen: true, discuss: { role, choiceId: c.id, label: c.text, key: Date.now() } });
   }
   // App: web evidence for or against one choice, landed through the same path as every widget.
   research(c) {

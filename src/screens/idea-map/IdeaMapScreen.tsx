@@ -12,6 +12,7 @@ import Logic from "./logic";
 import "./idea-map.css";
 import "./widgets/widgets.css";
 import WidgetRail, { type WidgetKey } from "./widgets/WidgetRail";
+import FloatingPanel from "./widgets/FloatingPanel";
 import BuildWidget from "./widgets/BuildWidget";
 import DiscussionWidget from "./widgets/DiscussionWidget";
 import GraveyardWidget from "./widgets/GraveyardWidget";
@@ -23,7 +24,7 @@ export default function IdeaMapScreen(props: Record<string, unknown>) {
   // clientOnly: which idea to show comes from the URL and this browser's saved ideas.
   const v = useLogic(Logic, props, { clientOnly: true });
   if (!v) return <div className="pg-im" />;
-  const { loading, missing, widget, setWidget, showBadge, ideaId, wmem, setWmem, pillarPct, buildIdea, applyWidget, openOverview, team, saveTeam, focus, ideaInitial, ideaName, ideaPitch, now, accept, addAgainst, addFor, choices, clearSel, counts, curves, cv, draft, edges, ev, goNow, hasToast, hoverIdea, hoverOff, hoverOn, ideaShadow, isChoice, isEvidence, isIdea, isPast, isPillar, isResource, orbit, ov, paneRef, pctRef, particles, pillars, pv, reject, removeChoice, replay, replayLabel, rv, selIdea, setDraft, showHint, toast, toggleAll, toggleAllLabel, week, weeks, worldRef, zoomFit, zoomIn, zoomOut } = v;
+  const { panelOpen, panelW, occupied, closePanel, setPanelW, setDragW, loading, missing, widget, setWidget, showBadge, ideaId, wmem, setWmem, pillarPct, buildIdea, applyWidget, openOverview, team, saveTeam, focus, ideaInitial, ideaName, ideaPitch, now, accept, addAgainst, addFor, choices, clearSel, counts, curves, cv, draft, edges, ev, goNow, hasToast, hoverIdea, hoverOff, hoverOn, ideaShadow, isChoice, isEvidence, isIdea, isPast, isPillar, isResource, orbit, ov, paneRef, pctRef, particles, pillars, pv, reject, removeChoice, replay, replayLabel, rv, selIdea, setDraft, showHint, toast, toggleAll, toggleAllLabel, week, weeks, worldRef, zoomFit, zoomIn, zoomOut } = v;
   // App: no canned idea. While the stored idea loads, or if it isn't this account's, say so instead of drawing an empty map.
   if (loading || missing) {
     return (
@@ -85,7 +86,9 @@ export default function IdeaMapScreen(props: Record<string, unknown>) {
             </div>
           </div>
         </div>
-        <div style={{ display: "flex", flex: "1", minHeight: "0" }}>
+        {/* Stage: the map gets the full width. The floating panel and tab strip sit over its right side;
+            --wg-occ is the width they cover, so map controls center in the visible part. */}
+        <div className="im-stage" style={{ display: "flex", flex: "1", minHeight: "0", position: "relative", "--wg-occ": `${occupied}px` } as CSSProperties}>
           <div style={{ flex: "1", minWidth: "0", position: "relative" }}>
             {" "}
             {/* Viewport. Pan and zoom are one transform on the world wrapper below, written by camera.ts
@@ -229,7 +232,7 @@ export default function IdeaMapScreen(props: Record<string, unknown>) {
               {" "}
             </div>
             {" "}
-            <div style={{ position: "absolute", right: "16px", top: "16px", display: "flex", alignItems: "center", gap: "2px", padding: "4px", borderRadius: "999px", background: "var(--surface)", border: "1px solid var(--border)", boxShadow: "0 4px 16px var(--shadow)", zIndex: "4" }}>
+            <div style={{ position: "absolute", right: "var(--wg-occ)", top: "16px", transition: "right .25s ease", display: "flex", alignItems: "center", gap: "2px", padding: "4px", borderRadius: "999px", background: "var(--surface)", border: "1px solid var(--border)", boxShadow: "0 4px 16px var(--shadow)", zIndex: "4" }}>
               <button className="im-hover1" style={{ width: "28px", height: "28px", borderRadius: "999px", border: "none", background: "transparent", color: "var(--text)", fontSize: "16px", cursor: "pointer", lineHeight: "1" }} onClick={zoomOut} title="Zoom out (−)" aria-label="Zoom out">
                 −
               </button>
@@ -251,7 +254,7 @@ export default function IdeaMapScreen(props: Record<string, unknown>) {
               </button>
             </div>
             {" "}
-            <div style={{ position: "absolute", left: "50%", bottom: "16px", transform: "translateX(-50%)", display: "flex", alignItems: "center", gap: "4px", padding: "5px 6px 5px 12px", borderRadius: "999px", background: "var(--surface)", border: "1px solid var(--border)", boxShadow: "0 4px 16px var(--shadow)", zIndex: "4" }}>
+            <div style={{ position: "absolute", left: "calc((100% - var(--wg-occ)) / 2)", bottom: "16px", transform: "translateX(-50%)", transition: "left .25s ease", display: "flex", alignItems: "center", gap: "4px", padding: "5px 6px 5px 12px", borderRadius: "999px", background: "var(--surface)", border: "1px solid var(--border)", boxShadow: "0 4px 16px var(--shadow)", zIndex: "4" }}>
               <span style={{ fontSize: "10px", fontFamily: "'Geist Mono',monospace", color: "var(--muted)", letterSpacing: ".06em", marginRight: "4px" }}>
                 WEEK
               </span>
@@ -299,7 +302,7 @@ export default function IdeaMapScreen(props: Record<string, unknown>) {
             {hasToast ? (
               <>
                 {" "}
-                <div style={{ position: "absolute", left: "50%", top: "16px", transform: "translateX(-50%)", padding: "8px 14px", borderRadius: "10px", background: "var(--surface-2)", border: "1px solid var(--border)", color: "var(--text)", fontSize: "12px", boxShadow: "0 8px 24px var(--shadow)", zIndex: "5", animation: "im-toastIn .25s ease-out", whiteSpace: "nowrap" }}>
+                <div style={{ position: "absolute", left: "calc((100% - var(--wg-occ)) / 2)", top: "16px", transform: "translateX(-50%)", padding: "8px 14px", borderRadius: "10px", background: "var(--surface-2)", border: "1px solid var(--border)", color: "var(--text)", fontSize: "12px", boxShadow: "0 8px 24px var(--shadow)", zIndex: "5", animation: "im-toastIn .25s ease-out", whiteSpace: "nowrap" }}>
                   {toast}
                 </div>
                 {" "}
@@ -307,10 +310,9 @@ export default function IdeaMapScreen(props: Record<string, unknown>) {
             ) : null}
             {" "}
           </div>
-          {/* Sidebar: widget rail on its left edge, then the active widget. */}
-          <div style={{ flex: "0 0 380px", display: "flex", borderLeft: "1px solid var(--border)", background: "var(--surface)", minHeight: "0" }}>
-          <WidgetRail active={widget as WidgetKey} onPick={setWidget} badge={!!showBadge} />
-          <div style={{ flex: "1", minWidth: "0", display: "flex", flexDirection: "column", overflow: "auto" }}>
+          {/* Floating widget panel over the right of the map, then the tab strip on the far right edge.
+              Collapsed = hidden, not unmounted, so a widget keeps its state. */}
+          <FloatingPanel open={!!panelOpen} width={panelW} label={TITLES[widget] ?? "Overview"} onCommit={setPanelW} onLive={setDragW} onClose={closePanel}>
             {isIdea ? (
               <>
                 <div style={{ animation: "im-panelIn .35s cubic-bezier(.2,.8,.2,1) both" }}>
@@ -1152,15 +1154,15 @@ export default function IdeaMapScreen(props: Record<string, unknown>) {
             {widget !== "overview" ? (
               <WidgetSlot widget={widget} ctx={{ ideaId, wmem, setWmem, pillarPct, buildIdea, applyWidget, openOverview, team, saveTeam, focus }} />
             ) : null}
-          </div>
-          </div>
+          </FloatingPanel>
+          <WidgetRail active={widget as WidgetKey} open={!!panelOpen} onPick={setWidget} badge={!!showBadge} />
         </div>
       </div>
     </div>
   );
 }
 
-const TITLES: Record<string, string> = { launch: "Launch day", graveyard: "Graveyard", customer: "Discussions", build: "Build", team: "Team" };
+const TITLES: Record<string, string> = { overview: "Overview", launch: "Launch day", graveyard: "Graveyard", customer: "Discussions", build: "Build", team: "Team" };
 
 function WidgetSlot({ widget, ctx }: { widget: string; ctx: WidgetCtx }) {
   // key: a different idea starts the widget fresh.

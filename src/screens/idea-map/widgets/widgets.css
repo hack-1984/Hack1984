@@ -1,7 +1,23 @@
 /* Map widgets: the rail and the widget panels. Layout from design/sprout-mocks/App.dc.html,
    colors from the Sprout theme variables only. */
 
-.wg-rail{flex:none;display:flex;flex-direction:column;gap:6px;padding:10px 6px;border-right:1px solid var(--border);background:var(--surface)}
+/* Tab strip: floats on the far right edge of the map, outside the panel (lo-fi + mock). */
+.wg-rail{position:absolute;right:16px;top:50%;transform:translateY(-50%);z-index:7;display:flex;flex-direction:column;gap:6px;padding:6px;background:var(--surface);border:1px solid var(--border);border-radius:14px;box-shadow:0 8px 24px var(--shadow)}
+
+/* Floating panel: white rounded card over the right of the map, left of the strip (right = STRIP_SPACE in logic.js). */
+.wg-float{position:absolute;right:84px;top:16px;bottom:16px;z-index:6;max-width:calc(100% - 204px);display:flex;box-sizing:border-box;background:var(--surface);border:1px solid var(--border);border-radius:16px;box-shadow:0 12px 40px var(--shadow),0 2px 8px var(--shadow);animation:wg-floatIn .25s cubic-bezier(.2,.8,.2,1) both}
+.wg-float[hidden]{display:none}
+.wg-float-body{flex:1;min-width:0;display:flex;flex-direction:column;overflow:auto;border-radius:16px}
+@keyframes wg-floatIn{from{opacity:0;transform:translateX(12px)}to{opacity:1;transform:none}}
+/* Grip on the panel's left edge: drag (or arrow keys) to resize. */
+.wg-grip{position:absolute;left:-7px;top:0;bottom:0;width:14px;z-index:2;cursor:ew-resize;display:flex;align-items:center;justify-content:center;touch-action:none;border-radius:8px}
+.wg-grip span{width:4px;height:40px;border-radius:999px;background:var(--border);transition:background .15s,height .15s}
+.wg-grip:hover span,.wg-grip:focus-visible span{background:var(--muted);height:56px}
+body.wg-resizing{cursor:ew-resize;user-select:none}
+body.wg-resizing .wg-float-body{pointer-events:none}
+.wg-close{position:absolute;right:10px;top:10px;z-index:2;width:32px;height:32px;border:none;border-radius:8px;background:transparent;color:var(--muted);display:flex;align-items:center;justify-content:center;cursor:pointer}
+.wg-close:hover{background:var(--surface-2);color:var(--text)}
+@media (prefers-reduced-motion:reduce){.wg-float{animation:none}}
 .wg-rail-btn{position:relative;width:44px;height:44px;border:none;border-radius:10px;background:transparent;color:var(--text);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:background .15s}
 .wg-rail-btn:hover{background:var(--surface-2)}
 .wg-rail-btn.is-active{background:var(--surface-2);box-shadow:inset 3px 0 0 var(--accent)}
