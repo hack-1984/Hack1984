@@ -31,6 +31,7 @@ export const DEADLINES = {
   graveExtract: 9000,
   knownScore: 6000,
   build: 20000,
+  impact: 15000,
 };
 
 export const clamp =(n: number, lo: number, hi: number) =>

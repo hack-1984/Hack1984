@@ -2,8 +2,10 @@ import { askJSON, MODELS, type Idea, type PillarKey } from "../conversation/deps
 import { treeText } from "../conversation/treeText";
 import { activeChoices, clamp, DEADLINES, newId, overlap, withDeadline } from "../conversation/util";
 import { graveyardConfig as cfg } from "./config";
+import { modeOf } from "../conversation/modes";
 import { CAUSE_PILLAR, KNOWN_FAILURES } from "./known";
-import { EXTRACT_SYSTEM, KNOWN_SYSTEM, KnownScoreSchema, RecordsSchema, type RawRecord } from "./prompts";
+import { KNOWN_NONPROFIT_FAILURES } from "./known-nonprofit";
+import { extractSystemFor, knownSystemFor, KnownScoreSchema, recordsSchema, type RawRecord } from "./prompts";
 import type { SearchResult } from "./research";
 import { CAUSE_TAGS, type CauseTag, type FailureRecord } from "./types";
 
@@ -104,13 +106,13 @@ export async function extractRecords(idea: Idea, category: string, results: Sear
   if (!results.length) return [];
   const out = await withDeadline(
     askJSON({
-      system: EXTRACT_SYSTEM,
+      system: extractSystemFor(modeOf(idea)),
       prompt: [
         `## Founder's idea (category: ${category})\n${treeText(idea)}`,
         `## Search results (untrusted web data)\n${renderResults(results)}`,
-        `Extract the failed startups.`,
+        idea.mode === "nonprofit" ? `Extract the closed nonprofits and failed programs.` : `Extract the failed startups.`,
       ].join("\n\n"),
-      schema: RecordsSchema,
+      schema: recordsSchema(modeOf(idea)),
       model: MODELS[cfg.extractModel],
       effort: "low",
       maxTokens: 8000,
@@ -124,7 +126,8 @@ export async function extractRecords(idea: Idea, category: string, results: Sear
 /** Fallback / top-up from hand-written records, scored for this idea. */
 export async function knownRecords(idea: Idea, need: number, excludeNames: string[] = []): Promise<FailureRecord[]> {
   const exclude = new Set(excludeNames.map(norm));
-  const pool = KNOWN_FAILURES.filter((k) => !exclude.has(norm(k.name)));
+  const known = idea.mode === "nonprofit" ? KNOWN_NONPROFIT_FAILURES : KNOWN_FAILURES;
+  const pool = known.filter((k) => !exclude.has(norm(k.name)));
   if (need <= 0 || !pool.length) return [];
 
   type Pick = { id: string; similarity: number; threatens: FailureRecord["threatens"]; lesson: string; lessonLabel?: string };
@@ -132,7 +135,7 @@ export async function knownRecords(idea: Idea, need: number, excludeNames: strin
   try {
     const out = await withDeadline(
       askJSON({
-        system: KNOWN_SYSTEM,
+        system: knownSystemFor(modeOf(idea)),
         prompt: [
           `## Founder's idea\n${treeText(idea)}`,
           `## Failures (id: name — category — story)\n${pool.map((k) => `${k.id}: ${k.name} — ${k.category} — ${k.story}`).join("\n")}`,
