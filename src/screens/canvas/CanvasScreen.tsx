@@ -329,12 +329,12 @@ export default function CanvasScreen(props: Record<string, unknown>) {
       </section>
       <section data-sec="1" style={{ background: "#fff", color: "#000", padding: "40px 20px 44px", marginTop: "0", position: "relative", zIndex: "2", borderRadius: "28px 28px 0 0", boxShadow: "0 -16px 40px -8px #0F2E201A,0 1px 0 #DDE3DC inset", clipPath: "inset(-80px 0 0 0)" }}>
         {" "}
-        <div style={{ maxWidth: "1200px", margin: "0 auto", display: "flex", flexDirection: "column", alignItems: "center", gap: "14px" }}>
-          <div style={{ fontFamily: "'Geist Mono',monospace", fontSize: "12px", letterSpacing: ".16em", textTransform: "uppercase", color: "#4A5E53" }}>
-            HACK1984 — Sponsors
+        <div style={{ maxWidth: "1200px", margin: "0 auto", display: "flex", flexDirection: "column", alignItems: "center", gap: "22px" }}>
+          <div style={{ fontFamily: "'Geist Mono',monospace", fontSize: "12px", letterSpacing: ".16em", textTransform: "uppercase", color: "color-mix(in srgb, var(--accent) 70%, var(--bg))" }}>
+            HACK1984 Sponsors
           </div>
           {/* Auto-scrolling strip. Two copies of the list slide left by exactly one copy (50%) for a seamless loop;
-              the second copy is aria-hidden so each sponsor is announced once. Pauses on hover; with reduced
+              the second copy is aria-hidden so each sponsor is announced once. Keeps moving on hover; with reduced
               motion it stops and wraps (canvas.css .cv-marquee). Faded edges as in the design. */}
           <div className="cv-marquee" style={{ width: "100%", maxWidth: "1120px", overflow: "hidden", maskImage: "linear-gradient(90deg,transparent,#000 18%,#000 82%,transparent)", WebkitMaskImage: "linear-gradient(90deg,transparent,#000 18%,#000 82%,transparent)" }}>
             <div data-marquee="1" className="cv-marquee-track" style={{ "--cv-loop": `${MARQUEE_SECONDS}s` } as CSSProperties}>

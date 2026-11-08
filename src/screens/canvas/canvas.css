@@ -42,9 +42,8 @@ body:has(.pg-cv){margin:0;background-color:#F5F7F2;background-image:linear-gradi
 @media (max-width:767px){.cv-sponsors{--s:.78;gap:28px 36px}}
 
 /* Top strip: two copies of the logos slide left by one copy (-50%). Each copy carries its own trailing
-   gap (padding-right), so -50% lands exactly on the start of copy 2: no seam. Pauses on hover. */
+   gap (padding-right), so -50% lands exactly on the start of copy 2: no seam. Keeps moving on hover. */
 .cv-marquee-track{display:flex;width:max-content;animation:cv-marquee var(--cv-loop,60s) linear infinite}
-.cv-marquee:hover .cv-marquee-track{animation-play-state:paused}
 .cv-marquee-copy{display:flex;align-items:center;gap:40px;padding-right:40px;flex:none;min-height:48px}
 .cv-sponsor-item{display:flex;flex:none}
 /* Reduced motion: no scrolling. Show the logos once, wrapped and centred, with no faded edges. */
