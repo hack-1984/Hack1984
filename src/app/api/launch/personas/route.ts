@@ -10,8 +10,10 @@ export async function POST(req: Request) {
 
   if (process.env.MOCK_AI === "1") {
     const mode = body.idea?.mode;
+    // `seed` is optional and outside the frozen contract: "Run again with a new crowd" sends a fresh one.
+    const seed = (body as { seed?: number }).seed;
     return NextResponse.json({
-      personas: mockPersonas(body.scene ?? mockScene(mode), mode),
+      personas: mockPersonas(body.scene ?? mockScene(mode), mode, typeof seed === "number" ? seed : undefined),
     } satisfies LaunchPersonasResponse);
   }
 

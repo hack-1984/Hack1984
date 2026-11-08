@@ -145,3 +145,37 @@ body.wg-resizing .wg-float-body{pointer-events:none}
 .cw-chip:active{transform:translateY(0)}
 .cw-chip:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
 @media (prefers-reduced-motion:reduce){.cw-chip{animation:none;transition:none}}
+
+
+/* Launch Day downtime visuals (lw-): shown only while a run is in flight. Theme variables only. */
+.lw-busy{display:flex;flex-direction:column;gap:12px;animation:im-panelIn .3s ease-out both}
+.lw-rail{display:flex;align-items:center;gap:0;margin:0;padding:0;list-style:none}
+.lw-step{display:flex;align-items:center;gap:6px;flex:1 1 0;min-width:0;font-size:11px;color:var(--muted);position:relative}
+.lw-step:not(:last-child)::after{content:"";flex:1 1 0;height:1px;background:var(--border);margin:0 8px}
+.lw-step-dot{flex:none;width:10px;height:10px;border-radius:50%;border:1.5px solid var(--border);background:var(--surface);box-sizing:border-box;transition:background .3s,border-color .3s,box-shadow .3s}
+.lw-step.is-done .lw-step-dot{background:var(--muted);border-color:var(--muted)}
+.lw-step.is-now .lw-step-dot{background:var(--accent);border-color:var(--accent);box-shadow:0 0 0 3px var(--focus-ring)}
+.lw-step.is-now{color:var(--text);font-weight:600}
+.lw-step-name{white-space:nowrap}
+.lw-crowd{position:relative}
+.lw-crowd-dot{background:var(--border);opacity:.3;transform:scale(.7);transition:background .6s,opacity .4s}
+/* Scene: dim and waiting. Crowd: pop in one by one, then breathe. Doors: a soft mixed tint as people decide. */
+.lw-crowd-1 .lw-crowd-dot{animation:lw-pop .5s cubic-bezier(.2,.8,.2,1) both,lw-breathe 3.2s ease-in-out 2.6s infinite}
+.lw-crowd-2 .lw-crowd-dot{opacity:1;transform:scale(1);background:var(--lw-tint,var(--border));animation:lw-breathe 3.2s ease-in-out infinite}
+@keyframes lw-pop{from{opacity:.3;transform:scale(.7)}to{opacity:1;transform:scale(1)}}
+@keyframes lw-breathe{0%,100%{transform:scale(1)}50%{transform:scale(.92)}}
+.lw-flavour{margin:0;font-size:12px;line-height:1.4;color:var(--muted);min-height:17px;opacity:1;transition:opacity .22s ease}
+.lw-flavour.is-fading{opacity:0}
+.lw-ph{border-radius:6px;background:linear-gradient(90deg,var(--border) 0%,color-mix(in srgb,var(--border) 40%,var(--surface)) 50%,var(--border) 100%);background-size:200% 100%;animation:lw-shimmer 1.6s linear infinite}
+.lw-ph-k{height:11px;width:55%;margin-bottom:6px}
+.lw-ph-v{height:15px;width:38%}
+.lw-ph-row{height:6px;border-radius:999px}
+.lw-shimmer{min-height:52px;box-sizing:border-box}
+@keyframes lw-shimmer{from{background-position:200% 0}to{background-position:-200% 0}}
+@media (prefers-reduced-motion:reduce){
+  .lw-busy{animation:none}
+  .lw-crowd-dot,.lw-crowd-1 .lw-crowd-dot,.lw-crowd-2 .lw-crowd-dot{animation:none;transition:none}
+  .lw-crowd-1 .lw-crowd-dot{opacity:1;transform:scale(1)}
+  .lw-flavour{transition:none}
+  .lw-ph{animation:none;background:var(--border)}
+}

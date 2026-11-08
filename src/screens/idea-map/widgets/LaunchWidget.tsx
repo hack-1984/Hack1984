@@ -6,7 +6,7 @@
 // one place the buy/curious/leave rule lives, so moving it costs nothing. "Send results to
 // tree" applies the run's updates, re-running first if the slider moved since the last run.
 // Results are cached per idea in this browser.
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { launchPersonas, launchRun, launchScene } from "@/ideas/api";
 import { loadWidgetCache, saveWidgetCache } from "@/ideas/store";
 import type { WireUpdate } from "@/ideas/wire";
@@ -25,10 +25,97 @@ interface Saved {
   scene: SceneSpec;
   personas: SimPersona[];
   run: Run;
+  /** Which crowd this is. "Run again with a new crowd" picks a new one; re-pricing keeps it. */
+  seed?: number;
 }
 
 const CACHE_KEY = "launch";
 const COLOR = { buy: "var(--green)", curious: "var(--amber)", leave: "var(--red)" } as const;
+
+// ---- downtime visuals while a run is in flight (visual only; `busy` drives everything) ----
+
+const PHASES = ["Scene", "Crowd", "Doors"] as const;
+
+/** Which step the busy string is on: "Setting…" 0, "Inviting…" 1, "Opening…" / "Re-running…" 2. */
+function phaseOf(busy: string): number {
+  if (busy.startsWith("Setting")) return 0;
+  if (busy.startsWith("Inviting")) return 1;
+  return 2;
+}
+
+/** Flavour lines per phase, in the mode's own world. Kept here; not the prompt modules. */
+const FLAVOUR: Record<"startup" | "nonprofit", string[][]> = {
+  // Generic on purpose: the scene is different for every idea, so no fixture-specific props here.
+  startup: [
+    ["Picking a spot with foot traffic", "Hanging the price card", "Setting out the demo"],
+    ["Texting the first hundred people", "A few early customers wander over", "The skeptics are hanging back"],
+    ["Counting who stops to look", "Someone asks about the price", "Watching who walks past"],
+  ],
+  nonprofit: [
+    ["Unlocking the school gym", "Setting out the folding chairs", "Taping up the sign-up sheet"],
+    ["Posting flyers in the neighbourhood", "Families are trickling in", "A few neighbours peek in"],
+    ["Counting who signs the sheet", "Someone asks how many hours", "Watching who heads home"],
+  ],
+};
+
+/** Deterministic mixed tint for the "Doors" phase: a few accent, a few amber, mostly neutral. */
+const doorsTint = (i: number) => {
+  const h = (i * 2654435761) >>> 0;
+  const r = (h % 100) / 100;
+  return r < 0.22 ? "var(--accent)" : r < 0.34 ? "var(--amber)" : "var(--border)";
+};
+
+function LaunchBusy({ busy, mode }: { busy: string; mode: "startup" | "nonprofit" }) {
+  const step = phaseOf(busy);
+  const lines = FLAVOUR[mode][step];
+  // Rotate the flavour line every ~2.2s with a short cross-fade. The tick counter is keyed by
+  // step, so a new phase starts from its first line without resetting state inside the effect.
+  const [tick, setTick] = useState<{ step: number; n: number; fade: boolean }>({ step, n: 0, fade: false });
+  useEffect(() => {
+    const t = window.setInterval(() => {
+      setTick((cur) => ({ ...cur, fade: true }));
+      window.setTimeout(() => setTick((cur) => ({ step, n: cur.step === step ? cur.n + 1 : 0, fade: false })), 220);
+    }, 2200);
+    return () => clearInterval(t);
+  }, [step]);
+  const i = tick.step === step ? tick.n : 0;
+  const fade = tick.step === step && tick.fade;
+
+  return (
+    <div className="lw-busy" role="status" aria-live="polite">
+      <ol className="lw-rail" aria-label="Progress">
+        {PHASES.map((name, k) => (
+          <li key={name} className={`lw-step${k < step ? " is-done" : k === step ? " is-now" : ""}`}>
+            <span className="lw-step-dot" aria-hidden="true" />
+            <span className="lw-step-name">{name}</span>
+          </li>
+        ))}
+      </ol>
+      <p className="wg-muted" style={{ margin: 0 }}>
+        {busy}
+      </p>
+      <div className={`ld-grid lw-crowd lw-crowd-${step}`} aria-hidden="true">
+        {Array.from({ length: 100 }, (_, n) => (
+          <span key={n} className="ld-dot lw-crowd-dot" style={{ animationDelay: `${(n % 10) * 90 + Math.floor(n / 10) * 150}ms`, ["--lw-tint" as string]: doorsTint(n) } as React.CSSProperties} />
+        ))}
+      </div>
+      <p className={`lw-flavour${fade ? " is-fading" : ""}`} aria-hidden="true">
+        {lines[i % lines.length]}
+      </p>
+      <div className="gy-tiles" aria-hidden="true">
+        <div className="gy-tile lw-shimmer">
+          <div className="gy-tile-k lw-ph lw-ph-k" />
+          <div className="gy-tile-v lw-ph lw-ph-v" />
+        </div>
+        <div className="gy-tile lw-shimmer">
+          <div className="gy-tile-k lw-ph lw-ph-k" />
+          <div className="gy-tile-v lw-ph lw-ph-v" />
+        </div>
+      </div>
+      <div className="lw-ph lw-ph-row" aria-hidden="true" />
+    </div>
+  );
+}
 
 /** Starting price: a number in the top Revenue choice ("$8/month"), or hours in the top Approach/Solution
  *  choice for a nonprofit ("2 hrs a week"), else the mode's default. */
@@ -78,13 +165,16 @@ export default function LaunchWidget({ ctx }: { ctx: WidgetCtx }) {
     setError(null);
     try {
       const fresh = buildIdea();
+      // A new crowd every time: fresh seed, and the previous crowd's "sent" marks no longer apply.
+      const seed = Math.floor(Math.random() * 1_000_000);
       setBusy("Setting the scene…");
       const scene = await launchScene(fresh);
       setBusy(`Inviting ${scene.groups.reduce((n, g) => n + g.count, 0) || 100} people…`);
-      const personas = await launchPersonas(fresh, scene);
+      const personas = await launchPersonas(fresh, scene, seed);
       setBusy("Opening the doors…");
-      const r = await launchRun(fresh, scene, personas, price);
-      store({ scene, personas, run: { price, ...r } });
+      const r = await launchRun(fresh, scene, personas, price, seed);
+      store({ scene, personas, run: { price, ...r }, seed });
+      ctx.setWmem("launch", { sent: {} });
     } catch (e) {
       setError({ message: (e as Error).message, retry: runAll });
     } finally {
@@ -99,7 +189,7 @@ export default function LaunchWidget({ ctx }: { ctx: WidgetCtx }) {
       let run = saved.run;
       if (run.price !== price) {
         setBusy(`Re-running at ${fmt(price)}…`);
-        const r = await launchRun(buildIdea(), saved.scene, saved.personas, price);
+        const r = await launchRun(buildIdea(), saved.scene, saved.personas, price, saved.seed);
         run = { price, ...r };
         store({ ...saved, run });
       }
@@ -154,11 +244,7 @@ export default function LaunchWidget({ ctx }: { ctx: WidgetCtx }) {
         </>
       ) : null}
 
-      {busy ? (
-        <p className="wg-muted" role="status">
-          {busy}
-        </p>
-      ) : null}
+      {busy ? <LaunchBusy busy={busy} mode={mode === "nonprofit" ? "nonprofit" : "startup"} /> : null}
 
       {error ? (
         <div className="wg-error" role="alert">

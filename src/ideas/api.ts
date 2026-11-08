@@ -68,12 +68,15 @@ export function launchScene(idea: Idea) {
   return postJSON<LaunchSceneResponse>("/api/launch/scene", { idea } satisfies LaunchSceneRequest, "the launch").then((r) => r.scene);
 }
 
-export function launchPersonas(idea: Idea, scene: SceneSpec) {
-  return postJSON<LaunchPersonasResponse>("/api/launch/personas", { idea, scene } satisfies LaunchPersonasRequest, "the crowd").then((r) => r.personas);
+/** `seed` (optional, outside the frozen contract) asks for a different crowd: "Run again with a new crowd". */
+export function launchPersonas(idea: Idea, scene: SceneSpec, seed?: number) {
+  const body: LaunchPersonasRequest & { seed?: number } = { idea, scene, ...(seed !== undefined ? { seed } : {}) };
+  return postJSON<LaunchPersonasResponse>("/api/launch/personas", body, "the crowd").then((r) => r.personas);
 }
 
-export function launchRun(idea: Idea, scene: SceneSpec, personas: SimPersona[], price: number) {
-  return postJSON<LaunchRunResponse>("/api/launch/run", { idea, scene, personas, price } satisfies LaunchRunRequest, "the results");
+export function launchRun(idea: Idea, scene: SceneSpec, personas: SimPersona[], price: number, seed?: number) {
+  const body: LaunchRunRequest & { seed?: number } = { idea, scene, personas, price, ...(seed !== undefined ? { seed } : {}) };
+  return postJSON<LaunchRunResponse>("/api/launch/run", body, "the results");
 }
 
 // ---------- Build, Team, node actions ----------

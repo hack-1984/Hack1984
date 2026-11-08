@@ -33,8 +33,10 @@ const LAST = ["Reed", "Okafor", "Nowak", "Silva", "Byrne", "Haddad", "Lin", "Mor
  * hours free per month at an Open House. `habits` likewise — buying habits for
  * one, schedule limits for the other.
  */
-export function mockPersonas(scene: SceneSpec = MOCK_SCENE, mode?: Mode): SimPersona[] {
-  const rand = rng(42);
+export function mockPersonas(scene: SceneSpec = MOCK_SCENE, mode?: Mode, seed = 42): SimPersona[] {
+  // `seed` varies the crowd ("Run again with a new crowd"); the default is the fixture crowd.
+  const rand = rng(seed);
+  const shift = seed % FIRST.length;
   const out: SimPersona[] = [];
   const nonprofit = mode === "nonprofit";
 
@@ -47,7 +49,7 @@ export function mockPersonas(scene: SceneSpec = MOCK_SCENE, mode?: Mode): SimPer
       out.push({
         id: `p-${n + 1}`,
         groupId: g.id,
-        name: `${FIRST[n % FIRST.length]} ${LAST[(n * 7) % LAST.length]}`,
+        name: `${FIRST[(n + shift) % FIRST.length]} ${LAST[(n * 7 + shift) % LAST.length]}`,
         blurb: np
           ? np.blurb
           : isCompany
@@ -71,8 +73,8 @@ export function mockPersonas(scene: SceneSpec = MOCK_SCENE, mode?: Mode): SimPer
 }
 
 /** Decisions come from decide(), so the mock agrees with Ethan's price slider. */
-export function mockResults(personas: SimPersona[], price: number, mode?: Mode): SimResult[] {
-  const rand = rng(7);
+export function mockResults(personas: SimPersona[], price: number, mode?: Mode, seed = 7): SimResult[] {
+  const rand = rng(seed);
   const nonprofit = mode === "nonprofit";
 
   return personas.map((p) => {

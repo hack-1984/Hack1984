@@ -6,7 +6,7 @@ import { launchMode } from "@/server/launch/modes";
 import { fallbackScene } from "@/server/launch/scene";
 import { judge, summarise, toUpdates } from "@/server/launch/run";
 
-/** Keyed on idea.id + price, per the plan. */
+/** Keyed on idea.id + price + the crowd (persona ids, seed). */
 const runCache = new TTLCache<LaunchRunResponse>();
 
 /**
@@ -20,10 +20,12 @@ export async function POST(req: Request) {
   // a month at an Open House.
   const price = typeof body.price === "number" ? body.price : mode === "nonprofit" ? 4 : 8;
 
+  // `seed` is optional and outside the frozen contract: a new crowd sends a fresh one.
+  const seed = (body as { seed?: number }).seed;
   if (process.env.MOCK_AI === "1") {
     const scene = body.scene ?? mockScene(mode);
-    const personas = body.personas?.length ? body.personas : mockPersonas(scene, mode);
-    const results = mockResults(personas, price, mode);
+    const personas = body.personas?.length ? body.personas : mockPersonas(scene, mode, typeof seed === "number" ? seed : undefined);
+    const results = mockResults(personas, price, mode, typeof seed === "number" ? seed : undefined);
     const summary = mockSummarise(results, personas, scene, price, mode);
     return NextResponse.json({
       results,
@@ -41,7 +43,8 @@ export async function POST(req: Request) {
 
   const unit = launchMode(mode).unitLabel;
 
-  const key = cacheKey(idea.id, price, mode);
+  // Keyed on the crowd as well: "Run again with a new crowd" must not be answered from the old crowd's run.
+  const key = cacheKey(idea.id, price, mode, personas.map((p) => p.id), seed);
   const cached = runCache.get(key);
   if (cached) {
     console.log(`[api/launch/run] cache HIT for ${idea.id} at ${unit(price)}`);
