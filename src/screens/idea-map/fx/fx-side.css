@@ -1,0 +1,53 @@
+/* FX side pieces (visual only): the live change ticker and the fresh marks on moved nodes.
+   Theme variables only. Prefix: fxt- (ticker), fxm- (marks). Layering inside .im-pane:
+   world nodes < marks (3) < ticker and map controls (4) < toast (5) < floating panel (6) < rail (7). */
+
+/* ---- ticker ---- */
+.fxt{position:absolute;left:16px;top:56px;z-index:4;width:300px;max-width:calc(100% - var(--wg-occ, 0px) - 240px);display:flex;flex-direction:column;gap:6px;pointer-events:none;font-family:'Geist',system-ui,sans-serif;color:var(--text)}
+.fxt-head{display:flex;align-items:center;gap:7px;flex-wrap:wrap;padding:0 2px;font-family:'Geist Mono',monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);animation:fxt-in .25s ease-out both}
+.fxt-live{width:6px;height:6px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 0 color-mix(in srgb,var(--accent) 45%,transparent);animation:fxt-live 1.8s ease-out infinite}
+.fxt-overall{margin-left:auto;letter-spacing:.02em;text-transform:none;animation:fxt-in .25s ease-out both}
+.fxt-overall.is-up{color:var(--green-text)}.fxt-overall.is-down{color:var(--red-text)}
+.fxt-rows{display:flex;flex-direction:column;gap:6px}
+.fxt-row{position:relative;pointer-events:auto;display:flex;flex-direction:column;gap:3px;padding:8px 10px 8px 12px;border-radius:10px;border:1px solid var(--border);background:var(--surface);box-shadow:0 4px 14px var(--shadow);text-align:left;font:inherit;color:inherit;cursor:pointer;box-sizing:border-box;width:100%;animation:fxt-in .25s cubic-bezier(.2,.8,.2,1) both;transition:transform .45s cubic-bezier(.4,0,.6,1),opacity .4s ease,background .15s,border-color .15s}
+.fxt-row:hover{background:var(--surface);border-color:var(--muted)}
+.fxt-row:active,.fxt-row.is-pressed{transform:scale(.98)}
+.fxt-row:focus-visible{outline:2px solid var(--focus-ring);outline-offset:1px}
+.fxt-row.is-leaving{opacity:0;transform:translateX(-115%);pointer-events:none}
+.fxt-row::before{content:"";position:absolute;left:0;top:10px;bottom:10px;width:2px;border-radius:2px;background:var(--fxt-c,var(--accent))}
+.fxt-top{display:flex;align-items:center;gap:7px;min-width:0}
+.fxt-dot{flex:none;width:6px;height:6px;border-radius:50%;background:var(--fxt-c,var(--accent))}
+.fxt-src{flex:none;font-family:'Geist Mono',monospace;font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);max-width:46%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fxt-main{display:flex;align-items:baseline;justify-content:space-between;gap:10px;min-width:0}
+.fxt-what{font-size:12.5px;line-height:1.35;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fxt-what b{font-weight:600}
+.fxt-delta{flex:none;font-family:'Geist Mono',monospace;font-size:12px;font-weight:500;color:var(--fxt-c,var(--text))}
+.fxt-pillar{font-size:11px;line-height:1.3;color:var(--muted);font-family:'Geist Mono',monospace;padding-top:3px;border-top:1px solid color-mix(in srgb,var(--border) 70%,transparent)}
+.fxt-pillar b{font-weight:500;color:var(--text)}
+.fxt-pdelta{margin-left:6px;font-weight:500}
+.fxt-pillar.is-up .fxt-pdelta{color:var(--green-text)}.fxt-pillar.is-down .fxt-pdelta{color:var(--red-text)}.fxt-pillar.is-flat .fxt-pdelta{opacity:.6}
+.fxt-arrow{margin:0 4px;opacity:.7}
+@keyframes fxt-in{from{opacity:0;transform:translateX(-10px)}to{opacity:1;transform:translateX(0)}}
+@keyframes fxt-live{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--accent) 45%,transparent)}70%{box-shadow:0 0 0 6px color-mix(in srgb,var(--accent) 0%,transparent)}100%{box-shadow:0 0 0 0 color-mix(in srgb,var(--accent) 0%,transparent)}}
+
+/* ---- fresh marks ---- */
+.fxm{position:absolute;inset:0;z-index:3;pointer-events:none;overflow:hidden}
+.fxm-mark,.fxm-ring{position:absolute;left:0;top:0;will-change:transform;opacity:0}
+.fxm-mark{width:0;height:0}
+.fxm-mark[hidden],.fxm-ring[hidden]{display:none}
+/* Decay runs in CSS for the mark's whole life (set per element as --fxm-life); JS only positions. */
+.fxm-run{animation:fxm-decay var(--fxm-life,60s) cubic-bezier(.3,0,.7,1) both}
+.fxm-reduced.fxm-run{animation-timing-function:linear}
+@keyframes fxm-decay{0%{opacity:1}100%{opacity:0}}
+.fxm-dot{position:absolute;left:-5px;top:-5px;width:10px;height:10px;border-radius:50%;background:var(--fxm-c,var(--accent));border:2px solid var(--surface);box-sizing:border-box;box-shadow:0 1px 3px var(--shadow)}
+.fxm-halo{position:absolute;left:-14px;top:-14px;width:28px;height:28px;border-radius:50%;background:color-mix(in srgb,var(--fxm-c,var(--accent)) 28%,transparent);transform-origin:center;animation:fxm-halo var(--fxm-life,60s) ease-out both}
+.fxm-reduced .fxm-halo{animation:none;transform:scale(.6)}
+@keyframes fxm-halo{0%{transform:scale(1.3)}100%{transform:scale(0)}}
+.fxm-ring{border-radius:50%;border:2px solid var(--fxm-c,var(--accent));box-sizing:border-box}
+
+@media (prefers-reduced-motion:reduce){
+  .fxt-head,.fxt-row{animation:none}
+  .fxt-row{transition:none}
+  .fxt-live{animation:none}
+  .fxt-row.is-leaving{transform:none}
+}

@@ -21,12 +21,16 @@ import GraveyardWidget from "./widgets/GraveyardWidget";
 import LaunchWidget from "./widgets/LaunchWidget";
 import TeamWidget from "./widgets/TeamWidget";
 import type { WidgetCtx } from "./widgets/types";
+import FxLayer from "./fx/FxLayer";
+import FxTicker from "./fx/FxTicker";
+import FxFreshMarks from "./fx/FxFreshMarks";
+import { PulseOnChange, TweenNumber } from "./fx/Tween";
 
 export default function IdeaMapScreen(props: Record<string, unknown>) {
   // clientOnly: which idea to show comes from the URL and this browser's saved ideas.
   const v = useLogic(Logic, props, { clientOnly: true });
   if (!v) return <div className="pg-im" />;
-  const { showPillar, panelOpen, panelW, occupied, closePanel, setPanelW, setDragW, loading, missing, widget, setWidget, showBadge, ideaId, wmem, setWmem, pillarPct, buildIdea, applyWidget, openOverview, team, saveTeam, focus, ideaInitial, ideaName, ideaPitch, accept, addAgainst, addFor, choices, clearSel, counts, curves, cv, draft, edges, ev, hasToast, hoverIdea, hoverOff, hoverOn, evCard, researchView, ideaShadow, isChoice, isEvidence, isIdea, isPillar, orbit, ov, paneRef, pctRef, particles, pillars, pv, reject, removeChoice, selIdea, setDraft, showHint, toast, toggleAll, toggleAllLabel, worldRef, zoomFit, zoomIn, zoomOut } = v;
+  const { showPillar, panelOpen, panelW, occupied, closePanel, setPanelW, setDragW, loading, missing, widget, setWidget, showBadge, ideaId, wmem, setWmem, pillarPct, buildIdea, applyWidget, openOverview, team, saveTeam, focus, ideaInitial, ideaName, ideaPitch, accept, addAgainst, addFor, choices, clearSel, counts, curves, cv, draft, edges, ev, hasToast, hoverIdea, hoverOff, hoverOn, evCard, researchView, ideaShadow, isChoice, isEvidence, isIdea, isPillar, orbit, ov, paneRef, pctRef, particles, pillars, pv, reject, removeChoice, selIdea, setDraft, showHint, toast, toggleAll, toggleAllLabel, worldRef, zoomFit, zoomIn, zoomOut, nChoices, nEvidence, evCardOpen, canUndo, undoLabel, undo } = v;
   // App: no canned idea. While the stored idea loads, or if it isn't this account's, say so instead of drawing an empty map.
   if (loading || missing) {
     return (
@@ -62,7 +66,7 @@ export default function IdeaMapScreen(props: Record<string, unknown>) {
               {ideaName}
             </div>
             <div style={{ fontSize: "12px", color: "var(--muted)" }}>
-              {counts}
+              {typeof nChoices === "number" && typeof nEvidence === "number" ? (<><TweenNumber value={nChoices} /> choices · <TweenNumber value={nEvidence} /> evidence</>) : counts}
             </div>
           </div>
           <div style={{ display: "flex", gap: "14px", fontSize: "11px", color: "var(--muted)", flexWrap: "wrap" }}>
@@ -121,7 +125,7 @@ export default function IdeaMapScreen(props: Record<string, unknown>) {
                   {(pillars ?? []).map((p: any) => (
                     <Fragment key={p?.name}>
                       {" "}
-                      <div data-node="pillar" style={{ position: "absolute", left: `${p?.x ?? ""}px`, top: `${p?.y ?? ""}px`, transform: `translate(-50%,-50%) scale(${p?.scale ?? ""})`, width: "72px", height: "72px", borderRadius: "50%", padding: "4px", boxSizing: "border-box", background: `${p?.ring ?? ""}`, cursor: "pointer", opacity: `${p?.op ?? ""}`, transition: "left .5s cubic-bezier(.2,.8,.2,1),top .5s cubic-bezier(.2,.8,.2,1),opacity .3s,box-shadow .2s,transform .35s cubic-bezier(.2,.8,.2,1)", boxShadow: `${p?.shadow ?? ""}`, animation: "im-nodeIn .4s ease-out backwards", animationDelay: `${p?.delay ?? ""}` } as CSSProperties} onClick={p?.select} onMouseEnter={p?.enter} onMouseLeave={p?.leave} title={p?.title}>
+                      <PulseOnChange value={p?.pct} className={p?.ringDeg ? "im-ring-anim" : undefined} data-node="pillar" data-id={p?.key} style={{ position: "absolute", left: `${p?.x ?? ""}px`, top: `${p?.y ?? ""}px`, transform: `translate(-50%,-50%) scale(${p?.scale ?? ""})`, width: "72px", height: "72px", borderRadius: "50%", padding: "4px", boxSizing: "border-box", background: `${p?.ring ?? ""}`, ["--im-ring-deg" as string]: p?.ringDeg, ["--im-ring-col" as string]: p?.ringCol, ["--im-scale" as string]: p?.scale, cursor: "pointer", opacity: `${p?.op ?? ""}`, transition: "left .5s cubic-bezier(.2,.8,.2,1),top .5s cubic-bezier(.2,.8,.2,1),opacity .3s,box-shadow .2s,transform .35s cubic-bezier(.2,.8,.2,1),--im-ring-deg .7s cubic-bezier(.2,.8,.2,1),--im-ring-col .7s ease", boxShadow: `${p?.shadow ?? ""}`, animation: "im-nodeIn .4s ease-out backwards", animationDelay: `${p?.delay ?? ""}` } as CSSProperties} onClick={p?.select} onMouseEnter={p?.enter} onMouseLeave={p?.leave} title={p?.title}>
                         {" "}
                         {p?.flashing ? (
                           <Fragment key={p?.flashKey}>
@@ -138,11 +142,11 @@ export default function IdeaMapScreen(props: Record<string, unknown>) {
                             {p?.name}
                           </span>
                           <span style={{ fontSize: "9px", fontFamily: "'Geist Mono',monospace", fontWeight: "500", color: `${p?.labelColor ?? ""}` } as CSSProperties}>
-                            {p?.pct}%
+                            <TweenNumber value={p?.pct ?? 0} />%
                           </span>
                         </div>
                         {" "}
-                      </div>
+                      </PulseOnChange>
                       {" "}
                     </Fragment>
                   ))}
@@ -162,7 +166,7 @@ export default function IdeaMapScreen(props: Record<string, unknown>) {
                   {(choices ?? []).map((c: any) => (
                     <Fragment key={c?.id}>
                       {" "}
-                      <div data-node="choice" style={{ position: "absolute", left: `${c?.x ?? ""}px`, top: `${c?.y ?? ""}px`, transform: `translate(-50%,-50%) scale(${c?.scale ?? ""})`, width: "156px", minHeight: "44px", display: "flex", alignItems: "center", gap: "8px", padding: "6px 10px 6px 10px", boxSizing: "border-box", borderRadius: "10px", background: `${c?.bg ?? ""}`, border: `1.5px ${c?.borderStyle ?? ""} ${c?.border ?? ""}`, color: `${c?.color ?? ""}`, boxShadow: `${c?.shadow ?? ""}`, cursor: "pointer", opacity: `${c?.op ?? ""}`, pointerEvents: `${c?.pe ?? ""}`, transition: "left .5s cubic-bezier(.2,.8,.2,1),top .5s cubic-bezier(.2,.8,.2,1),opacity .3s,box-shadow .2s,transform .35s cubic-bezier(.2,.8,.2,1)", animation: "im-nodeIn .4s ease-out backwards", animationDelay: `${c?.delay ?? ""}` } as CSSProperties} onClick={c?.select} onMouseEnter={c?.enter} onMouseLeave={c?.leave}>
+                      <div data-node="choice" data-id={c?.id} style={{ position: "absolute", left: `${c?.x ?? ""}px`, top: `${c?.y ?? ""}px`, transform: `translate(-50%,-50%) scale(${c?.scale ?? ""})`, width: "156px", minHeight: "44px", display: "flex", alignItems: "center", gap: "8px", padding: "6px 10px 6px 10px", boxSizing: "border-box", borderRadius: "10px", background: `${c?.bg ?? ""}`, border: `1.5px ${c?.borderStyle ?? ""} ${c?.border ?? ""}`, color: `${c?.color ?? ""}`, boxShadow: `${c?.shadow ?? ""}`, cursor: "pointer", opacity: `${c?.op ?? ""}`, pointerEvents: `${c?.pe ?? ""}`, transition: "left .5s cubic-bezier(.2,.8,.2,1),top .5s cubic-bezier(.2,.8,.2,1),opacity .3s,box-shadow .2s,transform .35s cubic-bezier(.2,.8,.2,1)", animation: "im-nodeIn .4s ease-out backwards", animationDelay: `${c?.delay ?? ""}` } as CSSProperties} onClick={c?.select} onMouseEnter={c?.enter} onMouseLeave={c?.leave}>
                         {c?.ghost ? (
                           <svg className="im-ghost" viewBox="-11 -11 22 22" role="img" aria-label={`Haunted by ${c.ghost}`}>
                             <title>{`Haunted by ${c.ghost}`}</title>
@@ -172,9 +176,9 @@ export default function IdeaMapScreen(props: Record<string, unknown>) {
                           </svg>
                         ) : null}
                         {/* App: confidence ring in the pillars' language: one colour filling conf% of the circle, the number inside. */}
-                        <span className="im-conf-ring" title={c?.confTitle} style={{ background: `${c?.ring ?? ""}` } as CSSProperties}>
+                        <span className={c?.ringDeg ? "im-conf-ring im-ring-anim" : "im-conf-ring"} title={c?.confTitle} style={{ background: `${c?.ring ?? ""}`, ["--im-ring-deg" as string]: c?.ringDeg, ["--im-ring-col" as string]: c?.ringCol } as CSSProperties}>
                           <span className="im-conf-core" style={{ background: `${c?.bg ?? ""}`, color: `${c?.confColor ?? ""}` } as CSSProperties}>
-                            {c?.conf}%
+                            <TweenNumber value={c?.conf ?? 0} />%
                           </span>
                         </span>
                         <div style={{ flex: "1", minWidth: "0", fontSize: "11.5px", fontWeight: "500", lineHeight: "1.25", textDecoration: `${c?.deco ?? ""}`, textWrap: "pretty" } as CSSProperties}>
@@ -263,12 +267,21 @@ export default function IdeaMapScreen(props: Record<string, unknown>) {
               </button>
             </div>
             {" "}
+            {canUndo && !hasToast ? (
+              <button type="button" className="im-undo-link" style={{ left: "calc((100% - var(--wg-occ)) / 2)" }} onClick={undo} aria-label={`Undo ${undoLabel}`}>
+                ↶ Undo {undoLabel}
+              </button>
+            ) : null}
             <div style={{ position: "absolute", left: "calc((100% - var(--wg-occ)) / 2)", bottom: "16px", transform: "translateX(-50%)", transition: "left .25s ease", display: "flex", alignItems: "center", gap: "4px", padding: "5px 6px", borderRadius: "999px", background: "var(--surface)", border: "1px solid var(--border)", boxShadow: "0 4px 16px var(--shadow)", zIndex: "4" }}>
               <button className="im-hover1" style={{ height: "28px", padding: "0 12px", borderRadius: "999px", border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text)", fontSize: "11px", fontWeight: "600", cursor: "pointer" }} onClick={toggleAll}>
                 {toggleAllLabel}
               </button>
             </div>
             {" "}
+            {/* FX overlays (visual only, see ./fx/bus.ts). Screen-space, above the world, below the panel. Always mounted. */}
+            <FxLayer />
+            <FxFreshMarks />
+            <FxTicker />
             {showHint ? (
               <>
                 {" "}
@@ -283,8 +296,13 @@ export default function IdeaMapScreen(props: Record<string, unknown>) {
             {hasToast ? (
               <>
                 {" "}
-                <div style={{ position: "absolute", left: "calc((100% - var(--wg-occ)) / 2)", top: "16px", transform: "translateX(-50%)", padding: "8px 14px", borderRadius: "10px", background: "var(--surface-2)", border: "1px solid var(--border)", color: "var(--text)", fontSize: "12px", boxShadow: "0 8px 24px var(--shadow)", zIndex: "5", animation: "im-toastIn .25s ease-out", whiteSpace: "nowrap" }}>
-                  {toast}
+                <div style={{ position: "absolute", left: "calc((100% - var(--wg-occ)) / 2)", top: "16px", transform: "translateX(-50%)", padding: "8px 14px", borderRadius: "10px", background: "var(--surface-2)", border: "1px solid var(--border)", color: "var(--text)", fontSize: "12px", boxShadow: "0 8px 24px var(--shadow)", zIndex: "5", animation: "im-toastIn .25s ease-out", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: "10px" }} onClick={(e) => e.stopPropagation()}>
+                  <span>{toast}</span>
+                  {canUndo ? (
+                    <button type="button" className="im-undo-pill" onClick={undo} aria-label={`Undo ${undoLabel}`}>
+                      Undo
+                    </button>
+                  ) : null}
                 </div>
                 {" "}
               </>
@@ -313,10 +331,10 @@ export default function IdeaMapScreen(props: Record<string, unknown>) {
                     </div>
                     {" "}
                     <div style={{ display: "flex", alignItems: "center", gap: "14px", marginTop: "16px" }}>
-                      <div style={{ width: "84px", height: "84px", borderRadius: "50%", padding: "7px", boxSizing: "border-box", background: `${ov?.ring ?? ""}`, flex: "none", animation: "im-countUp .4s cubic-bezier(.34,1.56,.64,1) both" } as CSSProperties}>
+                      <div style={{ width: "84px", height: "84px", borderRadius: "50%", padding: "7px", boxSizing: "border-box", background: `${ov?.ring ?? ""}`, ["--im-ring-deg" as string]: ov?.ringDeg, ["--im-ring-col" as string]: ov?.ringCol, flex: "none", animation: "im-countUp .4s cubic-bezier(.34,1.56,.64,1) both" } as CSSProperties} className={ov?.ringDeg ? "im-ring-anim" : undefined}>
                         {" "}
                         <div style={{ width: "100%", height: "100%", borderRadius: "50%", background: "var(--surface)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "20px", fontWeight: "700", letterSpacing: "-.04em", color: `${ov?.scoreColor ?? ""}` } as CSSProperties}>
-                          <span>{ov?.score}</span>%
+                          <span><TweenNumber value={ov?.score ?? 0} /></span>%
                         </div>
                         {" "}
                       </div>
@@ -336,7 +354,7 @@ export default function IdeaMapScreen(props: Record<string, unknown>) {
                     <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: "6px", marginTop: "14px" }}>
                       <div style={{ padding: "8px 6px", borderRadius: "8px", background: "var(--surface-2)", textAlign: "center" }}>
                         <div style={{ fontSize: "16px", fontWeight: "700", color: "var(--green-text)" }}>
-                          {ov?.nSup}
+                          <TweenNumber value={ov?.nSup ?? 0} />
                         </div>
                         <div style={{ fontSize: "9.5px", color: "var(--muted)" }}>
                           Supported
@@ -344,7 +362,7 @@ export default function IdeaMapScreen(props: Record<string, unknown>) {
                       </div>
                       <div style={{ padding: "8px 6px", borderRadius: "8px", background: "var(--surface-2)", textAlign: "center" }}>
                         <div style={{ fontSize: "16px", fontWeight: "700", color: "var(--text)" }}>
-                          {ov?.nUnt}
+                          <TweenNumber value={ov?.nUnt ?? 0} />
                         </div>
                         <div style={{ fontSize: "9.5px", color: "var(--muted)" }}>
                           Untested
@@ -352,7 +370,7 @@ export default function IdeaMapScreen(props: Record<string, unknown>) {
                       </div>
                       <div style={{ padding: "8px 6px", borderRadius: "8px", background: "var(--surface-2)", textAlign: "center" }}>
                         <div style={{ fontSize: "16px", fontWeight: "700", color: "var(--red-text)" }}>
-                          {ov?.nWeak}
+                          <TweenNumber value={ov?.nWeak ?? 0} />
                         </div>
                         <div style={{ fontSize: "9.5px", color: "var(--muted)" }}>
                           Weakened
@@ -360,7 +378,7 @@ export default function IdeaMapScreen(props: Record<string, unknown>) {
                       </div>
                       <div style={{ padding: "8px 6px", borderRadius: "8px", background: "var(--surface-2)", textAlign: "center" }}>
                         <div style={{ fontSize: "16px", fontWeight: "700", color: "var(--green-text)" }}>
-                          {ov?.nSug}
+                          <TweenNumber value={ov?.nSug ?? 0} />
                         </div>
                         <div style={{ fontSize: "9.5px", color: "var(--muted)" }}>
                           Suggested
@@ -411,7 +429,7 @@ export default function IdeaMapScreen(props: Record<string, unknown>) {
                       {(pillars ?? []).map((p: any, $index: number) => (
                         <Fragment key={$index}>
                           <div className="im-hover1" style={{ display: "flex", alignItems: "center", gap: "10px", cursor: "pointer", padding: "3px 6px", margin: "0 -6px", borderRadius: "6px", animation: "im-rowIn .35s ease-out both", animationDelay: `${p?.rowDelay ?? ""}` } as CSSProperties} onClick={p?.select}>
-                            <div style={{ width: "26px", height: "26px", borderRadius: "50%", padding: "3px", boxSizing: "border-box", background: `${p?.ring ?? ""}`, flex: "none" } as CSSProperties}>
+                            <div className={p?.ringDeg ? "im-ring-anim" : undefined} style={{ width: "26px", height: "26px", borderRadius: "50%", padding: "3px", boxSizing: "border-box", background: `${p?.ring ?? ""}`, ["--im-ring-deg" as string]: p?.ringDeg, ["--im-ring-col" as string]: p?.ringCol, flex: "none" } as CSSProperties}>
                               <div style={{ width: "100%", height: "100%", borderRadius: "50%", background: "var(--surface)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "9px", fontFamily: "'Geist Mono',monospace", color: "var(--muted)" }}>
                                 {p?.glyph}
                               </div>
@@ -420,7 +438,7 @@ export default function IdeaMapScreen(props: Record<string, unknown>) {
                               {p?.name}
                             </div>
                             <div style={{ fontSize: "11px", fontFamily: "'Geist Mono',monospace", color: `${p?.labelColor ?? ""}`, fontWeight: "500" } as CSSProperties}>
-                              {p?.pct}%
+                              <TweenNumber value={p?.pct ?? 0} />%
                             </div>
                             <div style={{ width: "44px", textAlign: "right", fontSize: "10px", color: `${p?.labelColor ?? ""}`, fontWeight: "500" } as CSSProperties}>
                               {p?.label}
@@ -506,10 +524,10 @@ export default function IdeaMapScreen(props: Record<string, unknown>) {
                     </div>
                     {" "}
                     <div style={{ display: "flex", alignItems: "center", gap: "14px", marginTop: "14px" }}>
-                      <div style={{ width: "72px", height: "72px", borderRadius: "50%", padding: "6px", boxSizing: "border-box", background: `${pv?.ring ?? ""}`, flex: "none", animation: "im-countUp .4s cubic-bezier(.34,1.56,.64,1) both" } as CSSProperties}>
+                      <div style={{ width: "72px", height: "72px", borderRadius: "50%", padding: "6px", boxSizing: "border-box", background: `${pv?.ring ?? ""}`, ["--im-ring-deg" as string]: pv?.ringDeg, ["--im-ring-col" as string]: pv?.ringCol, flex: "none", animation: "im-countUp .4s cubic-bezier(.34,1.56,.64,1) both" } as CSSProperties} className={pv?.ringDeg ? "im-ring-anim" : undefined}>
                         {" "}
                         <div style={{ width: "100%", height: "100%", borderRadius: "50%", background: "var(--surface)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "17px", fontWeight: "700", letterSpacing: "-.04em", color: `${pv?.labelColor ?? ""}` } as CSSProperties}>
-                          <span>{pv?.pct}</span>%
+                          <span><TweenNumber value={pv?.pct ?? 0} /></span>%
                         </div>
                         {" "}
                       </div>

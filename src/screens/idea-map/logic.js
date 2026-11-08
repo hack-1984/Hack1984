@@ -14,6 +14,8 @@ import { PILLARS as PILLAR_DEFS, PILLAR_KEYS, pillarLabel } from "@/lib/pillars"
 import { adopt, applyUpdates, describeUpdates, ideaStore, reject as rejectChoice, toMapModel } from "@/lib/db";
 import { planChoice, researchChoice } from "@/ideas/api";
 import { Camera, MIN_ZOOM, MAX_ZOOM } from "./camera";
+import { pillarScores } from "@/lib/db";
+import { emitFx, WIDGET_FOR_SOURCE } from "./fx/bus";
 const PILLARS = PILLAR_DEFS.map(p => p.startup);
 const LABEL = Object.fromEntries(PILLAR_DEFS.map(p => [p.key, p.startup]));
 // The startup labels stay the map's internal identity: they key FX, the
@@ -90,7 +92,7 @@ export const confText = v => v >= .70 ? 'var(--green-text)' : v >= .45 ? 'var(--
 export const confRing = (conf, lo, hi, status) => {
   if (status === 'removed') return { ring: 'var(--border)', text: 'var(--muted)', pct: conf, lo, hi };
   const v = conf / 100;
-  return { ring: `conic-gradient(${confColor(v)} ${(conf * 3.6).toFixed(1)}deg, var(--border) 0)`, text: confText(v), pct: conf, lo, hi };
+  return { ring: `conic-gradient(${confColor(v)} ${(conf * 3.6).toFixed(1)}deg, var(--border) 0)`, ringDeg: `${(conf * 3.6).toFixed(1)}deg`, ringCol: confColor(v), text: confText(v), pct: conf, lo, hi };
 };
 const ACTIVE_SHADOW = '0 0 0 3px var(--focus-ring), 0 4px 12px var(--shadow)';
 const statusAt = (c, W) => {
@@ -155,7 +157,9 @@ class Component extends DCLogic {
       }
     } catch (err) { console.error('[map] load', err); this.setState({ loading: false, missing: true }); }
     this._key = (e) => {
-      if (e.target && /TEXTAREA|INPUT/.test(e.target.tagName)) return;
+      if (e.target && (/TEXTAREA|INPUT/.test(e.target.tagName) || e.target.isContentEditable)) return;
+      // App: Cmd/Ctrl+Z undoes the last change a feature (or the founder) sent to the tree.
+      if ((e.metaKey || e.ctrlKey) && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'z') { if (this.canUndo()) { e.preventDefault(); this.undoLast(); } return; }
       if (e.key === 'Escape') this.setState({sel:null, pinEv:null});
       if (e.key === '+' || e.key === '=') this.zoomStep(1.25);
       if (e.key === '-') this.zoomStep(1 / 1.25);
@@ -290,7 +294,7 @@ class Component extends DCLogic {
     this._pane.classList.add('im-grabbing');
     if (this.state.hover || this.state.hoverIdea) this.setState({ hover: null, hoverIdea: false });
   }
-  say(msg) { clearTimeout(this._toastT); this.setState({toast: msg}); this._toastT = setTimeout(() => this.setState({toast:null}), 2600); }
+  say(msg, ms = 2600) { clearTimeout(this._toastT); this.setState({toast: msg}); this._toastT = setTimeout(() => this.setState({toast:null}), ms); }
   pick(sel) { return (e) => { if (e && e.stopPropagation) e.stopPropagation(); this.setState(s => { let expanded = s.expanded; const cid = sel && (sel.t === 'choice' ? sel.id : sel.t === 'evidence' ? sel.cid : null); if (cid) { const c = s.choices.find(x => x.id === cid); if (c && !expanded.includes(c.pillar)) expanded = [...expanded, c.pillar]; } if (sel && sel.t === 'pillar' && !expanded.includes(sel.id)) expanded = [...expanded, sel.id]; return { sel, draft:'', expanded, widget: 'overview', panelOpen: true }; }, () => this.reveal(this.state.expanded)); }; }
   hoverOn(k) { return () => { if (!this._dragging) this.setState({ hover: k }); }; }
   hoverOff(k) { return () => this.setState(s => s.hover === k ? { hover: null } : null); }
@@ -379,14 +383,14 @@ class Component extends DCLogic {
       const info = pillarInfo(p); const active = pillarActive(p); const [x, y] = pPos(p); const shrunk = focused && !active; const hk = 'p:' + p;
       const nC = view.filter(c => c.pillar === p && c.status !== 'removed').length; const open = expanded.includes(p); const i = PILLARS.indexOf(p);
       const fl = this.state.flash && this.state.flash.pillars.includes(p) ? this.state.flash : null;
-      return { flashing: !!fl, flashText: fl ? fl.text : '', flashKey: fl ? fl.key : 0, name: this.show(p), x, y, glyph: FX[p].glyph, delay: (i * .05) + 's', rowDelay: (i * .04) + 's', badge: open ? '–' : nC, badgeBg: open ? 'var(--accent)' : 'var(--surface)', badgeBorder: open ? 'var(--surface)' : 'var(--border)', badgeFg: open ? 'var(--on-accent)' : 'var(--text)', badgeDelay: (.3 + i * .05) + 's', ring: `conic-gradient(${info.ringColor} ${Math.round(info.avg * 360)}deg, var(--border) 0)`, title: `${info.label} · ${info.pct}%`, shadow: active ? '0 0 0 4px var(--focus-ring)' : '0 1px 2px var(--shadow)', pct: info.pct, label: info.label, labelColor: info.labelColor, op: shrunk ? .85 : 1, scale: hov(hk, shrunk ? .66 : 1), select: this.togglePillar(p), enter: this.hoverOn(hk), leave: this.hoverOff(hk) };
+      return { key: KEY_OF[p], flashing: !!fl, flashText: fl ? fl.text : '', flashKey: fl ? fl.key : 0, name: this.show(p), x, y, glyph: FX[p].glyph, delay: (i * .05) + 's', rowDelay: (i * .04) + 's', badge: open ? '–' : nC, badgeBg: open ? 'var(--accent)' : 'var(--surface)', badgeBorder: open ? 'var(--surface)' : 'var(--border)', badgeFg: open ? 'var(--on-accent)' : 'var(--text)', badgeDelay: (.3 + i * .05) + 's', ring: `conic-gradient(${info.ringColor} ${Math.round(info.avg * 360)}deg, var(--border) 0)`, ringDeg: `${Math.round(info.avg * 360)}deg`, ringCol: info.ringColor, title: `${info.label} · ${info.pct}%`, shadow: active ? '0 0 0 4px var(--focus-ring)' : '0 1px 2px var(--shadow)', pct: info.pct, label: info.label, labelColor: info.labelColor, op: shrunk ? .85 : 1, scale: hov(hk, shrunk ? .66 : 1), select: this.togglePillar(p), enter: this.hoverOn(hk), leave: this.hoverOff(hk) };
     });
     const choiceRow = c => { const st = STATUS[c.status]; return { dot: st.dot, dotBorder: st.dotBorder, deco: c.status === 'removed' ? 'line-through' : 'none', text: c.text, sub: `${st.label} · ${c.ev.length} evidence`, select: this.pick({t:'choice', id:c.id}) }; };
     const choices = rows.map(({ c, x, y, j }) => {
       const st = STATUS[c.status]; const active = selC && selC.id === c.id; const d = isDim(c.id);
       const [lo, hi] = c.interval || [c.confidence, c.confidence]; const cr = confRing(c.confidence, lo, hi, c.status);
       return { id: c.id, ghost: c.status !== 'removed' && c.ghost ? c.ghost : '', x, y, delay: (j * .07) + 's', scale: 1, pe: 'auto', enter: null, leave: null, text: c.text, bg: st.bg, dotBorder: st.dotBorder, border: active ? 'var(--accent)' : st.border, borderStyle: st.style, color: st.color, dot: st.dot, deco: c.status === 'removed' ? 'line-through' : 'none', shadow: active ? ACTIVE_SHADOW : '0 1px 2px var(--shadow)',
-        ring: cr.ring, conf: cr.pct, confColor: cr.text, range: `${lo}–${hi}`, confTitle: `Confidence ${c.confidence}%, likely ${lo}–${hi} · ${c.ev.length} evidence`, meta: c.status === 'suggested' ? '?' : (c.ev.length ? c.ev.length + ' ev' : '—'), metaColor: 'var(--muted)', op: d ? .3 : 1, select: this.pick(active ? null : {t:'choice', id:c.id}) };
+        ring: cr.ring, ringDeg: cr.ringDeg, ringCol: cr.ringCol, conf: cr.pct, confColor: cr.text, range: `${lo}–${hi}`, confTitle: `Confidence ${c.confidence}%, likely ${lo}–${hi} · ${c.ev.length} evidence`, meta: c.status === 'suggested' ? '?' : (c.ev.length ? c.ev.length + ' ev' : '—'), metaColor: 'var(--muted)', op: d ? .3 : 1, select: this.pick(active ? null : {t:'choice', id:c.id}) };
     });
     const histRow = (c, h) => ({ week: wkLabel(h.wk), type: h.type, note: h.note, color: TYPE_COLOR[h.type], dot: TYPE_DOT[h.type], choiceText: c.text, select: (e) => { e.stopPropagation(); this.setState({ sel: {t:'choice', id:c.id} }); } });
 
@@ -397,7 +401,7 @@ class Component extends DCLogic {
     const ranked = PILLARS.map(p => ({ p, ...pillarInfo(p) })).filter(x => x.has).sort((a, b) => a.avg - b.avg);
     const changes = view.flatMap(c => c.hist.filter(h => h.wk === W).map(h => histRow(c, h)));
     const ovColor = confColor(score / 100);
-    const ov = { score, ring: `conic-gradient(${ovColor} ${Math.round(score * 3.6)}deg, var(--border) 0)`, scoreColor: confText(score / 100), delta: dlt === null ? 'First week' : dlt === 0 ? 'No change since last week' : `${dlt > 0 ? '+' : ''}${dlt} since week ${W - 1}`, deltaColor: dlt > 0 ? 'var(--green-text)' : dlt < 0 ? 'var(--red-text)' : 'var(--muted)',
+    const ov = { score, ring: `conic-gradient(${ovColor} ${Math.round(score * 3.6)}deg, var(--border) 0)`, ringDeg: `${Math.round(score * 3.6)}deg`, ringCol: ovColor, scoreColor: confText(score / 100), delta: dlt === null ? 'First week' : dlt === 0 ? 'No change since last week' : `${dlt > 0 ? '+' : ''}${dlt} since week ${W - 1}`, deltaColor: dlt > 0 ? 'var(--green-text)' : dlt < 0 ? 'var(--red-text)' : 'var(--muted)',
       nSup: active.filter(c => c.status === 'strengthened').length, nUnt: active.filter(c => c.status === 'guess' || c.status === 'added').length, nWeak: active.filter(c => c.status === 'weakened').length, nSug: active.filter(c => c.status === 'suggested').length,
       hasSuggestion: !!sug, suggestionText: sug ? sug.text : '', suggestionFor: sugFor && find(sugFor[0]) ? find(sugFor[0]).text : '',
       suggestions: view.filter(c => c.status === 'suggested').reverse().map(c => { const l = LINKS.find(x => x[1] === c.id); const o = l && find(l[0]); return { id: c.id, text: c.text, note: o ? `Replacement for “${o.text}” · tap to review` : `New choice under ${c.pillar} · tap to review`, open: this.pick({t:'choice', id:c.id}) }; }), suggestionNote: sugFor && find(sugFor[0]) ? `Replacement for “${find(sugFor[0]).text}” · tap to review` : sug ? `New choice under ${sug.pillar} · tap to review` : '', openSuggestion: sug ? this.pick({t:'choice', id:sug.id}) : null,
@@ -409,7 +413,7 @@ class Component extends DCLogic {
       const p = sel.id; const info = pillarInfo(p); const cs = view.filter(c => c.pillar === p); const act = cs.filter(c => c.status !== 'removed');
       const evN = cs.reduce((a, c) => a + c.ev.length, 0);
       const tests = act.filter(c => c.status !== 'strengthened' && c.test !== '—').map(c => ({ choice: c.text, text: c.test, select: this.pick({t:'choice', id:c.id}) }));
-      pv = { name: this.show(p), glyph: FX[p].glyph, pct: info.pct, ring: `conic-gradient(${info.ringColor} ${Math.round(info.avg * 360)}deg, var(--border) 0)`, label: info.label, labelColor: info.labelColor, summary: `${act.length} active ${act.length === 1 ? 'choice' : 'choices'} · ${evN} evidence`,
+      pv = { name: this.show(p), glyph: FX[p].glyph, pct: info.pct, ring: `conic-gradient(${info.ringColor} ${Math.round(info.avg * 360)}deg, var(--border) 0)`, ringDeg: `${Math.round(info.avg * 360)}deg`, ringCol: info.ringColor, label: info.label, labelColor: info.labelColor, summary: `${act.length} active ${act.length === 1 ? 'choice' : 'choices'} · ${evN} evidence`,
         choices: cs.map(choiceRow), tests, noTests: !tests.length,
         history: cs.flatMap(c => c.hist.map(h => histRow(c, h))).sort((a, b) => parseInt(b.week.slice(3)) - parseInt(a.week.slice(3))) };
     }
@@ -456,7 +460,7 @@ class Component extends DCLogic {
       paneRef: this.setPane, worldRef: this.worldRef, pctRef: this.pctRef, edges, curves, pillars, choices, orbit, evCard, researchView: this.researchView, particles, flows,
       zoomIn: (e) => { e.stopPropagation(); this.zoomStep(1.25); }, zoomOut: (e) => { e.stopPropagation(); this.zoomStep(1 / 1.25); },
       zoomFit: (e) => { e.stopPropagation(); this.fit(); },
-      counts: `${active.length} choices · ${evTotal} evidence`,
+      counts: `${active.length} choices · ${evTotal} evidence`, nChoices: active.length, nEvidence: evTotal,
       showHint: !expanded.length,
       toggleAllLabel: expanded.length === PILLARS.length ? 'Collapse' : 'Expand all',
       toggleAll: (e) => { e.stopPropagation(); this.setState(s => ({ expanded: s.expanded.length === PILLARS.length ? [] : [...PILLARS], sel: s.expanded.length === PILLARS.length ? null : s.sel }), () => this.fit()); },
@@ -481,10 +485,11 @@ class Component extends DCLogic {
       openOverview: () => this.setState({ widget: 'overview', sel: null, panelOpen: true }),
       ov, pv, cv, ev,
       hasToast: !!this.state.toast, toast: this.state.toast,
+      canUndo: this.canUndo(), undoLabel: this.canUndo() ? this._undo.label : '', undo: (e) => { if (e) e.stopPropagation(); this.undoLast(); },
       draft: this.state.draft, setDraft: (e) => this.setState({ draft: e.target.value }),
       clearSel: () => { if (this._suppressClick) { this._suppressClick = false; return; } this.setState({ sel: null, pinEv: null }); }, selIdea: this.pick({t:'idea'}),
       addFor: (e) => this.addEvidence(e, 'support'), addAgainst: (e) => this.addEvidence(e, 'against'),
-      removeChoice: (e) => { e.stopPropagation(); const c = selC; if (!c) return; this.persist(applyUpdates(this.idea, [{ action: 'kill', choiceId: c.id, reason: 'Removed by founder', source: 'plan', at: Date.now() }]), { sel: {t:'pillar', id:c.pillar} }, `“${c.text}” removed · ${c.pillar} recalculated`); },
+      removeChoice: (e) => { e.stopPropagation(); const c = selC; if (!c) return; const prev = this.idea; const stamped = [{ action: 'kill', choiceId: c.id, reason: 'Removed by founder', source: 'plan', at: Date.now() }]; const next = applyUpdates(prev, stamped); this._undo = { prev, next, stamped, label: 'Removed by you', at: Date.now() }; this.persist(next, { sel: {t:'pillar', id:c.pillar} }); this.say(`“${c.text}” removed · ${c.pillar} recalculated`, 7000); },
       // App: accept / reject work on whichever suggestion is open. adopt() kills the pivot parent; reject() drops the suggestion. Both write history.
       accept: (e) => { e.stopPropagation(); const c = selC; if (!c) return; const l = LINKS.find(x => x[1] === c.id); const old = l ? find(l[0]) : null; this.persist(adopt(this.idea, c.id), { sel: {t:'choice', id:c.id} }, old ? `Replacement accepted · “${old.text}” retired` : `“${c.text}” accepted`); },
       reject: (e) => { e.stopPropagation(); const c = selC; if (!c) return; const l = LINKS.find(x => x[1] === c.id); const old = l ? find(l[0]) : null; this.persist(rejectChoice(this.idea, c.id), { sel: old ? {t:'choice', id:old.id} : null }, old ? `Suggestion rejected · “${old.text}” stays ${STATUS[old.status].label.toLowerCase()}` : 'Suggestion rejected'); },
@@ -537,8 +542,9 @@ class Component extends DCLogic {
     if (!this.idea) return [];
     const at = Date.now();
     const stamped = updates.map(u => ({ ...u, at: u.at || at, source: u.source || 'plan' }));
-    const next = applyUpdates(this.idea, stamped);
-    const described = describeUpdates(this.idea, next, stamped);
+    const prev = this.idea;
+    const next = applyUpdates(prev, stamped);
+    const described = describeUpdates(prev, next, stamped);
     // Shown labels ("Funding" on a nonprofit) for toasts and "what this changed"; the map's internal
     // labels ("Revenue") for opening, pulsing and revealing pillars, which are keyed by them.
     const changes = described.map(ch => ({ ...ch, pillar: this.show(LABEL[ch.pillar]) }));
@@ -548,8 +554,59 @@ class Component extends DCLogic {
     this.persist(next, { expanded: [...new Set([...this.state.expanded, ...pillarsHit])], flash: { pillars: pillarsHit, text: top.type, key: Date.now() } });
     this.reveal(pillarsHit);
     clearTimeout(this._flashT); this._flashT = setTimeout(() => this.setState({ flash: null }), 1800);
-    if (toast !== false) this.say(toast || `${top.type} “${top.choiceText}” · ${top.pillar} recalculated`);
+    // One-deep undo: this batch replaces whatever was undoable before. The toast stays up longer while it can be undone.
+    this._undo = { prev, next, stamped, label: sourceLabel, at };
+    if (toast !== false) this.say(toast || `${top.type} “${top.choiceText}” · ${top.pillar} recalculated`, 7000);
+    this.emitFx(prev, next, stamped, described, sourceLabel);
     return changes;
+  }
+  // ---- undo (one deep) ----
+  // Reverts the tree to the idea as it was before the last batch (applyWidget or Remove), saves it, and shows
+  // the change going back on the map. Only the tree is restored: widget memory (Launch's "sent" marks) and
+  // the widgets' own "What this changed" lists are not touched.
+  canUndo() { return !!this._undo && this.idea === this._undo.next; }
+  undoLast() {
+    if (!this.canUndo()) return;
+    const { prev, next, stamped, label } = this._undo;
+    this._undo = null;
+    this.persist(prev, { sel: null }, `Undid ${label}`);
+    // Reverse FX: each update's opposite, so the dots fly the change back to where it came from.
+    const reversed = stamped.map(u => {
+      const at = Date.now();
+      if (u.action === 'strengthen') return { action: 'weaken', choiceId: u.choiceId, delta: -Math.abs(u.delta ?? 5), reason: `Undo: ${u.reason}`, source: u.source, at };
+      if (u.action === 'weaken' || u.action === 'haunt') return { action: 'strengthen', choiceId: u.choiceId, delta: Math.abs(u.delta ?? (u.action === 'haunt' ? 10 : 5)), reason: `Undo: ${u.reason}`, source: u.source, at };
+      if (u.action === 'add' && u.newChoice) {
+        const nc = u.newChoice, added = next.choices.find(c => c.pillar === nc.pillar && c.status !== 'killed' && c.label.trim().toLowerCase() === nc.label.trim().toLowerCase() && !prev.choices.some(pc => pc.id === c.id));
+        return added ? { action: 'kill', choiceId: added.id, reason: `Undo: ${u.reason}`, source: u.source, at } : null;
+      }
+      if (u.action === 'kill') return { action: 'strengthen', choiceId: u.choiceId, delta: 0, reason: `Undo: ${u.reason}`, source: u.source, at };
+      return null;
+    }).filter(Boolean);
+    const described = describeUpdates(next, prev, reversed);
+    if (described.length) this.emitFx(next, prev, reversed, described, `Undo · ${label}`);
+    else {
+      try { emitFx({ key: Date.now() + Math.random(), at: Date.now(), sourceLabel: `Undo · ${label}`, source: 'plan', sourceWidget: null, changes: [], overallBefore: 0, overallAfter: 0 }); } catch {}
+    }
+  }
+  // FX (visual only): one event per batch with before/after numbers for the overlay in ./fx. Never throws into the caller.
+  emitFx(prev, next, stamped, described, sourceLabel) {
+    try {
+      const pct = arr => arr.map(v => Math.round(v * 100));
+      const pb = pct(pillarScores(prev)), pa = pct(pillarScores(next));
+      const avg = a => a.length ? Math.round(a.reduce((x, y) => x + y, 0) / a.length) : 0;
+      const byIdPrev = Object.fromEntries(prev.choices.map(c => [c.id, c])), byIdNext = Object.fromEntries(next.choices.map(c => [c.id, c]));
+      const changes = described.map((ch, i) => {
+        const u = stamped.find(x => (x.choiceId && x.choiceId === ch.choiceId) || (x.action === 'add' && x.newChoice && x.newChoice.label.trim().toLowerCase() === ch.choiceText.trim().toLowerCase())) || stamped[i] || stamped[0];
+        const b = byIdPrev[ch.choiceId], a = byIdNext[ch.choiceId];
+        const k = PILLAR_KEYS.indexOf(ch.pillar);
+        return { type: ch.type, action: u ? u.action : 'strengthen', choiceId: ch.choiceId, choiceText: ch.choiceText, pillar: ch.pillar, pillarLabel: this.show(LABEL[ch.pillar]), reason: ch.reason,
+          confBefore: b ? b.confidence : (a ? a.confidence : 0), confAfter: a ? a.confidence : (b ? b.confidence : 0),
+          evidenceAdded: Math.max(0, (a ? a.evidence.length : 0) - (b ? b.evidence.length : 0)),
+          pillarBefore: k >= 0 ? pb[k] : 0, pillarAfter: k >= 0 ? pa[k] : 0, ghost: u && u.action === 'haunt' ? (u.ghost || undefined) : undefined };
+      });
+      const source = (stamped[0] && stamped[0].source) || 'plan';
+      emitFx({ key: Date.now() + Math.random(), at: Date.now(), sourceLabel, source, sourceWidget: WIDGET_FOR_SOURCE[source] ?? null, changes, overallBefore: avg(pb), overallAfter: avg(pa) });
+    } catch (err) { console.warn('[map] fx', err); }
   }
 }
 

@@ -1,0 +1,51 @@
+/* FxLayer (fx/FxLayer.tsx): projectile, impact, pillar-hit and overall-badge effects. Visual only.
+   Two screen-space overlays inside .im-pane: impacts under the floating panel (z 6) and rail (z 7),
+   projectiles over both so the dot is seen leaving the rail icon. Prefix: fx- */
+.fx-layer{position:absolute;inset:0;overflow:hidden;pointer-events:none}
+.fx-layer-under{z-index:5}
+.fx-layer-over{z-index:8}
+.fx-layer *{pointer-events:none;box-sizing:border-box}
+
+/* ---- projectile ---- */
+.fx-dot{position:absolute;left:0;top:0;width:9px;height:9px;border-radius:50%;opacity:0;will-change:transform,opacity}
+.fx-trail{position:absolute;left:0;top:0;border-radius:50%;opacity:0;will-change:transform,opacity}
+
+/* ---- impact ---- */
+.fx-ripple{position:absolute;transform:translate(-50%,-50%);border:1.5px solid;opacity:0;animation:fx-ripple .6s cubic-bezier(.2,.8,.2,1) both}
+@keyframes fx-ripple{0%{opacity:.85;transform:translate(-50%,-50%) scale(.6)}100%{opacity:0;transform:translate(-50%,-50%) scale(1.55)}}
+.fx-flash{position:absolute;opacity:0;animation:fx-flash .6s ease-out both}
+@keyframes fx-flash{0%{opacity:0}18%{opacity:1}100%{opacity:0}}
+
+.fx-badge{position:absolute;transform:translate(-50%,-100%);display:flex;flex-direction:column;align-items:center;gap:2px;
+  font-family:'Geist Mono',ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px;font-weight:600;line-height:1;letter-spacing:-.01em;white-space:nowrap;
+  text-shadow:0 1px 0 var(--surface),0 0 6px var(--surface);animation:fx-rise 1.2s cubic-bezier(.2,.8,.2,1) both}
+.fx-badge-main{padding:3px 7px;border-radius:999px;background:color-mix(in srgb,var(--surface) 92%,transparent);border:1px solid color-mix(in srgb,currentColor 35%,transparent);box-shadow:0 2px 8px var(--shadow)}
+.fx-badge-sub{font-size:10.5px;font-weight:500;color:var(--muted);text-shadow:none}
+.fx-badge-muted{font-size:11.5px;font-weight:500}
+.fx-badge-muted .fx-badge-main{border-color:var(--border);color:var(--muted)}
+@keyframes fx-rise{0%{opacity:0;transform:translate(-50%,-100%) translateY(6px) scale(.92)}14%{opacity:1;transform:translate(-50%,-100%) translateY(0) scale(1)}72%{opacity:1}100%{opacity:0;transform:translate(-50%,-100%) translateY(-28px)}}
+
+/* ---- flourishes ---- */
+.fx-particle{position:absolute;width:5px;height:5px;border-radius:50%;transform:translate(-50%,-50%);animation:fx-burst .7s cubic-bezier(.2,.8,.2,1) both}
+@keyframes fx-burst{0%{opacity:1;transform:translate(-50%,-50%) translate(0,0) scale(1)}100%{opacity:0;transform:translate(-50%,-50%) translate(var(--fx-dx),var(--fx-dy)) scale(.4)}}
+.fx-sparkle{position:absolute;width:6px;height:6px;transform:translate(-50%,-50%);clip-path:polygon(50% 0,62% 38%,100% 50%,62% 62%,50% 100%,38% 62%,0 50%,38% 38%);animation:fx-sparkle .75s cubic-bezier(.2,.8,.2,1) both}
+@keyframes fx-sparkle{0%{opacity:0;transform:translate(-50%,-50%) translate(0,0) scale(.4) rotate(0)}30%{opacity:1}100%{opacity:0;transform:translate(-50%,-50%) translate(var(--fx-dx),var(--fx-dy)) scale(1.1) rotate(90deg)}}
+.fx-ghost{position:absolute;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:3px;color:var(--muted);opacity:0;animation:fx-ghost 1.45s ease-out both}
+.fx-ghost svg{display:block;filter:drop-shadow(0 1px 0 var(--surface))}
+.fx-ghost-name{font-family:'Geist Mono',ui-monospace,monospace;font-size:10.5px;font-weight:500;white-space:nowrap;color:var(--muted);text-shadow:0 1px 0 var(--surface)}
+@keyframes fx-ghost{0%{opacity:0;transform:translate(-50%,-50%) translateY(6px) scale(.8)}20%{opacity:.95;transform:translate(-50%,-50%) translateY(-6px) scale(1)}60%{opacity:.8;transform:translate(-50%,-50%) translateX(4px) translateY(-24px)}100%{opacity:0;transform:translate(-50%,-50%) translateX(-3px) translateY(-46px) scale(1.05)}}
+
+/* ---- rail icon the effect launched from ---- */
+.wg-rail-btn.fx-fired{animation:fx-fired .42s cubic-bezier(.2,.8,.2,1) both}
+@keyframes fx-fired{0%{box-shadow:inset 0 0 0 0 transparent,0 0 0 0 color-mix(in srgb,var(--accent) 50%,transparent);transform:scale(1)}30%{box-shadow:0 0 0 1px var(--accent),0 0 0 6px color-mix(in srgb,var(--accent) 18%,transparent);transform:scale(1.08)}100%{box-shadow:0 0 0 1px transparent,0 0 0 10px transparent;transform:scale(1)}}
+.wg-rail-btn.is-active.fx-fired{animation-name:fx-fired-active}
+@keyframes fx-fired-active{0%{transform:scale(1)}30%{box-shadow:inset 3px 0 0 var(--accent),0 0 0 1px var(--accent),0 0 0 6px color-mix(in srgb,var(--accent) 18%,transparent);transform:scale(1.08)}100%{box-shadow:inset 3px 0 0 var(--accent),0 0 0 1px transparent,0 0 0 10px transparent;transform:scale(1)}}
+
+/* ---- reduced motion: no flight, no particles; flash and a still badge ---- */
+@media (prefers-reduced-motion:reduce){
+  .fx-dot,.fx-trail,.fx-particle,.fx-sparkle{display:none}
+  .fx-ripple{animation:fx-flash 1s ease-out both;transform:translate(-50%,-50%) scale(1)}
+  .fx-badge{animation:fx-flash 1s ease-out both}
+  .fx-ghost{animation:fx-flash 1s ease-out both;transform:translate(-50%,-50%)}
+  .wg-rail-btn.fx-fired{animation:none;box-shadow:0 0 0 1px var(--accent)}
+}

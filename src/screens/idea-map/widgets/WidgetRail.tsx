@@ -86,6 +86,7 @@ export default function WidgetRail({ active, open, onPick, badge }: { active: Wi
           key={it.key}
           type="button"
           className={`wg-rail-btn${active === it.key && open ? " is-active" : ""}`}
+          data-widget={it.key}
           aria-label={it.label + (it.key === "overview" && badge ? " (a suggestion is waiting)" : "")}
           aria-pressed={active === it.key && open}
           title={it.label}
