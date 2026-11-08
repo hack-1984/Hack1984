@@ -19,7 +19,25 @@ export default function IdeaMapScreen(props: Record<string, unknown>) {
   // clientOnly: which idea to show comes from the URL and this browser's saved ideas.
   const v = useLogic(Logic, props, { clientOnly: true });
   if (!v) return <div className="pg-im" />;
-  const { widget, setWidget, showBadge, ideaId, isPantry, wmem, setWmem, pillarPct, buildIdea, applyWidget, openOverview, ideaInitial, ideaName, ideaPitch, now, accept, addAgainst, addFor, choices, clearSel, counts, curves, cv, draft, edges, ev, goNow, hasToast, hoverIdea, hoverOff, hoverOn, ideaShadow, isChoice, isEvidence, isIdea, isPast, isPillar, isResource, orbit, ov, paneRef, pctRef, particles, pillars, pv, reject, removeChoice, replay, replayLabel, rv, selIdea, setDraft, showHint, toast, toggleAll, toggleAllLabel, week, weeks, worldRef, zoomFit, zoomIn, zoomOut } = v;
+  const { loading, missing, widget, setWidget, showBadge, ideaId, wmem, setWmem, pillarPct, buildIdea, applyWidget, openOverview, ideaInitial, ideaName, ideaPitch, now, accept, addAgainst, addFor, choices, clearSel, counts, curves, cv, draft, edges, ev, goNow, hasToast, hoverIdea, hoverOff, hoverOn, ideaShadow, isChoice, isEvidence, isIdea, isPast, isPillar, isResource, orbit, ov, paneRef, pctRef, particles, pillars, pv, reject, removeChoice, replay, replayLabel, rv, selIdea, setDraft, showHint, toast, toggleAll, toggleAllLabel, week, weeks, worldRef, zoomFit, zoomIn, zoomOut } = v;
+  // App: no canned idea. While the stored idea loads, or if it isn't this account's, say so instead of drawing an empty map.
+  if (loading || missing) {
+    return (
+      <div className="pg-im">
+        <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: "40px 20px", boxSizing: "border-box", background: "var(--bg, #f9fafb)", color: "var(--text, #111827)" }}>
+          {loading ? (
+            <div style={{ fontSize: "13px", color: "var(--muted, #6b7280)" }} role="status">Loading your idea…</div>
+          ) : (
+            <div style={{ textAlign: "center", display: "flex", flexDirection: "column", gap: "10px", alignItems: "center" }}>
+              <div style={{ fontSize: "15px", fontWeight: 600 }}>That idea isn&apos;t here</div>
+              <div style={{ fontSize: "13px", color: "var(--muted, #6b7280)" }}>It may belong to another account, or it was never saved.</div>
+              <a href="/sessions" style={{ marginTop: "6px", fontSize: "12px", fontWeight: 600, color: "var(--text, #111827)" }}>Back to your ideas</a>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
   return (
     <div className="pg-im">
       <div style={{ display: "flex", flexDirection: "column", height: "100vh", background: "var(--bg)" }}>
@@ -1111,7 +1129,7 @@ export default function IdeaMapScreen(props: Record<string, unknown>) {
               </>
             ) : null}
             {widget === "launch" || widget === "graveyard" || widget === "customer" ? (
-              <WidgetSlot widget={widget} ctx={{ ideaId, isPantry, wmem, setWmem, pillarPct, buildIdea, applyWidget, openOverview }} />
+              <WidgetSlot widget={widget} ctx={{ ideaId, wmem, setWmem, pillarPct, buildIdea, applyWidget, openOverview }} />
             ) : null}
           </div>
           </div>

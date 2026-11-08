@@ -3,11 +3,10 @@
 // Graveyard: similar startups that shut down, shown as gravestones.
 // Opening a grave the first time haunts the choice it threatens (once per grave per idea).
 // "Learn from this" adds the grave's fix as a suggested choice in Overview's "Waiting on you".
-// Pantry uses the labeled demo set (src/ideas/pantryDemo.ts); other ideas call /api/graveyard/detail.
+// Every idea calls /api/graveyard/detail; results are cached per idea in this browser.
 // Layout from design/sprout-mocks/App.dc.html; colors from the Sprout theme.
 import { useCallback, useEffect, useRef, useState } from "react";
 import { fetchGraveyard } from "@/ideas/api";
-import { PANTRY_GRAVES } from "@/ideas/pantryDemo";
 import { loadWidgetCache, saveWidgetCache } from "@/ideas/store";
 import { PILLAR_BY_KEY } from "@/lib/pillars";
 import type { GraveyardDetailResponse, WireUpdate } from "@/ideas/wire";
@@ -46,26 +45,6 @@ const host = (u: string) => {
   }
 };
 
-function demoGraves(): Grave[] {
-  return PANTRY_GRAVES.map((g) => {
-    const evidence = [{ type: "source" as const, text: `${g.name}: ${g.epitaph}`, origin: `graveyard: ${g.name}`, tier: "researched" as const }];
-    return {
-      ...g,
-      pillar: label(g.pillar),
-      sources: [],
-      adjacent: !!g.adjacent,
-      haunt: { action: "haunt", choiceId: g.choiceId, ghost: g.name, reason: `Haunted by ${g.name}`, evidence, source: "graveyard" },
-      learn: {
-        action: "add",
-        newChoice: { pillar: g.pillar, parentId: g.learn.replaces, label: g.learn.label, detail: g.fix, status: "proposed", evidence },
-        reason: `Learned from ${g.name}: ${g.fix}`,
-        evidence,
-        source: "graveyard",
-      },
-    };
-  });
-}
-
 function apiGraves(res: GraveyardDetailResponse): Grave[] {
   return res.records.slice(0, SLOTS.length).map((r, i) => ({
     name: r.name,
@@ -87,9 +66,8 @@ function apiGraves(res: GraveyardDetailResponse): Grave[] {
 type Load = { state: "loading" } | { state: "error"; message: string } | { state: "ready"; graves: Grave[] };
 
 export default function GraveyardWidget({ ctx }: { ctx: WidgetCtx }) {
-  const { ideaId, isPantry, buildIdea } = ctx;
+  const { ideaId, buildIdea } = ctx;
   const [load, setLoad] = useState<Load>(() => {
-    if (isPantry) return { state: "ready", graves: demoGraves() };
     const cached = loadWidgetCache<GraveyardDetailResponse>(ideaId, "graveyard");
     return cached ? { state: "ready", graves: apiGraves(cached) } : { state: "loading" };
   });
@@ -106,7 +84,7 @@ export default function GraveyardWidget({ ctx }: { ctx: WidgetCtx }) {
       .catch((e: Error) => setLoad({ state: "error", message: e.message }));
   }, [buildIdea, ideaId]);
 
-  // Fetch once if this idea has nothing cached (Pantry never fetches).
+  // Fetch once if this idea has nothing cached.
   const started = useRef(false);
   useEffect(() => {
     if (load.state !== "loading" || started.current) return;
@@ -165,7 +143,6 @@ export default function GraveyardWidget({ ctx }: { ctx: WidgetCtx }) {
     <section className="wg-panel" aria-label="Graveyard">
       <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
         <h2 className="wg-title">Graveyard</h2>
-        {isPantry ? <span className="wg-demo">Demo content for Pantry</span> : null}
         {load.state === "ready" ? (
           <span className="wg-eyebrow">
             {graves.length} similar {graves.length === 1 ? "startup" : "startups"} that shut down
@@ -258,7 +235,7 @@ export default function GraveyardWidget({ ctx }: { ctx: WidgetCtx }) {
               ))}
             </div>
           ) : (
-            <div className="gy-sources">{isPantry ? "DEMO EXAMPLE · NO SOURCES" : "NO SOURCES"}</div>
+            <div className="gy-sources">NO SOURCES</div>
           )}
           {g.learn ? (
             <button type="button" className="wg-btn" onClick={learn}>

@@ -1,10 +1,13 @@
 export {
+  histTypeFor,
   pillarScores,
   pitchFrom,
+  SCORE,
   sourceId,
   toStored,
   support,
   validateSources,
+  type HistType,
   type Probe,
   type Relation,
   type ResearchQuery,
@@ -18,7 +21,7 @@ export {
   type ValidationReport,
 } from "./schema";
 export { ideaStore, localStore, supabaseStore, type IdeaStore, type IdeaSummary } from "./store";
-export { adopt, applyUpdates, nextChoiceId, reject } from "./apply";
+export { adopt, applyUpdates, describeUpdates, nextChoiceId, reject, type Change } from "./apply";
 export {
   toMapModel,
   weekOf,

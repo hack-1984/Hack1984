@@ -1,17 +1,20 @@
 // Logic for the IdeaMap screen, from the Claude Design file "Idea Map.dc.html".
 // Changes from the design: page links point at app routes, keyframe names carry the "im-" prefix,
-// colors come from the Sprout theme variables (globals.css), the map can show any saved idea
-// (/map?id=…, Pantry when there is none), and edits are saved per idea so leaving doesn't lose them.
+// colors come from the Sprout theme variables (globals.css), and there is no canned idea: the map
+// shows a saved idea (/map?id=…, else the most recent, else it sends you to plant one).
+//
+// Data model: the stored Idea (src/lib/db) is the source of truth. The map's choices/links/resources
+// are derived from it with toMapModel(); every founder or widget action is a TreeUpdate applied with
+// applyUpdates() and saved, then the map is re-derived. Nothing map-shaped is persisted.
 /* eslint-disable */
 import React from "react";
 import { DCLogic } from "../dc";
-import { getIdea, loadMapState, saveMapState } from "@/ideas/store";
-import { ideaToMap } from "@/ideas/toMap";
-import { applyUpdates } from "@/ideas/applyUpdates";
-import { mapToIdea } from "@/ideas/toIdea";
+import { Session } from "@/session";
+import { PILLARS as PILLAR_DEFS, PILLAR_KEYS } from "@/lib/pillars";
+import { adopt, applyUpdates, describeUpdates, ideaStore, reject as rejectChoice, toMapModel } from "@/lib/db";
 import { Camera, MIN_ZOOM, MAX_ZOOM } from "./camera";
-const PILLARS = ['Customer','Problem','Solution','Approach','Edge','Reach','Revenue','Risks'];
-const NOW = 6;
+const PILLARS = PILLAR_DEFS.map(p => p.startup);
+const LABEL = Object.fromEntries(PILLAR_DEFS.map(p => [p.key, p.startup]));
 const FX = {
   Customer:{glyph:'●', sizes:['6px'], dur:'4s', inner:'none'},
   Problem:{glyph:'?', sizes:['10px'], dur:'4s', inner:'none'},
@@ -22,57 +25,6 @@ const FX = {
   Revenue:{glyph:'$', sizes:['10px'], dur:'4s', inner:'none'},
   Risks:{glyph:'!', sizes:['10px'], dur:'4s', inner:'none'},
 };
-const RESOURCES0 = [
-  {id:'ios', name:'2 iOS engineers', have:true},
-  {id:'nutri', name:'Nutrition intern', have:true},
-  {id:'cash', name:'$40k runway', have:true},
-  {id:'recipes', name:'Recipe DB license', have:false},
-  {id:'ambass', name:'Campus ambassadors', have:false},
-];
-const CHOICES0 = [
-  {id:'c1', pillar:'Customer', text:'Target college students', res:[], test:'Run 10 more interviews at a second campus to check this isn’t one school’s culture.', ev:[
-    {k:'support', wk:2, text:'27 of 30 interviewees cook ≥3 nights/week on a budget', source:'Interviews, wk 2'},
-    {k:'support', wk:2, text:'Dorm meal plans average $2,400/semester', source:'NACUFS 2025'},
-    {k:'support', wk:2, text:'“I’d pay for anything that stops the 11pm DoorDash”', source:'Interview #14'}],
-    hist:[{wk:1, type:'Added', note:'Initial hypothesis'},{wk:2, type:'Strengthened', note:'Interview round 1 confirmed budget pressure'}]},
-  {id:'c2', pillar:'Customer', text:'Focus on off-campus renters', res:[], test:'Split the waitlist by housing type and compare activation after the first plan.', ev:[], hist:[{wk:4, type:'Added', note:'Emerged from dorm-kitchen access problem'}]},
-  {id:'c3', pillar:'Problem', text:'Overspend on takeout', res:[], test:'Ask 20 students to share a month of bank statements; confirm the $200+ median.', ev:[
-    {k:'support', wk:3, text:'Median takeout spend $212/month in survey', source:'Survey n=118, wk 3'},
-    {k:'support', wk:3, text:'“I know it’s bad, I just don’t have a plan by 6pm”', source:'Interview #7'}],
-    hist:[{wk:1, type:'Added', note:'Initial hypothesis'},{wk:3, type:'Strengthened', note:'Survey data matched interview claims'}]},
-  {id:'c4', pillar:'Problem', text:'Don’t know how to cook', res:[], test:'Watch 5 students cook a 3-step recipe unassisted. If 4+ finish, drop this.', ev:[
-    {k:'against', wk:2, text:'22 of 30 rated themselves “can follow a recipe”', source:'Interviews, wk 2'},
-    {k:'support', wk:5, text:'Top search in-app prototype: “how long to boil pasta”', source:'Prototype logs'}],
-    hist:[{wk:1, type:'Added', note:'Initial hypothesis'},{wk:2, type:'Weakened', note:'Skill is not the blocker; planning is'}]},
-  {id:'c5', pillar:'Solution', text:'Plan from a pantry photo', res:['ios','recipes'], test:'Ship photo-to-plan to 30 waitlist users; measure plans completed per week.', ev:[
-    {k:'support', wk:5, text:'Prototype: 9 of 12 completed first plan in <4 min', source:'Usability test, wk 5'}],
-    hist:[{wk:3, type:'Added', note:'Replaced manual ingredient entry'}]},
-  {id:'c6', pillar:'Solution', text:'Grocery list synced to store', res:['ios'], test:'Fake-door the sync button; count taps before building the integration.', ev:[
-    {k:'support', wk:5, text:'8 of 12 testers asked for it unprompted', source:'Usability test, wk 5'}],
-    hist:[{wk:5, type:'Added', note:'Requested repeatedly in usability sessions'}]},
-  {id:'c7', pillar:'Approach', text:'Mobile-first, iOS first', res:['ios'], test:'Check Android share on the waitlist; revisit if it passes 40%.', ev:[
-    {k:'support', wk:3, text:'71% of survey respondents on iPhone', source:'Survey n=118'}],
-    hist:[{wk:1, type:'Added', note:'Matches team skills'},{wk:3, type:'Strengthened', note:'Device split from survey'}]},
-  {id:'c8', pillar:'Edge', text:'Recipes tuned to dorm kitchens', res:['nutri','recipes'], test:'Publish 10 hot-plate recipes; compare saves vs. standard recipes.', ev:[], hist:[{wk:2, type:'Added', note:'Hot plate + microwave constraint'}]},
-  {id:'c9', pillar:'Edge', text:'Partner with campus dining', res:[], test:'—', ev:[
-    {k:'against', wk:4, text:'3 of 3 dining directors said procurement cycle is 18+ months', source:'Calls, wk 4'}],
-    hist:[{wk:1, type:'Added', note:'Initial hypothesis'},{wk:4, type:'Removed', note:'Sales cycle incompatible with runway'}]},
-  {id:'c10', pillar:'Reach', text:'Campus ambassador program', res:['ambass','cash'], test:'Recruit 3 ambassadors at one campus; target 50 signups each in 2 weeks.', ev:[], hist:[{wk:2, type:'Added', note:'Borrowed from fintech playbooks'}]},
-  {id:'c11', pillar:'Reach', text:'Short-form recipe videos', res:['nutri'], test:'Post daily for 2 more weeks; does waitlist CAC stay under $1?', ev:[
-    {k:'support', wk:6, text:'Test account: 40k views, 310 waitlist signups in 10 days', source:'TikTok, wk 5–6'}],
-    hist:[{wk:5, type:'Added', note:'Ambassador program slow to start; tried content'}]},
-  {id:'c12', pillar:'Revenue', text:'Charge $8/month', res:[], test:'Put a real checkout at $8 in front of 100 waitlist users; measure conversion.', ev:[
-    {k:'against', wk:6, text:'12 of 15 balked at $8; $4–5 was the common ceiling', source:'Pricing interviews, wk 6'},
-    {k:'support', wk:6, text:'3 of 15 said “cheaper than one takeout order”', source:'Pricing interviews, wk 6'}],
-    hist:[{wk:1, type:'Added', note:'Initial hypothesis'},{wk:6, type:'Weakened', note:'Price sensitivity higher than expected'}]},
-  {id:'c13', pillar:'Revenue', text:'$4/month or $29/year', res:[], test:'A/B a $4 vs $8 checkout page on the waitlist.', ev:[
-    {k:'support', wk:6, text:'Derived from the $4–5 ceiling in pricing interviews', source:'Pricing interviews, wk 6'}],
-    hist:[{wk:6, type:'Suggested', note:'Possible replacement for $8/month'}]},
-  {id:'c14', pillar:'Risks', text:'Students churn over summer', res:[], test:'Design a summer mode (home kitchen recipes) and pre-test interest in May.', ev:[
-    {k:'support', wk:4, text:'Comparable student apps lose 40–60% MAU June–Aug', source:'Public metrics, 3 apps'}],
-    hist:[{wk:1, type:'Added', note:'Initial hypothesis'},{wk:4, type:'Strengthened', note:'Seasonality confirmed in comps'}]},
-];
-const LINKS = [['c12','c13','Proposed replacement'],['c10','c11','Alternative channel'],['c4','c5','Shapes onboarding']];
 const SCORE = {strengthened:1, added:.6, guess:.4, weakened:.2, removed:0};
 const STATUS = {
   strengthened:{label:'Strengthened', dot:'var(--green)', dotBorder:'transparent', border:'var(--border)', bg:'var(--surface)', color:'var(--text)', style:'solid', chipBg:'var(--green-tint)', chipFg:'var(--green-text)'},
@@ -133,41 +85,48 @@ const statusAt = (c, W) => {
   return W - last.wk <= 1 ? 'added' : 'guess';
 };
 
-const PANTRY = { name: 'Pantry', pitch: 'A $8/month meal-planning app for college students on tight budgets.', now: NOW, choices: CHOICES0, resources: RESOURCES0, links: LINKS };
 const urlId = () => (typeof window === 'undefined' ? null : new URLSearchParams(window.location.search).get('id'));
 
 class Component extends DCLogic {
   constructor(p) {
     super(p);
-    this.state = { sel:null, hoverIdea:false, hover:null, draft:'', toast:null, expanded:[], replaying:false, ...this.load(urlId()) };
+    this.idea = null; this.ideaId = null; this.team = null; this.now = 1; this.name = ''; this.pitch = '';
+    this.state = { sel:null, hoverIdea:false, hover:null, draft:'', toast:null, expanded:[], replaying:false, loading:true, missing:false,
+      choices: [], resources: [], links: [], wmem: {}, week: 1, widget: 'overview', flash: null };
   }
-  // App: which idea this map shows. A saved idea comes from the store (src/ideas); anything else is Pantry.
-  load(id) {
-    const saved = id && typeof window !== 'undefined' ? getIdea(id) : null;
-    const data = saved ? ideaToMap(saved.idea, saved.name) : PANTRY;
-    this.ideaId = saved ? saved.id : 'pantry';
-    this.now = data.now; this.name = data.name; this.pitch = data.pitch; this.base = saved ? saved.idea : null;
-    const edits = typeof window !== 'undefined' ? loadMapState(this.ideaId) : null;
-    const choices = edits && Array.isArray(edits.choices) ? edits.choices : data.choices.map(c => ({...c, ev:[...c.ev], hist:[...c.hist]}));
-    const resources = edits && Array.isArray(edits.resources) ? edits.resources : data.resources.map(r => ({...r}));
-    // Links are state now (widgets add suggestions that replace a choice). wmem: per-widget memory, e.g. graves haunted / learned.
-    const links = edits && Array.isArray(edits.links) ? edits.links : data.links.map(l => [...l]);
-    const wmem = edits && edits.wmem && typeof edits.wmem === 'object' ? edits.wmem : {};
-    this._saved = { choices, resources, links, wmem };
-    return { choices, resources, links, wmem, week: this.now, sel: null, expanded: [], widget: 'overview', flash: null };
+  // App: the map's drawing data, derived from the stored Idea. Pillar names are the design's startup labels (they key FX and angles).
+  derive(idea) {
+    const m = toMapModel(idea, this.team);
+    this.idea = idea; this.ideaId = idea.id; this.now = m.now; this.name = m.title; this.pitch = m.description || idea.pitch;
+    return { choices: m.choices.map(c => ({ ...c, pillar: LABEL[c.pillarKey] })), resources: m.resources, links: m.links, wmem: idea.widgets || {}, loading: false, missing: false };
   }
-  // App: save the founder's edits after every update that changed them.
-  setState(update, cb) {
-    super.setState(update, () => {
-      const { choices, resources, links, wmem } = this.state; const o = this._saved;
-      if (choices !== o.choices || resources !== o.resources || links !== o.links || wmem !== o.wmem) { this._saved = { choices, resources, links, wmem }; saveMapState(this.ideaId, { choices, resources, links, wmem }); }
-      if (cb) cb();
-    });
+  // First load of an idea: derive and reset the view.
+  load(idea) { return { ...this.derive(idea), week: this.now, sel: null, expanded: [], widget: 'overview', flash: null }; }
+  // App: a changed Idea in, saved and re-drawn. Save failures surface as a toast; the map keeps the new state.
+  persist(idea, patch, msg) {
+    this.setState({ ...this.derive(idea), ...(patch || {}) });
+    if (msg) this.say(msg);
+    ideaStore().save(idea).catch(err => { console.error('[map] save', err); this.say('Could not save that. Check your connection.'); });
   }
-  componentDidMount() {
+  async componentDidMount() {
     // App: Next keeps this page alive (hidden) between visits, so a different ?id= means a different idea.
-    const id = urlId(); const target = id && getIdea(id) ? id : 'pantry';
-    if (target !== this.ideaId) { clearInterval(this._replay); this._fitted = false; this.setState({ ...this.load(id), replaying: false }, () => this.fit(false)); }
+    await Session.ready(); if (!Session.getSession()) { location.replace('/login'); return; }
+    const store = ideaStore();
+    try {
+      if (!this.team) this.team = await store.getTeam().catch(() => null);
+      let id = urlId();
+      if (!id) {
+        const list = await store.list();
+        if (!list.length) { location.replace('/new'); return; }
+        id = list[0].id; history.replaceState(null, '', `/map?id=${encodeURIComponent(id)}`);
+      }
+      if (id !== this.ideaId) {
+        const idea = await store.get(id);
+        if (!idea) { this.setState({ loading: false, missing: true }); return; }
+        clearInterval(this._replay); this._fitted = false;
+        this.setState({ ...this.load(idea), replaying: false }, () => this.fit(false));
+      }
+    } catch (err) { console.error('[map] load', err); this.setState({ loading: false, missing: true }); }
     this._key = (e) => {
       if (e.target && /TEXTAREA|INPUT/.test(e.target.tagName)) return;
       if (e.key === 'Escape') this.setState({sel:null});
@@ -427,7 +386,7 @@ class Component extends DCLogic {
       const users = view.filter(c => c.res.includes(selRes.id) && c.status !== 'removed');
       rv = { name: selRes.name, missing: !selRes.have, statusLabel: selRes.have ? 'Available' : 'Missing', chipBg: selRes.have ? 'var(--surface-2)' : 'var(--red-tint)', chipFg: selRes.have ? 'var(--muted)' : 'var(--red-text)',
         summary: selRes.have ? `On hand. ${users.length} ${users.length === 1 ? 'choice depends' : 'choices depend'} on it.` : `Not on hand. ${users.length} ${users.length === 1 ? 'choice is' : 'choices are'} blocked until the team secures it.`,
-        acquire: (e) => { e.stopPropagation(); this.setState(s => ({ resources: s.resources.map(r => r.id === selRes.id ? { ...r, have: true } : r) })); this.say(`${selRes.name} marked as acquired · ${users.length} ${users.length === 1 ? 'choice' : 'choices'} unblocked`); },
+        acquire: (e) => { e.stopPropagation(); if (selRes.have) { this.say('Already on hand'); return; } const at = Date.now(); this.persist(applyUpdates(this.idea, users.map(c => ({ action: 'strengthen', choiceId: c.id, delta: 5, feasibility: { ok: true, note: selRes.name }, reason: `Team secured: ${selRes.name}`, source: 'feasibility', at }))), { sel: null }, `${selRes.name} marked as acquired · ${users.length} ${users.length === 1 ? 'choice' : 'choices'} unblocked`); },
         n: users.length, choices: users.map(choiceRow),
         all: RES.map(r => { const n = view.filter(c => c.res.includes(r.id) && c.status !== 'removed').length; return { name: r.name, dot: r.have ? 'var(--green)' : 'var(--red)', weight: r.id === selRes.id ? 600 : 400, sub: `${n} ${n === 1 ? 'choice' : 'choices'}`, select: this.pick({t:'resource', id:r.id}) }; }) };
     }
@@ -442,7 +401,8 @@ class Component extends DCLogic {
     const ovOpen = this.state.widget === 'overview';
 
     return {
-      ideaName: this.name, ideaPitch: this.pitch, ideaInitial: (this.name || '?').charAt(0).toUpperCase(), now: NOW,
+      ideaName: this.name, ideaPitch: this.pitch, ideaInitial: (this.name || '?').trim().charAt(0).toUpperCase(), now: NOW,
+      loading: this.state.loading, missing: this.state.missing,
       paneRef: this.setPane, worldRef: this.worldRef, pctRef: this.pctRef, edges, curves, pillars, choices, orbit, particles, flows, weeks, week: W, isPast,
       zoomIn: (e) => { e.stopPropagation(); this.zoomStep(1.25); }, zoomOut: (e) => { e.stopPropagation(); this.zoomStep(1 / 1.25); },
       zoomFit: (e) => { e.stopPropagation(); this.fit(); },
@@ -456,10 +416,11 @@ class Component extends DCLogic {
       isIdea: ovOpen && mode === 'idea', isPillar: ovOpen && mode === 'pillar', isChoice: ovOpen && mode === 'choice', isEvidence: ovOpen && mode === 'evidence', isResource: ovOpen && mode === 'resource',
       // App: widgets. The rail switches what the sidebar shows; widgets feed the tree through applyWidget().
       widget: this.state.widget, setWidget: (w) => this.setState({ widget: w }), showBadge: !!sug && !ovOpen,
-      ideaId: this.ideaId, isPantry: this.ideaId === 'pantry', wmem: this.state.wmem,
-      setWmem: (key, patch) => this.setState(s => ({ wmem: { ...s.wmem, [key]: { ...(s.wmem[key] || {}), ...patch } } })),
+      ideaId: this.ideaId, wmem: this.state.wmem,
+      // Widget memory rides along in the stored idea (StoredIdea.widgets), so it follows the founder across devices.
+      setWmem: (key, patch) => { if (!this.idea) return; const widgets = { ...(this.idea.widgets || {}), [key]: { ...((this.idea.widgets || {})[key] || {}), ...patch } }; this.idea = { ...this.idea, widgets }; this.setState({ wmem: widgets }); ideaStore().save(this.idea).catch(err => console.error('[map] save widgets', err)); },
       pillarPct: Object.fromEntries(pillars.map(p => [p.name, p.pct])),
-      buildIdea: () => mapToIdea({ id: this.ideaId, pitch: this.pitch, choices: this.state.choices, links: this.state.links, base: this.base }),
+      buildIdea: () => this.idea,
       applyWidget: (updates, sourceLabel, toast) => this.applyWidget(updates, sourceLabel, toast),
       openOverview: () => this.setState({ widget: 'overview', sel: null }),
       ov, pv, cv, ev, rv,
@@ -468,31 +429,36 @@ class Component extends DCLogic {
       clearSel: () => { if (this._suppressClick) { this._suppressClick = false; return; } this.setState({ sel: null }); }, selIdea: this.pick({t:'idea'}), goNow: (e) => { e.stopPropagation(); this.setState({ week: NOW }); },
       replay: (e) => { e.stopPropagation(); if (this.state.replaying) { clearInterval(this._replay); this.setState({ replaying: false }); return; } this.setState({ week: 1, sel: null, replaying: true, expanded: [...PILLARS] }, () => this.fit()); this._replay = setInterval(() => { if (this.state.week >= NOW) { clearInterval(this._replay); this.setState({ replaying: false }, () => this.fit()); return; } this.setState(s => ({ week: s.week + 1 })); }, 1400); },
       addFor: (e) => this.addEvidence(e, 'support'), addAgainst: (e) => this.addEvidence(e, 'against'),
-      removeChoice: (e) => { e.stopPropagation(); const c = selC; this.setState(s => ({ sel: {t:'pillar', id:c.pillar}, choices: s.choices.map(x => x.id === c.id ? { ...x, hist: [...x.hist, { wk: NOW, type: 'Removed', note: 'Removed by founder' }] } : x) })); this.say(`“${c.text}” removed · ${c.pillar} recalculated`); },
-      // App: accept / reject work on whichever suggestion is open (the design hard-coded Pantry's c12 / c13).
-      accept: (e) => { e.stopPropagation(); const c = selC; if (!c) return; const l = LINKS.find(x => x[1] === c.id); const old = l ? find(l[0]) : null; this.setState(s => ({ sel: {t:'choice', id:c.id}, choices: s.choices.map(x => x.id === c.id ? { ...x, hist: [...x.hist, { wk: NOW, type: 'Added', note: 'Founder accepted replacement' }] } : old && x.id === old.id ? { ...x, hist: [...x.hist, { wk: NOW, type: 'Removed', note: 'Replaced by ' + c.text }] } : x) })); this.say(old ? `Replacement accepted · “${old.text}” retired` : `“${c.text}” accepted`); },
-      reject: (e) => { e.stopPropagation(); const c = selC; if (!c) return; const l = LINKS.find(x => x[1] === c.id); const old = l ? find(l[0]) : null; this.setState(s => ({ sel: old ? {t:'choice', id:old.id} : null, choices: s.choices.filter(x => x.id !== c.id) })); this.say(old ? `Suggestion rejected · “${old.text}” stays ${STATUS[old.status].label.toLowerCase()}` : 'Suggestion rejected'); },
+      removeChoice: (e) => { e.stopPropagation(); const c = selC; if (!c) return; this.persist(applyUpdates(this.idea, [{ action: 'kill', choiceId: c.id, reason: 'Removed by founder', source: 'plan', at: Date.now() }]), { sel: {t:'pillar', id:c.pillar} }, `“${c.text}” removed · ${c.pillar} recalculated`); },
+      // App: accept / reject work on whichever suggestion is open. adopt() kills the pivot parent; reject() drops the suggestion. Both write history.
+      accept: (e) => { e.stopPropagation(); const c = selC; if (!c) return; const l = LINKS.find(x => x[1] === c.id); const old = l ? find(l[0]) : null; this.persist(adopt(this.idea, c.id), { sel: {t:'choice', id:c.id} }, old ? `Replacement accepted · “${old.text}” retired` : `“${c.text}” accepted`); },
+      reject: (e) => { e.stopPropagation(); const c = selC; if (!c) return; const l = LINKS.find(x => x[1] === c.id); const old = l ? find(l[0]) : null; this.persist(rejectChoice(this.idea, c.id), { sel: old ? {t:'choice', id:old.id} : null }, old ? `Suggestion rejected · “${old.text}” stays ${STATUS[old.status].label.toLowerCase()}` : 'Suggestion rejected'); },
     };
   }
   addEvidence(e, k) {
     e.stopPropagation(); const text = this.state.draft.trim(); if (!text) { this.say('Write what you learned first'); return; }
     const id = this.state.sel.id; const c = this.state.choices.find(x => x.id === id); const type = k === 'support' ? 'Strengthened' : 'Weakened';
-    // App: same path as every widget result (src/ideas/applyUpdates.ts).
+    // App: same path as every widget result.
     this.setState({ draft: '' });
-    this.applyWidget([{ action: k === 'support' ? 'strengthen' : 'weaken', choiceId: id, reason: k === 'support' ? 'New supporting evidence' : 'New evidence against', evidence: [{ type: 'source', text, origin: 'founder', tier: 'real' }], source: 'founder' }],
-      'Added by you, wk ' + this.now, `${type} “${c.text}” · ${c.pillar} recalculated`);
+    this.applyWidget([{ action: k === 'support' ? 'strengthen' : 'weaken', choiceId: id, delta: k === 'support' ? 5 : -5, reason: k === 'support' ? 'New supporting evidence' : 'New evidence against', evidence: [{ type: 'quote', text, origin: 'Added by you', tier: 'real' }], source: 'plan' }],
+      'Added by you', `${type} “${c.text}” · ${c.pillar} recalculated`);
   }
-  // App: apply TreeUpdates from a widget (or the founder) to the map. Writes evidence + history,
-  // opens the affected pillars and pulses them. Returns what changed, for "What this changed" lists.
+  // App: apply TreeUpdates from a widget (or the founder) to the stored Idea, save, and re-derive the map.
+  // Opens the affected pillars and pulses them. Returns what changed, for "What this changed" lists.
   applyWidget(updates, sourceLabel, toast) {
-    const r = applyUpdates({ choices: this.state.choices, links: this.state.links }, updates, { week: this.now, sourceLabel });
-    if (!r.changes.length) return r.changes;
-    const top = r.changes[0];
-    const text = top.type === 'Suggested' ? 'Suggested' : top.type;
-    this.setState(s => ({ choices: r.choices, links: r.links, week: this.now, expanded: [...new Set([...s.expanded, ...r.pillars])], flash: { pillars: r.pillars, text, key: Date.now() } }), () => this.reveal(r.pillars));
+    if (!this.idea) return [];
+    const at = Date.now();
+    const stamped = updates.map(u => ({ ...u, at: u.at || at, source: u.source || 'plan' }));
+    const next = applyUpdates(this.idea, stamped);
+    const changes = describeUpdates(this.idea, next, stamped).map(ch => ({ ...ch, pillar: LABEL[ch.pillar] }));
+    if (!changes.length) return changes;
+    const pillarsHit = [...new Set(changes.map(ch => ch.pillar))];
+    const top = changes[0];
+    this.persist(next, { week: this.now, expanded: [...new Set([...this.state.expanded, ...pillarsHit])], flash: { pillars: pillarsHit, text: top.type, key: Date.now() } });
+    this.reveal(pillarsHit);
     clearTimeout(this._flashT); this._flashT = setTimeout(() => this.setState({ flash: null }), 1800);
     if (toast !== false) this.say(toast || `${top.type} “${top.choiceText}” · ${top.pillar} recalculated`);
-    return r.changes;
+    return changes;
   }
 }
 
