@@ -156,11 +156,14 @@ export function mockUpdates(summary: LaunchSummary, mode?: Mode): TreeUpdate[] {
   const best = [...summary.byGroup].sort((a, b) => b.buyRate - a.buyRate)[0];
   const nonprofit = mode === "nonprofit";
 
+  const rateDelta = Math.round((joinRate - 40) / 3);
+
   return [
     {
-      action: "strengthen",
+      // Follows the sign, exactly as the live path does.
+      action: rateDelta < 0 ? "weaken" : "strengthen",
       choiceId: m.targets.rate,
-      delta: Math.round((joinRate - 40) / 3),
+      delta: rateDelta,
       reason: nonprofit
         ? "Open House uptake at the hours asked."
         : "Launch Day conversion at this price.",

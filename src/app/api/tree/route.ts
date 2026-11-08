@@ -53,15 +53,15 @@ export async function POST(req: Request) {
   // extractBundle() returns an empty bundle, generateChoices() returns
   // placeholders, so the client always gets a renderable Idea.
   try {
-    const hits = await gatherHits(pitch);
+    const { hits, peers } = await gatherHits(pitch, mode);
     const tSearch = Date.now();
 
     // The long pole is generation (~16s) against extraction (~7s). They read
     // the same hits and neither needs the other, so running them together
     // takes extraction off the critical path.
     const [research, choices] = await Promise.all([
-      extractBundle(pitch, hits),
-      generateChoices(pitch, hits, team),
+      extractBundle(pitch, hits, mode, peers),
+      generateChoices(pitch, hits, team, mode, peers),
     ]);
 
     const idea = assembleIdea(pitch, research, choices, mode);
@@ -82,7 +82,7 @@ export async function POST(req: Request) {
     const idea = assembleIdea(
       pitch,
       { competitors: [], complaints: [], marketNotes: [] },
-      await generateChoices(pitch, [], team),
+      await generateChoices(pitch, [], team, mode),
       mode
     );
     return NextResponse.json({ idea } satisfies TreeResponse);

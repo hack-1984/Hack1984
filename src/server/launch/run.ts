@@ -11,8 +11,10 @@ import type {
   SimResult,
   TreeUpdate,
 } from "@/lib/types";
+import { launchMode, type LaunchMode } from "./modes";
 
-const BATCHES = 10;
+/** 20 calls of 5 rather than 10 of 10, for the reason given in personas.ts. */
+const BATCHES = 20;
 
 const JudgeOut = z.object({
   verdicts: z.array(
@@ -51,6 +53,10 @@ const asPillar = (s: string): PillarKey => {
   return PILLAR_KEYS.includes(t) ? t : "problem";
 };
 
+/** A pillar this mode protects is sent somewhere it can honestly land. */
+const remap = (pillar: PillarKey, m: LaunchMode): PillarKey =>
+  m.neverUpdate.includes(pillar) ? m.remapTo : pillar;
+
 /** Ask the model what each persona would pay; decide buy/curious/leave in code. */
 export async function judge(
   idea: Idea,
@@ -59,6 +65,8 @@ export async function judge(
 ): Promise<SimResult[]> {
   const t0 = Date.now();
   const batches = chunk(personas, BATCHES);
+  const m = launchMode(idea.mode);
+  const nonprofit = idea.mode === "nonprofit";
 
   const settled = await Promise.allSettled(
     batches.map((batch) =>
@@ -66,22 +74,19 @@ export async function judge(
         ? Promise.resolve({ verdicts: [] })
         : askJSON({
             system: [
-              "You judge whether each person would buy a product at a given price.",
-              "For each, give: reason (at most 8 words, in their voice),",
-              "maxPrice — the most they would actually pay per month, 0 if they would never pay —",
-              "and tellsFriend. Be harsh: most people do not buy. Respect their stated budget.",
+              ...m.prompts.judgeRules,
               "Return one verdict per person, in the order given.",
             ].join(" "),
             prompt: [
-              `Product: ${idea.pitch}`,
-              `Asking price: $${price} per month`,
+              `${m.prompts.personaSubject}: ${idea.pitch}`,
+              m.prompts.askLine(price),
               "",
               "People:",
               ...batch.map(
-                (p, i) =>
-                  `  ${i + 1}. ${p.name} — ${p.blurb} Budget about $${p.budget}. Habits: ${
-                    p.habits.join("; ") || "none given"
-                  }`
+                (person, i) =>
+                  `  ${i + 1}. ${person.name} — ${person.blurb} ` +
+                  `${nonprofit ? "Free time about" : "Budget about"} ${m.unitLabel(person.budget)}. ` +
+                  `Habits: ${person.habits.join("; ") || "none given"}`
               ),
             ].join("\n"),
             schema: JudgeOut,
@@ -120,7 +125,7 @@ export async function judge(
   });
 
   console.log(
-    `[run] judged ${results.length} personas in ${Date.now() - t0}ms` +
+    `[run] ${idea.mode ?? "startup"}: judged ${results.length} personas in ${Date.now() - t0}ms` +
       `${failed ? `, ${failed}/${BATCHES} batches failed` : ""}`
   );
   return results;
@@ -133,6 +138,7 @@ export async function summarise(
   scene: SceneSpec,
   price: number
 ): Promise<LaunchSummary> {
+  const m = launchMode(idea.mode);
   const count = (d: SimResult["decision"]) => results.filter((r) => r.decision === d).length;
 
   const nonZero = results
@@ -162,7 +168,7 @@ export async function summarise(
     try {
       const out = await askJSON({
         system: [
-          "You group reasons people walked away into at most three themes.",
+          m.prompts.objectionRule,
           "Each theme: a short text, a count of how many reasons it covers, and the pillar it",
           `belongs to — one of: ${PILLAR_KEYS.join(", ")}.`,
           "The counts must not exceed the number of reasons given.",
@@ -178,7 +184,10 @@ export async function summarise(
       topObjections = out.objections.map((o) => ({
         text: words(o.text, 10),
         count: Math.min(leaveReasons.length, Math.max(0, Math.round(o.count))),
-        pillar: asPillar(o.pillar),
+        // A protected pillar is redirected, not dropped: an Open House
+        // objection the model filed under Funding is really about how the
+        // programme runs, and the founder should still see it.
+        pillar: remap(asPillar(o.pillar), m),
       }));
     } catch (err) {
       console.warn(`[run] objection grouping failed: ${err}`);
@@ -199,6 +208,8 @@ export async function summarise(
 /** The plan's summary -> TreeUpdate[] mapping. */
 export function toUpdates(idea: Idea, summary: LaunchSummary, results: SimResult[]): TreeUpdate[] {
   const at = Date.now();
+  const m = launchMode(idea.mode);
+  const nonprofit = idea.mode === "nonprofit";
   const total = Math.max(1, summary.buy + summary.curious + summary.leave);
   const buyRate = Math.round((summary.buy / total) * 100);
   const updates: TreeUpdate[] = [];
@@ -208,15 +219,23 @@ export function toUpdates(idea: Idea, summary: LaunchSummary, results: SimResult
   const top = (p: PillarKey) =>
     [...active(p)].sort((a, b) => b.confidence - a.confidence)[0];
 
-  // Revenue: conversion at this price.
-  const revenue = top("revenue");
-  if (revenue) {
+  // Uptake: Revenue on Launch Day, Program at an Open House. Whether 31
+  // neighbours can spare four hours a month is evidence about the programme,
+  // and says nothing at all about whether a grant renews.
+  const rate = top(remap(m.ratePillar, m));
+  if (rate) {
+    // The action has to follow the number. 5 of 100 joining is a weaken with
+    // a negative delta, not a "strengthen" that quietly subtracts 12 — Ethan's
+    // tree draws the two differently, and the arrow must match the movement.
+    const delta = Math.round((buyRate - 40) / 3);
     updates.push({
-      action: "strengthen",
-      choiceId: revenue.id,
-      delta: Math.round((buyRate - 40) / 3),
-      reason: `Launch Day conversion at $${summary.price}.`,
-      quote: `${summary.buy} of ${total} would pay $${summary.price}`,
+      action: delta < 0 ? "weaken" : "strengthen",
+      choiceId: rate.id,
+      delta,
+      reason: nonprofit
+        ? `Open House uptake at ${m.unitLabel(summary.price)}.`
+        : `Launch Day conversion at $${summary.price}.`,
+      quote: `${summary.buy} of ${total} would ${nonprofit ? "give" : "pay"} ${m.unitLabel(summary.price)}`,
       source: "launch",
       at,
     });
@@ -242,7 +261,7 @@ export function toUpdates(idea: Idea, summary: LaunchSummary, results: SimResult
 
   // Objections: each one weakens the first active choice in its pillar.
   for (const o of summary.topObjections) {
-    const target = active(o.pillar)[0];
+    const target = active(remap(o.pillar, m))[0];
     if (!target) continue;
     updates.push({
       action: "weaken",
