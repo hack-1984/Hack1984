@@ -14,6 +14,7 @@ import { KNOWN_NONPROFIT_FAILURES } from "../src/server/graveyard/known-nonprofi
 import { mockRecordsFor } from "../src/server/graveyard/mocks";
 import { CAUSE_TAGS } from "../src/server/graveyard/types";
 import { looksLikeOutput, mockImpact, validateImpact } from "../src/server/impact";
+import { singleSourceFunding } from "../src/server/research/modes";
 
 let n = 0;
 const check = (name: string, fn: () => void) => {
@@ -171,6 +172,33 @@ check("impact mock targets an active choice in both modes", () => {
   assert.equal(np.updates[0].quote, "Volunteers stay at least one semester");
   const su = mockImpact(FIXTURE_IDEA);
   assert.ok(FIXTURE_IDEA.choices.some((c) => c.id === su.updates[0].choiceId && c.status === "active"));
+});
+
+check("single-source funding is recognised whatever the model calls it", () => {
+  // Capped: one cheque, however it is worded. A government grant is one
+  // source even though "state" and "grants" sit in two different rows.
+  for (const t of [
+    "One family foundation covers the budget",
+    "State ASOST grants",
+    "Federal and state grants",
+    "A city contract for after-school hours",
+    "Local individual donors",
+    "One anchor funder plus small donors",
+  ]) {
+    assert.equal(singleSourceFunding(t), true, `should be single-source: ${t}`);
+  }
+
+  // Not capped: genuinely more than one kind of money. Over-capping would
+  // make the red Funding node meaningless.
+  for (const t of [
+    "Foundation and corporate grants",
+    "Grants, donors and program fees",
+    "Mixed funding from grants and earned fees",
+    "State grants plus individual donors",
+    "Corporate sponsorship and ticket sales",
+  ]) {
+    assert.equal(singleSourceFunding(t), false, `should be a mix: ${t}`);
+  }
 });
 
 console.log(`\n${n} checks passed`);

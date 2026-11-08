@@ -177,6 +177,18 @@ const CONCENTRATED =
 const DIVERSIFIED = /\b(mix|mixed|diversif\w*|blend\w*|multiple|several|combination|three|four|balanced)\b/;
 
 /**
+ * One government grant is ONE source, not two.
+ *
+ * "State ASOST grants" matches both the grants row (via "grants") and the
+ * government row (via "state"), so the count reached two and a single
+ * government programme was read as a mix — escaping the cap that exists
+ * precisely to catch that kind of concentration. When a government word
+ * qualifies a grant word, they describe the same cheque.
+ */
+const GOV_GRANT =
+  /\b(government|municipal|city|state|federal|public)\s+(\w+\s+){0,2}(grant|grants|funding|contract|contracts)\b/;
+
+/**
  * Does this funding choice rest on a single source?
  *
  * Text-based on purpose. The plan's rule is about what the tree SAYS to the
@@ -191,5 +203,11 @@ export function singleSourceFunding(text: string): boolean {
   const t = text.toLowerCase();
   if (CONCENTRATED.test(t)) return true;
   if (DIVERSIFIED.test(t)) return false;
-  return FUNDING_SOURCES.filter((s) => s.re.test(t)).length <= 1;
+
+  const sources = new Set(FUNDING_SOURCES.filter((s) => s.re.test(t)).map((s) => s.name));
+  // A government grant counts once, not once per row it happens to match.
+  if (GOV_GRANT.test(t) && sources.has("government") && sources.has("grants")) {
+    sources.delete("government");
+  }
+  return sources.size <= 1;
 }
