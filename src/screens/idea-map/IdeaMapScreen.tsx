@@ -5,6 +5,7 @@
 // Markup and inline styles are the design's, converted 1:1; behaviour is in ./logic.js.
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { Fragment, type CSSProperties } from "react";
+import type React from "react";
 import { useLogic } from "../dc";
 import Logic from "./logic";
 import "./idea-map.css";
@@ -12,7 +13,38 @@ import "./idea-map.css";
 export default function IdeaMapScreen(props: Record<string, unknown>) {
   const v = useLogic(Logic, props);
   if (!v) return <div className="pg-im" />;
-  const { accept, addAgainst, addFor, choices, clearSel, counts, curves, cv, draft, edges, ev, goNow, hasToast, hoverIdea, hoverOff, hoverOn, ideaShadow, isChoice, isEvidence, isIdea, isPast, isPillar, isResource, orbit, ov, paneRef, particles, pillars, pv, reject, removeChoice, replay, replayLabel, rv, selIdea, setDraft, showHint, toast, toggleAll, toggleAllLabel, week, weeks, zoom, zoomFit, zoomH, zoomIn, zoomOut, zoomPct, zoomW } = v;
+  const { accept, addAgainst, addFor, busy, createIdea, description, initial, loading, missing, probe, probeDesc, probeTitle, setProbeDesc, setProbeTitle, title, choices, clearSel, counts, curves, cv, draft, edges, ev, goNow, hasToast, hoverIdea, hoverOff, hoverOn, ideaShadow, isChoice, isEvidence, isIdea, isPast, isPillar, isResource, orbit, ov, paneRef, particles, pillars, pv, reject, removeChoice, replay, replayLabel, rv, selIdea, setDraft, showHint, toast, toggleAll, toggleAllLabel, week, weeks, zoom, zoomFit, zoomH, zoomIn, zoomOut, zoomPct, zoomW } = v;
+  // App change: no canned idea. Loading, missing and probe states render before the map.
+  const shell = (inner: React.ReactNode) => (
+    <div className="pg-im">
+      <div style={{ minHeight: "100vh", background: "#f9fafb", display: "flex", alignItems: "center", justifyContent: "center", padding: "40px 20px", boxSizing: "border-box" }}>{inner}</div>
+    </div>
+  );
+  if (loading) return shell(<div style={{ fontSize: "13px", color: "#6b7280" }}>Loading your idea…</div>);
+  if (missing) return shell(
+    <div style={{ textAlign: "center", display: "flex", flexDirection: "column", gap: "10px", alignItems: "center" }}>
+      <div style={{ fontSize: "15px", fontWeight: 600 }}>That idea isn&apos;t here</div>
+      <div style={{ fontSize: "13px", color: "#6b7280" }}>It may belong to another account, or it was never saved.</div>
+      <a href="/sessions" style={{ marginTop: "6px", fontSize: "12px", fontWeight: 600, color: "#111827" }}>Back to your ideas</a>
+    </div>
+  );
+  if (probe) return shell(
+    <form onSubmit={createIdea} style={{ width: "100%", maxWidth: "520px", background: "#fff", border: "1px solid #e5e7eb", borderRadius: "14px", padding: "24px", boxSizing: "border-box", display: "flex", flexDirection: "column", gap: "14px" }}>
+      <div style={{ fontSize: "10px", fontFamily: "'Geist Mono',monospace", color: "#6b7280", textTransform: "uppercase", letterSpacing: ".06em" }}>New idea</div>
+      <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "12px", fontWeight: 600, color: "#374151" }}>
+        Title
+        <input id="probe-title" value={probeTitle} onChange={setProbeTitle} placeholder="Bite forecast" autoComplete="off" style={{ height: "38px", padding: "0 12px", borderRadius: "8px", border: "1px solid #d1d5db", fontSize: "14px", fontWeight: 400, color: "#111827" }} />
+      </label>
+      <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "12px", fontWeight: 600, color: "#374151" }}>
+        Description
+        <textarea id="probe-description" value={probeDesc} onChange={setProbeDesc} rows={4} placeholder="An app that tells you where the fish are biting today." style={{ padding: "10px 12px", borderRadius: "8px", border: "1px solid #d1d5db", fontSize: "14px", fontWeight: 400, color: "#111827", resize: "vertical", fontFamily: "inherit" }} />
+      </label>
+      <button type="submit" disabled={busy} style={{ height: "38px", borderRadius: "999px", border: "none", background: busy ? "#6b7280" : "#111827", color: "#fff", fontSize: "13px", fontWeight: 600, cursor: busy ? "default" : "pointer" }}>
+        {busy ? "Researching… this takes about 30 seconds" : "Grow the tree"}
+      </button>
+      <div style={{ fontSize: "11px", color: "#9ca3af" }}>Placeholder probe until the real intake screen lands. Research runs live and is saved to your account.</div>
+    </form>
+  );
   return (
     <div className="pg-im">
       <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "#f9fafb" }}>
@@ -143,7 +175,7 @@ export default function IdeaMapScreen(props: Record<string, unknown>) {
                   {" "}
                   <div className="im-hover0" style={{ position: "absolute", left: "670px", top: "550px", transform: "translate(-50%,-50%)", width: "104px", height: "104px", borderRadius: "50%", background: "#fff", border: "2px solid #111827", boxShadow: `${ideaShadow ?? ""}`, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", zIndex: "2", transition: "transform .25s cubic-bezier(.34,1.56,.64,1)", animation: "im-breathe 3.2s ease-in-out infinite" } as CSSProperties} onClick={selIdea} onMouseEnter={hoverOn} onMouseLeave={hoverOff}>
                     <div style={{ width: "64px", height: "64px", borderRadius: "50%", background: "#111827", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: "30px", fontWeight: "700", letterSpacing: "-.04em" }}>
-                      P
+                      {initial}
                     </div>
                   </div>
                   {" "}
@@ -153,11 +185,11 @@ export default function IdeaMapScreen(props: Record<string, unknown>) {
                       <div style={{ position: "absolute", left: "670px", top: "482px", transform: "translate(-50%,-100%)", width: "240px", padding: "12px 14px", boxSizing: "border-box", borderRadius: "10px", background: "#111827", color: "#fff", boxShadow: "0 12px 32px #11182740", zIndex: "3", pointerEvents: "none" }}>
                         {" "}
                         <div style={{ fontSize: "9px", fontWeight: "600", letterSpacing: ".08em", textTransform: "uppercase", color: "#9ca3af", fontFamily: "'Geist Mono',monospace", marginBottom: "5px" }}>
-                          Pantry · the idea
+                          {title}{" · the idea"}
                         </div>
                         {" "}
                         <div style={{ fontSize: "12.5px", lineHeight: "1.4", textWrap: "pretty" }}>
-                          A $8/month meal-planning app for college students on tight budgets.
+                          {description}
                         </div>
                         {" "}
                         <div style={{ fontSize: "10px", color: "#9ca3af", marginTop: "6px" }}>
@@ -252,11 +284,11 @@ export default function IdeaMapScreen(props: Record<string, unknown>) {
                   <div style={{ padding: "20px 20px 16px", borderBottom: "1px solid #e5e7eb" }}>
                     {" "}
                     <div style={{ fontSize: "10px", fontFamily: "'Geist Mono',monospace", color: "#6b7280", textTransform: "uppercase", letterSpacing: ".06em", marginBottom: "8px" }}>
-                      {"Pantry · week "}{week}
+                      {title}{" · week "}{week}
                     </div>
                     {" "}
                     <div style={{ fontSize: "15px", fontWeight: "600", lineHeight: "1.35", textWrap: "pretty" }}>
-                      A $8/month meal-planning app for college students on tight budgets.
+                      {description}
                     </div>
                     {" "}
                     <div style={{ display: "flex", alignItems: "center", gap: "14px", marginTop: "16px" }}>
