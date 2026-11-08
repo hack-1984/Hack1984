@@ -24,7 +24,7 @@ export default function IdeaMapScreen(props: Record<string, unknown>) {
   // clientOnly: which idea to show comes from the URL and this browser's saved ideas.
   const v = useLogic(Logic, props, { clientOnly: true });
   if (!v) return <div className="pg-im" />;
-  const { showPillar, panelOpen, panelW, occupied, closePanel, setPanelW, setDragW, loading, missing, widget, setWidget, showBadge, ideaId, wmem, setWmem, pillarPct, buildIdea, applyWidget, openOverview, team, saveTeam, focus, ideaInitial, ideaName, ideaPitch, now, accept, addAgainst, addFor, choices, clearSel, counts, curves, cv, draft, edges, ev, goNow, hasToast, hoverIdea, hoverOff, hoverOn, ideaShadow, isChoice, isEvidence, isIdea, isPast, isPillar, isResource, orbit, ov, paneRef, pctRef, particles, pillars, pv, reject, removeChoice, replay, replayLabel, rv, selIdea, setDraft, showHint, toast, toggleAll, toggleAllLabel, week, weeks, worldRef, zoomFit, zoomIn, zoomOut } = v;
+  const { showPillar, panelOpen, panelW, occupied, closePanel, setPanelW, setDragW, loading, missing, widget, setWidget, showBadge, ideaId, wmem, setWmem, pillarPct, buildIdea, applyWidget, openOverview, team, saveTeam, focus, ideaInitial, ideaName, ideaPitch, accept, addAgainst, addFor, choices, clearSel, counts, curves, cv, draft, edges, ev, hasToast, hoverIdea, hoverOff, hoverOn, evCard, evCardOpen, ideaShadow, isChoice, isEvidence, isIdea, isPillar, orbit, ov, paneRef, pctRef, particles, pillars, pv, reject, removeChoice, selIdea, setDraft, showHint, toast, toggleAll, toggleAllLabel, worldRef, zoomFit, zoomIn, zoomOut } = v;
   // App: no canned idea. While the stored idea loads, or if it isn't this account's, say so instead of drawing an empty map.
   if (loading || missing) {
     return (
@@ -169,12 +169,17 @@ export default function IdeaMapScreen(props: Record<string, unknown>) {
                             <circle cx="3" cy="-1" r="1.3" style={{ fill: "var(--text)" }} />
                           </svg>
                         ) : null}
-                        <span style={{ width: "8px", height: "8px", borderRadius: "50%", background: `${c?.dot ?? ""}`, border: `1px solid ${c?.dotBorder ?? ""}`, flex: "none", boxSizing: "border-box" } as CSSProperties} />
+                        {/* App: confidence ring in the pillars' language: one colour filling conf% of the circle, the number inside. */}
+                        <span className="im-conf-ring" title={c?.confTitle} style={{ background: `${c?.ring ?? ""}` } as CSSProperties}>
+                          <span className="im-conf-core" style={{ background: `${c?.bg ?? ""}`, color: `${c?.confColor ?? ""}` } as CSSProperties}>
+                            {c?.conf}%
+                          </span>
+                        </span>
                         <div style={{ flex: "1", minWidth: "0", fontSize: "11.5px", fontWeight: "500", lineHeight: "1.25", textDecoration: `${c?.deco ?? ""}`, textWrap: "pretty" } as CSSProperties}>
                           {c?.text}
                         </div>
-                        <div style={{ fontSize: "9px", fontFamily: "'Geist Mono',monospace", color: `${c?.metaColor ?? ""}`, flex: "none" } as CSSProperties}>
-                          {c?.meta}
+                        <div title={c?.confTitle} style={{ fontSize: "9px", fontFamily: "'Geist Mono',monospace", color: "var(--muted)", flex: "none", letterSpacing: ".02em", whiteSpace: "nowrap" } as CSSProperties}>
+                          {c?.range}
                         </div>
                       </div>
                       {" "}
@@ -232,6 +237,51 @@ export default function IdeaMapScreen(props: Record<string, unknown>) {
               {" "}
             </div>
             {" "}
+            {/* App: the Research card, the landing page's in miniature. Rises from the bottom left while an evidence card is hovered; a click pins it. */}
+            {evCard ? (
+              <div className="im-research-tab" data-open={evCardOpen ? "1" : undefined} data-pinned={evCard.pinned ? "1" : undefined} aria-hidden={!evCardOpen}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", height: "44px", padding: "0 16px", borderBottom: "1px solid var(--border)", background: "var(--surface-2)", borderRadius: "16px 16px 0 0", flex: "none" }}>
+                  <div style={{ fontFamily: "'Geist Mono',monospace", fontSize: "11px", letterSpacing: ".12em", textTransform: "uppercase", color: "var(--text)", whiteSpace: "nowrap" }}>
+                    Research
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                    <div style={{ display: "inline-flex", alignItems: "center", gap: "6px", height: "22px", padding: "0 9px", borderRadius: "999px", background: "var(--surface)", border: "1px solid var(--border)", fontFamily: "'Geist Mono',monospace", fontSize: "10px", letterSpacing: ".08em", color: "var(--green-text)", whiteSpace: "nowrap" }}>
+                      <span className="im-ev-dot" style={{ width: "6px", height: "6px", borderRadius: "50%", background: "var(--accent)" }} />
+                      <span>{evCard.count}</span>{evCard.count === 1 ? " SOURCE" : " SOURCES"}
+                    </div>
+                    {evCard.pinned ? (
+                      <button className="im-hover1" onClick={evCard.close} aria-label="Close research" title="Close (Esc)" style={{ width: "24px", height: "24px", borderRadius: "999px", border: "none", background: "transparent", color: "var(--muted)", fontSize: "15px", lineHeight: "1", cursor: "pointer" }}>
+                        ×
+                      </button>
+                    ) : null}
+                  </div>
+                </div>
+                <div style={{ padding: "16px 16px 6px", display: "flex", flexDirection: "column", gap: "12px" }}>
+                  <div style={{ fontSize: "14px", fontWeight: "600", letterSpacing: "-.01em", lineHeight: "1.3", color: "var(--text)", textWrap: "balance" } as CSSProperties}>
+                    {evCard.title}
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column" }}>
+                    {(evCard.rows ?? []).map((r: any, $index: number) => (
+                      <div key={$index} className={r?.select ? "im-research-row im-research-row-live" : "im-research-row"} data-active={r?.active ? "1" : undefined} onClick={r?.select ?? undefined} style={{ display: "flex", gap: "12px", alignItems: "flex-start", padding: "9px 6px", margin: "0 -6px", borderRadius: "8px" }}>
+                        <span style={{ width: "3px", alignSelf: "stretch", borderRadius: "2px", background: `${r?.accent ?? ""}`, flex: "none" } as CSSProperties} />
+                        <div style={{ flex: "1", minWidth: "0", display: "flex", flexDirection: "column", gap: "4px" }}>
+                          <div style={{ fontSize: "12px", lineHeight: "1.35", color: "var(--text)", fontWeight: r?.active ? 600 : 400, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                            {r?.text}
+                          </div>
+                          <div style={{ fontFamily: "'Geist Mono',monospace", fontSize: "9.5px", color: "var(--muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                            {r?.source}
+                          </div>
+                        </div>
+                        <span style={{ fontFamily: "'Geist Mono',monospace", fontSize: "9px", letterSpacing: ".1em", color: `${r?.tagColor ?? ""}`, flex: "none", paddingTop: "2px" } as CSSProperties}>
+                          {r?.tag}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div style={{ height: "10px", flex: "none" }} />
+              </div>
+            ) : null}
             <div style={{ position: "absolute", right: "var(--wg-occ)", top: "16px", transition: "right .25s ease", display: "flex", alignItems: "center", gap: "2px", padding: "4px", borderRadius: "999px", background: "var(--surface)", border: "1px solid var(--border)", boxShadow: "0 4px 16px var(--shadow)", zIndex: "4" }}>
               <button className="im-hover1" style={{ width: "28px", height: "28px", borderRadius: "999px", border: "none", background: "transparent", color: "var(--text)", fontSize: "16px", cursor: "pointer", lineHeight: "1" }} onClick={zoomOut} title="Zoom out (−)" aria-label="Zoom out">
                 −
@@ -254,21 +304,7 @@ export default function IdeaMapScreen(props: Record<string, unknown>) {
               </button>
             </div>
             {" "}
-            <div style={{ position: "absolute", left: "calc((100% - var(--wg-occ)) / 2)", bottom: "16px", transform: "translateX(-50%)", transition: "left .25s ease", display: "flex", alignItems: "center", gap: "4px", padding: "5px 6px 5px 12px", borderRadius: "999px", background: "var(--surface)", border: "1px solid var(--border)", boxShadow: "0 4px 16px var(--shadow)", zIndex: "4" }}>
-              <span style={{ fontSize: "10px", fontFamily: "'Geist Mono',monospace", color: "var(--muted)", letterSpacing: ".06em", marginRight: "4px" }}>
-                WEEK
-              </span>
-              {(weeks ?? []).map((w: any, $index: number) => (
-                <Fragment key={$index}>
-                  <button className={w?.current ? undefined : "im-hover1"} aria-pressed={!!w?.current} style={{ width: "28px", height: "28px", borderRadius: "999px", border: "none", background: `${w?.bg ?? ""}`, color: `${w?.fg ?? ""}`, fontSize: "11px", fontWeight: "600", cursor: "pointer", position: "relative" } as CSSProperties} onClick={w?.select} title={w?.title}>
-                    {w?.n}
-                    <span style={{ position: "absolute", left: "50%", bottom: "3px", transform: "translateX(-50%)", width: "4px", height: "4px", borderRadius: "50%", background: `${w?.dot ?? ""}` } as CSSProperties} />
-                  </button>
-                </Fragment>
-              ))}
-              <button className="im-hover1" style={{ height: "28px", padding: "0 12px", marginLeft: "4px", borderRadius: "999px", border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text)", fontSize: "11px", fontWeight: "600", cursor: "pointer" }} onClick={replay}>
-                {replayLabel}
-              </button>
+            <div style={{ position: "absolute", left: "calc((100% - var(--wg-occ)) / 2)", bottom: "16px", transform: "translateX(-50%)", transition: "left .25s ease", display: "flex", alignItems: "center", gap: "4px", padding: "5px 6px", borderRadius: "999px", background: "var(--surface)", border: "1px solid var(--border)", boxShadow: "0 4px 16px var(--shadow)", zIndex: "4" }}>
               <button className="im-hover1" style={{ height: "28px", padding: "0 12px", borderRadius: "999px", border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text)", fontSize: "11px", fontWeight: "600", cursor: "pointer" }} onClick={toggleAll}>
                 {toggleAllLabel}
               </button>
@@ -284,20 +320,6 @@ export default function IdeaMapScreen(props: Record<string, unknown>) {
               </>
             ) : null}
             {" "}
-            {isPast ? (
-              <>
-                {" "}
-                <div style={{ position: "absolute", left: "16px", top: "16px", padding: "6px 12px", borderRadius: "999px", background: "var(--surface-2)", border: "1px solid var(--border)", color: "var(--text)", fontSize: "11px", fontWeight: "500", zIndex: "4", display: "flex", alignItems: "center", gap: "8px" }}>
-                  <span>
-                    {"Viewing week "}{week}{" of "}{now}{" · read-only"}
-                  </span>
-                  <button style={{ border: "none", background: "var(--primary)", color: "var(--on-primary)", borderRadius: "999px", height: "20px", padding: "0 8px", fontSize: "10px", fontWeight: "600", cursor: "pointer" }} onClick={goNow}>
-                    Back to now
-                  </button>
-                </div>
-                {" "}
-              </>
-            ) : null}
             {" "}
             {hasToast ? (
               <>
@@ -320,7 +342,7 @@ export default function IdeaMapScreen(props: Record<string, unknown>) {
                   <div style={{ padding: "20px 20px 16px", borderBottom: "1px solid var(--border)" }}>
                     {" "}
                     <div style={{ fontSize: "10px", fontFamily: "'Geist Mono',monospace", color: "var(--muted)", textTransform: "uppercase", letterSpacing: ".06em", marginBottom: "8px" }}>
-                      {"Overview · week "}{week}
+                      Overview
                     </div>
                     {" "}
                     <div style={{ fontSize: "18px", fontWeight: "600", lineHeight: "1.3", textWrap: "pretty" }}>
@@ -443,38 +465,6 @@ export default function IdeaMapScreen(props: Record<string, unknown>) {
                             </div>
                             <div style={{ width: "44px", textAlign: "right", fontSize: "10px", color: `${p?.labelColor ?? ""}`, fontWeight: "500" } as CSSProperties}>
                               {p?.label}
-                            </div>
-                          </div>
-                        </Fragment>
-                      ))}
-                    </div>
-                    {" "}
-                  </div>
-                  {" "}
-                  <div style={{ padding: "16px 20px", borderBottom: "1px solid var(--border)" }}>
-                    {" "}
-                    <div style={{ fontSize: "11px", fontWeight: "600", color: "var(--muted)", marginBottom: "10px" }}>
-                      Resource gaps
-                    </div>
-                    {" "}
-                    {ov?.noGaps ? (
-                      <>
-                        <div style={{ fontSize: "12px", color: "var(--muted)" }}>
-                          Every active choice is covered.
-                        </div>
-                      </>
-                    ) : null}
-                    {" "}
-                    <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                      {(ov?.gaps ?? []).map((g: any, $index: number) => (
-                        <Fragment key={$index}>
-                          <div className="im-hover1" style={{ display: "flex", alignItems: "center", gap: "10px", cursor: "pointer", padding: "3px 6px", margin: "0 -6px", borderRadius: "6px" }} onClick={g?.select}>
-                            <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "var(--red)", flex: "none" }} />
-                            <div style={{ flex: "1", fontSize: "12px", fontWeight: "500" }}>
-                              {g?.name}
-                            </div>
-                            <div style={{ fontSize: "10px", color: "var(--muted)" }}>
-                              {"blocks "}{g?.n}
                             </div>
                           </div>
                         </Fragment>
@@ -633,32 +623,6 @@ export default function IdeaMapScreen(props: Record<string, unknown>) {
                             </div>
                             {" "}
                           </div>
-                        </Fragment>
-                      ))}
-                    </div>
-                    {" "}
-                  </div>
-                  {" "}
-                  <div style={{ padding: "16px 20px", borderBottom: "1px solid var(--border)" }}>
-                    {" "}
-                    <div style={{ fontSize: "11px", fontWeight: "600", color: "var(--muted)", marginBottom: "10px" }}>
-                      Resources
-                    </div>
-                    {" "}
-                    {pv?.noRes ? (
-                      <>
-                        <div style={{ fontSize: "12px", color: "var(--muted)" }}>
-                          {"Nothing beyond the team's time."}
-                        </div>
-                      </>
-                    ) : null}
-                    {" "}
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
-                      {(pv?.resources ?? []).map((r: any, $index: number) => (
-                        <Fragment key={$index}>
-                          <span style={{ fontSize: "11px", padding: "4px 10px", borderRadius: "999px", border: `1px solid ${r?.border ?? ""}`, color: `${r?.fg ?? ""}`, cursor: "pointer" } as CSSProperties} onClick={r?.select}>
-                            {r?.name}
-                          </span>
                         </Fragment>
                       ))}
                     </div>
@@ -857,32 +821,6 @@ export default function IdeaMapScreen(props: Record<string, unknown>) {
                     {" "}
                   </div>
                   {" "}
-                  <div style={{ padding: "16px 20px", borderBottom: "1px solid var(--border)" }}>
-                    {" "}
-                    <div style={{ fontSize: "11px", fontWeight: "600", color: "var(--muted)", marginBottom: "10px" }}>
-                      Requires
-                    </div>
-                    {" "}
-                    {cv?.noResources ? (
-                      <>
-                        <div style={{ fontSize: "12px", color: "var(--muted)" }}>
-                          {"Nothing beyond the team's time."}
-                        </div>
-                      </>
-                    ) : null}
-                    {" "}
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
-                      {(cv?.resources ?? []).map((r: any, $index: number) => (
-                        <Fragment key={$index}>
-                          <span style={{ fontSize: "11px", padding: "4px 10px", borderRadius: "999px", border: `1px solid ${r?.border ?? ""}`, color: `${r?.fg ?? ""}`, cursor: "pointer" } as CSSProperties} onClick={r?.select}>
-                            {r?.name}
-                          </span>
-                        </Fragment>
-                      ))}
-                    </div>
-                    {" "}
-                  </div>
-                  {" "}
                   {cv?.hasLinks ? (
                     <>
                       {" "}
@@ -924,7 +862,7 @@ export default function IdeaMapScreen(props: Record<string, unknown>) {
                     <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
                       {(cv?.history ?? []).map((h: any, $index: number) => (
                         <Fragment key={$index}>
-                          <div style={{ display: "flex", gap: "12px", cursor: "pointer" }} onClick={h?.select} title="Jump to this week">
+                          <div style={{ display: "flex", gap: "12px", cursor: "pointer" }} onClick={h?.select} title="Open this choice">
                             <div style={{ fontSize: "10px", fontFamily: "'Geist Mono',monospace", color: "var(--muted)", flex: "none", width: "36px", paddingTop: "2px" }}>
                               {h?.week}
                             </div>
@@ -1043,104 +981,6 @@ export default function IdeaMapScreen(props: Record<string, unknown>) {
                         <Fragment key={$index}>
                           <div className="im-hover2" style={{ padding: "8px 10px", borderRadius: "8px", borderStyle: "solid", borderWidth: "1px 1px 1px 3px", borderColor: `var(--border) var(--border) var(--border) ${s?.accent ?? ""}`, cursor: "pointer", fontSize: "12px", lineHeight: "1.4" } as CSSProperties} onClick={s?.select}>
                             {s?.text}
-                          </div>
-                        </Fragment>
-                      ))}
-                    </div>
-                    {" "}
-                  </div>
-                  {" "}
-                </div>
-              </>
-            ) : null}
-            {isResource ? (
-              <>
-                <div style={{ animation: "im-panelIn .35s cubic-bezier(.2,.8,.2,1) both" }}>
-                  {" "}
-                  <div style={{ padding: "20px 20px 16px", borderBottom: "1px solid var(--border)" }}>
-                    {" "}
-                    <div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "10px", fontFamily: "'Geist Mono',monospace", color: "var(--muted)", textTransform: "uppercase", letterSpacing: ".06em", marginBottom: "8px" }}>
-                      <span style={{ cursor: "pointer" }} onClick={selIdea}>
-                        Overview
-                      </span>
-                      <span>
-                        ›
-                      </span>
-                      <span>
-                        Resource
-                      </span>
-                    </div>
-                    {" "}
-                    <span style={{ fontSize: "10px", fontWeight: "600", padding: "2px 8px", borderRadius: "999px", background: `${rv?.chipBg ?? ""}`, color: `${rv?.chipFg ?? ""}` } as CSSProperties}>
-                      {rv?.statusLabel}
-                    </span>
-                    {" "}
-                    <div style={{ fontSize: "18px", fontWeight: "600", marginTop: "10px" }}>
-                      {rv?.name}
-                    </div>
-                    {" "}
-                    <div style={{ fontSize: "12px", color: "var(--muted)", marginTop: "4px", lineHeight: "1.45" }}>
-                      {rv?.summary}
-                    </div>
-                    {" "}
-                    {rv?.missing ? (
-                      <>
-                        {" "}
-                        <button className="im-primary" style={{ marginTop: "14px", width: "100%", height: "34px", borderRadius: "999px", border: "none", background: "var(--primary)", color: "var(--on-primary)", fontSize: "12px", fontWeight: "600", cursor: "pointer" }} onClick={rv?.acquire}>
-                          Mark as acquired
-                        </button>
-                        {" "}
-                      </>
-                    ) : null}
-                    {" "}
-                  </div>
-                  {" "}
-                  <div style={{ padding: "16px 20px", borderBottom: "1px solid var(--border)" }}>
-                    {" "}
-                    <div style={{ fontSize: "11px", fontWeight: "600", color: "var(--muted)", marginBottom: "10px" }}>
-                      {"Needed by · "}{rv?.n}
-                    </div>
-                    {" "}
-                    <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-                      {(rv?.choices ?? []).map((c: any, $index: number) => (
-                        <Fragment key={$index}>
-                          <div className="im-hover2" style={{ display: "flex", alignItems: "center", gap: "10px", padding: "8px 10px", borderRadius: "8px", border: "1px solid var(--border)", cursor: "pointer" }} onClick={c?.select}>
-                            <span style={{ width: "8px", height: "8px", borderRadius: "50%", background: `${c?.dot ?? ""}`, border: `1px solid ${c?.dotBorder ?? ""}`, boxSizing: "border-box", flex: "none" } as CSSProperties} />
-                            <div style={{ flex: "1", minWidth: "0" }}>
-                              <div style={{ fontSize: "12px", fontWeight: "500" }}>
-                                {c?.text}
-                              </div>
-                              <div style={{ fontSize: "10px", color: "var(--muted)" }}>
-                                {c?.sub}
-                              </div>
-                            </div>
-                            <span style={{ fontSize: "10px", color: "var(--muted)" }}>
-                              →
-                            </span>
-                          </div>
-                        </Fragment>
-                      ))}
-                    </div>
-                    {" "}
-                  </div>
-                  {" "}
-                  <div style={{ padding: "16px 20px" }}>
-                    {" "}
-                    <div style={{ fontSize: "11px", fontWeight: "600", color: "var(--muted)", marginBottom: "10px" }}>
-                      All resources
-                    </div>
-                    {" "}
-                    <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-                      {(rv?.all ?? []).map((r: any, $index: number) => (
-                        <Fragment key={$index}>
-                          <div className="im-hover1" style={{ display: "flex", alignItems: "center", gap: "10px", cursor: "pointer", padding: "4px 6px", margin: "0 -6px", borderRadius: "6px" }} onClick={r?.select}>
-                            <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: `${r?.dot ?? ""}`, flex: "none" } as CSSProperties} />
-                            <div style={{ flex: "1", fontSize: "12px", fontWeight: `${r?.weight ?? ""}` } as CSSProperties}>
-                              {r?.name}
-                            </div>
-                            <div style={{ fontSize: "10px", color: "var(--muted)" }}>
-                              {r?.sub}
-                            </div>
                           </div>
                         </Fragment>
                       ))}
