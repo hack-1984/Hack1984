@@ -170,7 +170,7 @@ export default function NewIdeaScreen() {
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   onBlur={() => setTouched((t) => ({ ...t, name: true }))}
-                  placeholder="Bite forecast"
+                  placeholder={mode === "nonprofit" ? "Dorchester Code Club" : "Bite forecast"}
                   required
                   maxLength={60}
                   autoComplete="off"
@@ -199,7 +199,7 @@ export default function NewIdeaScreen() {
                 />
                 <span className="nw-row">
                   <span id="nw-desc-hint" className="nw-hint">
-                    Be specific: who it&apos;s for, the problem it solves, and where.
+                    {mode === "nonprofit" ? "Be specific: who it serves, the need it meets, and where." : "Be specific: who it's for, the problem it solves, and where."}
                   </span>
                   <span
                     id="nw-desc-count"

@@ -37,11 +37,19 @@ const METER: Record<"startup" | "nonprofit", Partial<Record<WireRole, string>>> 
   startup: { customer: "Would buy", investor: "Would invest", competitor: "Not worried" },
   nonprofit: { customer: "Would take part", investor: "Would fund", competitor: "Would partner" },
 };
-const PLACEHOLDER: Record<WireRole, string> = {
-  customer: "Ask about price, habits, what they use today…",
-  investor: "Answer their question, or ask what would get them to yes…",
-  competitor: "Ask how they'd respond to your launch…",
-  advisor: "Ask anything about the plan…",
+const PLACEHOLDER: Record<"startup" | "nonprofit", Record<WireRole, string>> = {
+  startup: {
+    customer: "Ask about price, habits, what they use today…",
+    investor: "Answer their question, or ask what would get them to yes…",
+    competitor: "Ask how they'd respond to your launch…",
+    advisor: "Ask anything about the plan…",
+  },
+  nonprofit: {
+    customer: "Ask what would get them to come, and keep coming…",
+    investor: "Answer their question, or ask what would get them to fund it…",
+    competitor: "Ask who they turn away, or how you could work together…",
+    advisor: "Ask anything about the plan…",
+  },
 };
 const host = (u: string) => {
   try {
@@ -296,7 +304,7 @@ export default function DiscussionWidget({ ctx }: { ctx: WidgetCtx }) {
           <textarea
             className="im-input cw-input"
             aria-label={`Message ${p?.name ?? titles[role]}`}
-            placeholder={PLACEHOLDER[role]}
+            placeholder={PLACEHOLDER[mode][role]}
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             onKeyDown={onKey}

@@ -13,6 +13,7 @@ import { Session } from "@/session";
 import { PILLARS as PILLAR_DEFS, PILLAR_KEYS, pillarLabel } from "@/lib/pillars";
 import { adopt, applyUpdates, describeUpdates, ideaStore, reject as rejectChoice, toMapModel } from "@/lib/db";
 import { planChoice, researchChoice } from "@/ideas/api";
+import { profileFor } from "@/lib/modes";
 import { Camera, MIN_ZOOM, MAX_ZOOM } from "./camera";
 import { pillarScores } from "@/lib/db";
 import { emitFx, WIDGET_FOR_SOURCE } from "./fx/bus";
@@ -404,8 +405,8 @@ class Component extends DCLogic {
     const ov = { score, ring: `conic-gradient(${ovColor} ${Math.round(score * 3.6)}deg, var(--border) 0)`, ringDeg: `${Math.round(score * 3.6)}deg`, ringCol: ovColor, scoreColor: confText(score / 100), delta: dlt === null ? 'First week' : dlt === 0 ? 'No change since last week' : `${dlt > 0 ? '+' : ''}${dlt} since week ${W - 1}`, deltaColor: dlt > 0 ? 'var(--green-text)' : dlt < 0 ? 'var(--red-text)' : 'var(--muted)',
       nSup: active.filter(c => c.status === 'strengthened').length, nUnt: active.filter(c => c.status === 'guess' || c.status === 'added').length, nWeak: active.filter(c => c.status === 'weakened').length, nSug: active.filter(c => c.status === 'suggested').length,
       hasSuggestion: !!sug, suggestionText: sug ? sug.text : '', suggestionFor: sugFor && find(sugFor[0]) ? find(sugFor[0]).text : '',
-      suggestions: view.filter(c => c.status === 'suggested').reverse().map(c => { const l = LINKS.find(x => x[1] === c.id); const o = l && find(l[0]); return { id: c.id, text: c.text, note: o ? `Replacement for “${o.text}” · tap to review` : `New choice under ${c.pillar} · tap to review`, open: this.pick({t:'choice', id:c.id}) }; }), suggestionNote: sugFor && find(sugFor[0]) ? `Replacement for “${find(sugFor[0]).text}” · tap to review` : sug ? `New choice under ${sug.pillar} · tap to review` : '', openSuggestion: sug ? this.pick({t:'choice', id:sug.id}) : null,
-      weakest: ranked.length ? ranked[0].p : '—', changes, noChanges: !changes.length, changesTitle: 'Changes this week' };
+      suggestions: view.filter(c => c.status === 'suggested').reverse().map(c => { const l = LINKS.find(x => x[1] === c.id); const o = l && find(l[0]); return { id: c.id, text: c.text, note: o ? `Replacement for “${o.text}” · tap to review` : `New choice under ${this.show(c.pillar)} · tap to review`, open: this.pick({t:'choice', id:c.id}) }; }), suggestionNote: sugFor && find(sugFor[0]) ? `Replacement for “${find(sugFor[0]).text}” · tap to review` : sug ? `New choice under ${sug.pillar} · tap to review` : '', openSuggestion: sug ? this.pick({t:'choice', id:sug.id}) : null,
+      weakest: ranked.length ? this.show(ranked[0].p) : '—', changes, noChanges: !changes.length, changesTitle: 'Changes this week' };
 
     // pillar view
     let pv = null;
@@ -423,7 +424,7 @@ class Component extends DCLogic {
     if (selC && mode === 'choice') {
       const c = selC; const st = STATUS[c.status]; const nFor = c.ev.filter(e => e.k === 'support').length, nAg = c.ev.length - nFor; const tot = Math.max(1, c.ev.length);
       const links = LINKS.filter(l => l[0] === c.id || l[1] === c.id).map(l => { const o = find(l[0] === c.id ? l[1] : l[0]); if (!o) return null; const s = STATUS[o.status]; return { text: o.text, note: l[2] + ' · ' + s.label, dot: s.dot, dotBorder: s.dotBorder, select: this.pick({t:'choice', id:o.id}) }; }).filter(Boolean);
-      cv = { pillar: c.pillar, selectPillar: this.pick({t:'pillar', id:c.pillar}), text: c.text, statusLabel: st.label, chipBg: st.chipBg, chipFg: st.chipFg, summary: SUMMARY[c.status], since: wkLabel(c.hist[c.hist.length - 1].wk), isSuggested: c.status === 'suggested',
+      cv = { pillar: this.show(c.pillar), selectPillar: this.pick({t:'pillar', id:c.pillar}), text: c.text, statusLabel: st.label, chipBg: st.chipBg, chipFg: st.chipFg, summary: SUMMARY[c.status], since: wkLabel(c.hist[c.hist.length - 1].wk), isSuggested: c.status === 'suggested',
         nFor, nAgainst: nAg, forPct: Math.round(nFor / tot * 100), againstPct: Math.round(nAg / tot * 100), evCount: c.ev.length, noEvidence: !c.ev.length,
         evidence: c.ev.map((e, i) => ({ text: e.text, source: e.source, url: e.url, tier: e.tier, accent: e.k === 'support' ? 'var(--green)' : 'var(--red)', select: this.pick({t:'evidence', cid:c.id, idx:i}) })),
         canEdit: c.status !== 'removed' && c.status !== 'suggested', test: c.test === '—' ? 'Removed. No further tests planned.' : c.test,
@@ -439,7 +440,7 @@ class Component extends DCLogic {
     if (mode === 'evidence' && selC) {
       const c = selC; const e = c.ev[sel.idx] || c.ev[0]; const st = STATUS[c.status];
       const h = c.hist.find(x => x.wk === e.wk && x.type !== 'Added'); const sup = e.k === 'support';
-      ev = { pillar: c.pillar, selectPillar: this.pick({t:'pillar', id:c.pillar}), selectChoice: this.pick({t:'choice', id:c.id}), text: e.text, source: e.source + ' · ' + wkLabel(e.wk), src: { url: e.url, tier: e.tier, source: e.source }, week: wkLabel(e.wk), kindLabel: sup ? 'Supports' : 'Undermines', chipBg: sup ? 'var(--green-tint)' : 'var(--red-tint)', chipFg: sup ? 'var(--green-text)' : 'var(--red-text)',
+      ev = { pillar: this.show(c.pillar), selectPillar: this.pick({t:'pillar', id:c.pillar}), selectChoice: this.pick({t:'choice', id:c.id}), text: e.text, source: e.source + ' · ' + wkLabel(e.wk), src: { url: e.url, tier: e.tier, source: e.source }, week: wkLabel(e.wk), kindLabel: sup ? 'Supports' : 'Undermines', chipBg: sup ? 'var(--green-tint)' : 'var(--red-tint)', chipFg: sup ? 'var(--green-text)' : 'var(--red-text)',
         impact: h ? `${h.type} “${c.text}” in week ${h.wk}. ${h.note}.` : `Logged in week ${e.wk}. On its own it did not change the status of “${c.text}”.`,
         choiceText: c.text, dot: st.dot, dotBorder: st.dotBorder,
         siblings: c.ev.map((s, i) => ({ s, i })).filter(x => x.i !== sel.idx).map(x => ({ text: x.s.text, accent: x.s.k === 'support' ? 'var(--green)' : 'var(--red)', select: this.pick({t:'evidence', cid:c.id, idx:x.i}) })) };
@@ -477,6 +478,9 @@ class Component extends DCLogic {
       ideaId: this.ideaId, wmem: this.state.wmem,
       // Widget memory rides along in the stored idea (StoredIdea.widgets), so it follows the founder across devices.
       setWmem: (key, patch) => { if (!this.idea) return; const widgets = { ...(this.idea.widgets || {}), [key]: { ...((this.idea.widgets || {})[key] || {}), ...patch } }; this.idea = { ...this.idea, widgets }; this.setState({ wmem: widgets }); ideaStore().save(this.idea).catch(err => console.error('[map] save widgets', err)); },
+      // App: the rail's Launch day button is Open House on a nonprofit.
+      draftHint: this.idea?.mode === 'nonprofit' ? 'Add what you learned… e.g. 7 of 10 families came back in week two' : 'Add what you learned… e.g. 7 of 10 testers finished setup',
+      railLabels: this.idea?.mode === 'nonprofit' ? { launch: profileFor('nonprofit').launch.title } : {},
       pillarPct: Object.fromEntries(pillars.map(p => [p.name, p.pct])), showPillar: (key) => this.show(LABEL[key] ?? key),
       buildIdea: () => this.idea,
       team: this.team, saveTeam: (team) => this.saveTeam(team),
@@ -489,7 +493,7 @@ class Component extends DCLogic {
       draft: this.state.draft, setDraft: (e) => this.setState({ draft: e.target.value }),
       clearSel: () => { if (this._suppressClick) { this._suppressClick = false; return; } this.setState({ sel: null, pinEv: null }); }, selIdea: this.pick({t:'idea'}),
       addFor: (e) => this.addEvidence(e, 'support'), addAgainst: (e) => this.addEvidence(e, 'against'),
-      removeChoice: (e) => { e.stopPropagation(); const c = selC; if (!c) return; const prev = this.idea; const stamped = [{ action: 'kill', choiceId: c.id, reason: 'Removed by founder', source: 'plan', at: Date.now() }]; const next = applyUpdates(prev, stamped); this._undo = { prev, next, stamped, label: 'Removed by you', at: Date.now() }; this.persist(next, { sel: {t:'pillar', id:c.pillar} }); this.say(`“${c.text}” removed · ${c.pillar} recalculated`, 7000); },
+      removeChoice: (e) => { e.stopPropagation(); const c = selC; if (!c) return; const prev = this.idea; const stamped = [{ action: 'kill', choiceId: c.id, reason: 'Removed by founder', source: 'plan', at: Date.now() }]; const next = applyUpdates(prev, stamped); this._undo = { prev, next, stamped, label: 'Removed by you', at: Date.now() }; this.persist(next, { sel: {t:'pillar', id:c.pillar} }); this.say(`“${c.text}” removed · ${this.show(c.pillar)} recalculated`, 7000); },
       // App: accept / reject work on whichever suggestion is open. adopt() kills the pivot parent; reject() drops the suggestion. Both write history.
       accept: (e) => { e.stopPropagation(); const c = selC; if (!c) return; const l = LINKS.find(x => x[1] === c.id); const old = l ? find(l[0]) : null; this.persist(adopt(this.idea, c.id), { sel: {t:'choice', id:c.id} }, old ? `Replacement accepted · “${old.text}” retired` : `“${c.text}” accepted`); },
       reject: (e) => { e.stopPropagation(); const c = selC; if (!c) return; const l = LINKS.find(x => x[1] === c.id); const old = l ? find(l[0]) : null; this.persist(rejectChoice(this.idea, c.id), { sel: old ? {t:'choice', id:old.id} : null }, old ? `Suggestion rejected · “${old.text}” stays ${STATUS[old.status].label.toLowerCase()}` : 'Suggestion rejected'); },
@@ -534,7 +538,7 @@ class Component extends DCLogic {
     // App: same path as every widget result.
     this.setState({ draft: '' });
     this.applyWidget([{ action: k === 'support' ? 'strengthen' : 'weaken', choiceId: id, delta: k === 'support' ? 5 : -5, reason: k === 'support' ? 'New supporting evidence' : 'New evidence against', evidence: [{ type: 'quote', text, origin: 'Added by you', tier: 'real' }], source: 'plan' }],
-      'Added by you', `${type} “${c.text}” · ${c.pillar} recalculated`);
+      'Added by you', `${type} “${c.text}” · ${this.show(c.pillar)} recalculated`);
   }
   // App: apply TreeUpdates from a widget (or the founder) to the stored Idea, save, and re-derive the map.
   // Opens the affected pillars and pulses them. Returns what changed, for "What this changed" lists.
