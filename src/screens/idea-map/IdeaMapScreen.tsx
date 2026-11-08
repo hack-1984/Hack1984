@@ -24,7 +24,7 @@ export default function IdeaMapScreen(props: Record<string, unknown>) {
   // clientOnly: which idea to show comes from the URL and this browser's saved ideas.
   const v = useLogic(Logic, props, { clientOnly: true });
   if (!v) return <div className="pg-im" />;
-  const { showPillar, panelOpen, panelW, occupied, closePanel, setPanelW, setDragW, loading, missing, widget, setWidget, showBadge, ideaId, wmem, setWmem, pillarPct, buildIdea, applyWidget, openOverview, team, saveTeam, focus, ideaInitial, ideaName, ideaPitch, now, accept, addAgainst, addFor, choices, clearSel, counts, curves, cv, draft, edges, ev, goNow, hasToast, hoverIdea, hoverOff, hoverOn, evCard, evCardOpen, ideaShadow, isChoice, isEvidence, isIdea, isPast, isPillar, orbit, ov, paneRef, pctRef, particles, pillars, pv, reject, removeChoice, replay, replayLabel, selIdea, setDraft, showHint, toast, toggleAll, toggleAllLabel, week, weeks, worldRef, zoomFit, zoomIn, zoomOut } = v;
+  const { showPillar, panelOpen, panelW, occupied, closePanel, setPanelW, setDragW, loading, missing, widget, setWidget, showBadge, ideaId, wmem, setWmem, pillarPct, buildIdea, applyWidget, openOverview, team, saveTeam, focus, ideaInitial, ideaName, ideaPitch, accept, addAgainst, addFor, choices, clearSel, counts, curves, cv, draft, edges, ev, hasToast, hoverIdea, hoverOff, hoverOn, evCard, evCardOpen, ideaShadow, isChoice, isEvidence, isIdea, isPillar, orbit, ov, paneRef, pctRef, particles, pillars, pv, reject, removeChoice, selIdea, setDraft, showHint, toast, toggleAll, toggleAllLabel, worldRef, zoomFit, zoomIn, zoomOut } = v;
   // App: no canned idea. While the stored idea loads, or if it isn't this account's, say so instead of drawing an empty map.
   if (loading || missing) {
     return (
@@ -304,21 +304,7 @@ export default function IdeaMapScreen(props: Record<string, unknown>) {
               </button>
             </div>
             {" "}
-            <div style={{ position: "absolute", left: "calc((100% - var(--wg-occ)) / 2)", bottom: "16px", transform: "translateX(-50%)", transition: "left .25s ease", display: "flex", alignItems: "center", gap: "4px", padding: "5px 6px 5px 12px", borderRadius: "999px", background: "var(--surface)", border: "1px solid var(--border)", boxShadow: "0 4px 16px var(--shadow)", zIndex: "4" }}>
-              <span style={{ fontSize: "10px", fontFamily: "'Geist Mono',monospace", color: "var(--muted)", letterSpacing: ".06em", marginRight: "4px" }}>
-                WEEK
-              </span>
-              {(weeks ?? []).map((w: any, $index: number) => (
-                <Fragment key={$index}>
-                  <button className={w?.current ? undefined : "im-hover1"} aria-pressed={!!w?.current} style={{ width: "28px", height: "28px", borderRadius: "999px", border: "none", background: `${w?.bg ?? ""}`, color: `${w?.fg ?? ""}`, fontSize: "11px", fontWeight: "600", cursor: "pointer", position: "relative" } as CSSProperties} onClick={w?.select} title={w?.title}>
-                    {w?.n}
-                    <span style={{ position: "absolute", left: "50%", bottom: "3px", transform: "translateX(-50%)", width: "4px", height: "4px", borderRadius: "50%", background: `${w?.dot ?? ""}` } as CSSProperties} />
-                  </button>
-                </Fragment>
-              ))}
-              <button className="im-hover1" style={{ height: "28px", padding: "0 12px", marginLeft: "4px", borderRadius: "999px", border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text)", fontSize: "11px", fontWeight: "600", cursor: "pointer" }} onClick={replay}>
-                {replayLabel}
-              </button>
+            <div style={{ position: "absolute", left: "calc((100% - var(--wg-occ)) / 2)", bottom: "16px", transform: "translateX(-50%)", transition: "left .25s ease", display: "flex", alignItems: "center", gap: "4px", padding: "5px 6px", borderRadius: "999px", background: "var(--surface)", border: "1px solid var(--border)", boxShadow: "0 4px 16px var(--shadow)", zIndex: "4" }}>
               <button className="im-hover1" style={{ height: "28px", padding: "0 12px", borderRadius: "999px", border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text)", fontSize: "11px", fontWeight: "600", cursor: "pointer" }} onClick={toggleAll}>
                 {toggleAllLabel}
               </button>
@@ -334,20 +320,6 @@ export default function IdeaMapScreen(props: Record<string, unknown>) {
               </>
             ) : null}
             {" "}
-            {isPast ? (
-              <>
-                {" "}
-                <div style={{ position: "absolute", left: "16px", top: "16px", padding: "6px 12px", borderRadius: "999px", background: "var(--surface-2)", border: "1px solid var(--border)", color: "var(--text)", fontSize: "11px", fontWeight: "500", zIndex: "4", display: "flex", alignItems: "center", gap: "8px" }}>
-                  <span>
-                    {"Viewing week "}{week}{" of "}{now}{" · read-only"}
-                  </span>
-                  <button style={{ border: "none", background: "var(--primary)", color: "var(--on-primary)", borderRadius: "999px", height: "20px", padding: "0 8px", fontSize: "10px", fontWeight: "600", cursor: "pointer" }} onClick={goNow}>
-                    Back to now
-                  </button>
-                </div>
-                {" "}
-              </>
-            ) : null}
             {" "}
             {hasToast ? (
               <>
@@ -370,7 +342,7 @@ export default function IdeaMapScreen(props: Record<string, unknown>) {
                   <div style={{ padding: "20px 20px 16px", borderBottom: "1px solid var(--border)" }}>
                     {" "}
                     <div style={{ fontSize: "10px", fontFamily: "'Geist Mono',monospace", color: "var(--muted)", textTransform: "uppercase", letterSpacing: ".06em", marginBottom: "8px" }}>
-                      {"Overview · week "}{week}
+                      Overview
                     </div>
                     {" "}
                     <div style={{ fontSize: "18px", fontWeight: "600", lineHeight: "1.3", textWrap: "pretty" }}>
@@ -890,7 +862,7 @@ export default function IdeaMapScreen(props: Record<string, unknown>) {
                     <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
                       {(cv?.history ?? []).map((h: any, $index: number) => (
                         <Fragment key={$index}>
-                          <div style={{ display: "flex", gap: "12px", cursor: "pointer" }} onClick={h?.select} title="Jump to this week">
+                          <div style={{ display: "flex", gap: "12px", cursor: "pointer" }} onClick={h?.select} title="Open this choice">
                             <div style={{ fontSize: "10px", fontFamily: "'Geist Mono',monospace", color: "var(--muted)", flex: "none", width: "36px", paddingTop: "2px" }}>
                               {h?.week}
                             </div>

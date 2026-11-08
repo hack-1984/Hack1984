@@ -114,8 +114,8 @@ class Component extends DCLogic {
   constructor(p) {
     super(p);
     this.idea = null; this.ideaId = null; this.team = null; this.now = 1; this.name = ''; this.pitch = '';
-    this.state = { sel:null, hoverIdea:false, hover:null, draft:'', toast:null, expanded:[], replaying:false, loading:true, missing:false, discuss:null, nodeBusy:null,
-      choices: [], links: [], wmem: {}, week: 1, widget: 'overview', flash: null, pinEv: null, panelOpen: true, panelW: readPanelW() };
+    this.state = { sel:null, hoverIdea:false, hover:null, draft:'', toast:null, expanded:[], loading:true, missing:false, discuss:null, nodeBusy:null,
+      choices: [], links: [], wmem: {}, widget: 'overview', flash: null, pinEv: null, panelOpen: true, panelW: readPanelW() };
   }
   // The label to SHOW for a pillar the map holds internally as a startup
   // label: "Customer" stays "Customer" on a startup, becomes "People served"
@@ -128,7 +128,7 @@ class Component extends DCLogic {
     return { choices: m.choices.map(c => ({ ...c, pillar: LABEL[c.pillarKey] })), links: m.links, wmem: idea.widgets || {}, loading: false, missing: false };
   }
   // First load of an idea: derive and reset the view.
-  load(idea) { return { ...this.derive(idea), week: this.now, sel: null, expanded: [], widget: 'overview', flash: null, panelOpen: true }; }
+  load(idea) { return { ...this.derive(idea), sel: null, expanded: [], widget: 'overview', flash: null, panelOpen: true }; }
   // App: a changed Idea in, saved and re-drawn. Save failures surface as a toast; the map keeps the new state.
   persist(idea, patch, msg) {
     this.setState({ ...this.derive(idea), ...(patch || {}) });
@@ -150,8 +150,8 @@ class Component extends DCLogic {
       if (id !== this.ideaId) {
         const idea = await store.get(id);
         if (!idea) { this.setState({ loading: false, missing: true }); return; }
-        clearInterval(this._replay); this._fitted = false;
-        this.setState({ ...this.load(idea), replaying: false }, () => this.fit(false));
+        this._fitted = false;
+        this.setState(this.load(idea), () => this.fit(false));
       }
     } catch (err) { console.error('[map] load', err); this.setState({ loading: false, missing: true }); }
     this._key = (e) => {
@@ -160,12 +160,10 @@ class Component extends DCLogic {
       if (e.key === '+' || e.key === '=') this.zoomStep(1.25);
       if (e.key === '-') this.zoomStep(1 / 1.25);
       if (e.key === '0') this.fit();
-      if (e.key === 'ArrowLeft') this.setState(s => ({week: Math.max(1, s.week - 1)}));
-      if (e.key === 'ArrowRight') this.setState(s => ({week: Math.min(this.now, s.week + 1)}));
     };
     window.addEventListener('keydown', this._key);
   }
-  componentWillUnmount() { window.removeEventListener('keydown', this._key); clearInterval(this._replay); clearTimeout(this._toastT); clearTimeout(this._flashT); }
+  componentWillUnmount() { window.removeEventListener('keydown', this._key); clearTimeout(this._toastT); clearTimeout(this._flashT); }
 
   // ---- App: pan and zoom (camera.ts). Nothing here calls setState. ----
   worldRef = React.createRef();
@@ -187,7 +185,7 @@ class Component extends DCLogic {
   occupied() { const w = this._dragW || this.state.panelW; return STRIP_SPACE + (this.state.panelOpen ? Math.min(w, (this._pane ? this._pane.clientWidth : 1200) - STRIP_SPACE - 120) + 16 : 0); }
   fitView() {
     const pane = this._pane, b = this._bounds; if (!pane || !b || !pane.clientWidth) return null;
-    const top = 64, bottom = 76, side = 40; // clear the zoom controls and the week bar
+    const top = 64, bottom = 76, side = 40; // clear the zoom controls and the bottom bar
     const vw = Math.max(200, pane.clientWidth - this.occupied() - side * 2), vh = pane.clientHeight - top - bottom;
     const k = Math.min(Math.max(Math.min(vw / (b.maxX - b.minX), vh / (b.maxY - b.minY), 1.4), MIN_ZOOM), MAX_ZOOM);
     return { k, x: side + vw / 2 - (b.minX + b.maxX) / 2 * k, y: top + vh / 2 - (b.minY + b.maxY) / 2 * k };
@@ -289,9 +287,10 @@ class Component extends DCLogic {
   renderVals() {
     const showRemoved = this.props.showRemoved ?? true;
     const dim = this.props.dimUnrelated ?? true;
-    const { sel, week: W, choices: allC } = this.state;
-    const NOW = this.now, LINKS = this.state.links;
-    const isPast = W < NOW;
+    const { sel, choices: allC } = this.state;
+    // App: the map always shows the current week. Weeks still number history rows and evidence,
+    // but there is no scrubber or replay; founders iterate on the live tree instead.
+    const W = this.now, LINKS = this.state.links;
     const view = allC.map(c => ({ ...c, status: statusAt(c, W), ev: c.ev.filter(e => e.wk <= W), hist: c.hist.filter(h => h.wk <= W) })).filter(c => c.status && (showRemoved || c.status !== 'removed'));
     const byId = Object.fromEntries(view.map(c => [c.id, c]));
     const find = id => byId[id];
@@ -314,17 +313,19 @@ class Component extends DCLogic {
     const expanded = this.state.expanded;
     // App: each choice wants to sit near its pillar's angle (24° apart, as designed); spread() then pushes
     // neighbours apart until no two pills overlap, growing the ring if they can't all fit.
-    PILLARS.forEach(p => { if (!expanded.includes(p)) return; const collapsed = focused && !pillarActive0(p); const cs = view.filter(c => c.pillar === p); cs.forEach((c, j) => { rows.push({ c, j, collapsed, want: pillarAng[p] + (j - (cs.length - 1) / 2) * 24 }); }); });
-    const ringR = spread(rows.filter(r => !r.collapsed), R2, 1);
-    const ringC = spread(rows.filter(r => r.collapsed), R2 * .66, .62);
-    rows.forEach(r => { const [x, y] = pol(r.collapsed ? ringC : ringR, r.ang); r.x = x; r.y = y; });
+    // App: while a pillar or choice is focused, the other open pillars' choices leave the map instead of
+    // shrinking onto an inner ring. With many pillars open the greyed-out pills just cluttered the view;
+    // the pillars stay expanded, so they come straight back when focus clears.
+    PILLARS.forEach(p => { if (!expanded.includes(p) || (focused && !pillarActive0(p))) return; const cs = view.filter(c => c.pillar === p); cs.forEach((c, j) => { rows.push({ c, j, want: pillarAng[p] + (j - (cs.length - 1) / 2) * 24 }); }); });
+    const ringR = spread(rows, R2, 1);
+    rows.forEach(r => { const [x, y] = pol(ringR, r.ang); r.x = x; r.y = y; });
     const R3x = Math.max(R3, ringR + 175);
     const rowOf = id => rows.find(r => r.c.id === id);
 
     const edges = [], curves = [];
     const pillarActive = pillarActive0;
     PILLARS.forEach(p => { const d = dim && focused && !pillarActive(p); edges.push(seg([CX, CY], pPos(p), { id: 'pe:' + p, stroke: 'var(--border)', w: 1.5, dash: false, op: 1 })); });
-    rows.forEach(({ c, x, y, collapsed }) => { const d = isDim(c.id); edges.push(seg(pPos(c.pillar), [x, y], { id: 'ce:' + c.id, stroke: c.status === 'removed' ? 'var(--border)' : c.status === 'weakened' ? 'var(--red-line)' : 'var(--border)', w: 1.25, dash: c.status === 'suggested', op: collapsed ? .7 : d ? .4 : .7 })); });
+    rows.forEach(({ c, x, y }) => { const d = isDim(c.id); edges.push(seg(pPos(c.pillar), [x, y], { id: 'ce:' + c.id, stroke: c.status === 'removed' ? 'var(--border)' : c.status === 'weakened' ? 'var(--red-line)' : 'var(--border)', w: 1.25, dash: c.status === 'suggested', op: d ? .4 : .7 })); });
     LINKS.forEach(([a, b]) => { const ra = rowOf(a), rb = rowOf(b); if (!ra || !rb) return; const hi = selC && (selC.id === a || selC.id === b); const m = pol(ringR + 70, (ra.ang + rb.ang) / 2); curves.push({ d: `M${ra.x} ${ra.y} Q${m[0]} ${m[1]} ${rb.x} ${rb.y}`, stroke: 'var(--muted)', w: 1.25, dash: '3 3', op: hi ? .9 : .4 }); });
 
     const orbit = []; const seen = {}; const uniq = k => (seen[k] = (seen[k] || 0) + 1) > 1 ? k + '#' + seen[k] : k;
@@ -365,13 +366,13 @@ class Component extends DCLogic {
       return { flashing: !!fl, flashText: fl ? fl.text : '', flashKey: fl ? fl.key : 0, name: this.show(p), x, y, glyph: FX[p].glyph, delay: (i * .05) + 's', rowDelay: (i * .04) + 's', badge: open ? '–' : nC, badgeBg: open ? 'var(--accent)' : 'var(--surface)', badgeBorder: open ? 'var(--surface)' : 'var(--border)', badgeFg: open ? 'var(--on-accent)' : 'var(--text)', badgeDelay: (.3 + i * .05) + 's', ring: `conic-gradient(${info.ringColor} ${Math.round(info.avg * 360)}deg, var(--border) 0)`, title: `${info.label} · ${info.pct}%`, shadow: active ? '0 0 0 4px var(--focus-ring)' : '0 1px 2px var(--shadow)', pct: info.pct, label: info.label, labelColor: info.labelColor, op: shrunk ? .85 : 1, scale: hov(hk, shrunk ? .66 : 1), select: this.togglePillar(p), enter: this.hoverOn(hk), leave: this.hoverOff(hk) };
     });
     const choiceRow = c => { const st = STATUS[c.status]; return { dot: st.dot, dotBorder: st.dotBorder, deco: c.status === 'removed' ? 'line-through' : 'none', text: c.text, sub: `${st.label} · ${c.ev.length} evidence`, select: this.pick({t:'choice', id:c.id}) }; };
-    const choices = rows.map(({ c, x, y, j, collapsed }) => {
+    const choices = rows.map(({ c, x, y, j }) => {
       const st = STATUS[c.status]; const active = selC && selC.id === c.id; const d = isDim(c.id);
       const [lo, hi] = c.interval || [c.confidence, c.confidence]; const cr = confRing(c.confidence, lo, hi, c.status);
-      return { id: c.id, ghost: c.status !== 'removed' && c.ghost ? c.ghost : '', x, y, delay: (j * .07) + 's', scale: collapsed ? .62 : 1, pe: 'auto', enter: null, leave: null, text: c.text, bg: st.bg, dotBorder: st.dotBorder, border: active ? 'var(--accent)' : st.border, borderStyle: st.style, color: st.color, dot: st.dot, deco: c.status === 'removed' ? 'line-through' : 'none', shadow: active ? ACTIVE_SHADOW : '0 1px 2px var(--shadow)',
-        ring: cr.ring, conf: cr.pct, confColor: cr.text, range: `${lo}–${hi}`, confTitle: `Confidence ${c.confidence}%, likely ${lo}–${hi} · ${c.ev.length} evidence`, meta: c.status === 'suggested' ? '?' : (c.ev.length ? c.ev.length + ' ev' : '—'), metaColor: 'var(--muted)', op: collapsed ? .45 : d ? .3 : 1, select: this.pick(active ? null : {t:'choice', id:c.id}) };
+      return { id: c.id, ghost: c.status !== 'removed' && c.ghost ? c.ghost : '', x, y, delay: (j * .07) + 's', scale: 1, pe: 'auto', enter: null, leave: null, text: c.text, bg: st.bg, dotBorder: st.dotBorder, border: active ? 'var(--accent)' : st.border, borderStyle: st.style, color: st.color, dot: st.dot, deco: c.status === 'removed' ? 'line-through' : 'none', shadow: active ? ACTIVE_SHADOW : '0 1px 2px var(--shadow)',
+        ring: cr.ring, conf: cr.pct, confColor: cr.text, range: `${lo}–${hi}`, confTitle: `Confidence ${c.confidence}%, likely ${lo}–${hi} · ${c.ev.length} evidence`, meta: c.status === 'suggested' ? '?' : (c.ev.length ? c.ev.length + ' ev' : '—'), metaColor: 'var(--muted)', op: d ? .3 : 1, select: this.pick(active ? null : {t:'choice', id:c.id}) };
     });
-    const histRow = (c, h) => ({ week: wkLabel(h.wk), type: h.type, note: h.note, color: TYPE_COLOR[h.type], dot: TYPE_DOT[h.type], choiceText: c.text, select: (e) => { e.stopPropagation(); this.setState({ sel: {t:'choice', id:c.id}, week: Math.max(h.wk, 1) }); } });
+    const histRow = (c, h) => ({ week: wkLabel(h.wk), type: h.type, note: h.note, color: TYPE_COLOR[h.type], dot: TYPE_DOT[h.type], choiceText: c.text, select: (e) => { e.stopPropagation(); this.setState({ sel: {t:'choice', id:c.id} }); } });
 
     // overview
     const score = Math.round(this.overall(W) * 100); const prev = W > 1 ? Math.round(this.overall(W - 1) * 100) : null; const dlt = prev === null ? null : score - prev;
@@ -384,7 +385,7 @@ class Component extends DCLogic {
       nSup: active.filter(c => c.status === 'strengthened').length, nUnt: active.filter(c => c.status === 'guess' || c.status === 'added').length, nWeak: active.filter(c => c.status === 'weakened').length, nSug: active.filter(c => c.status === 'suggested').length,
       hasSuggestion: !!sug, suggestionText: sug ? sug.text : '', suggestionFor: sugFor && find(sugFor[0]) ? find(sugFor[0]).text : '',
       suggestions: view.filter(c => c.status === 'suggested').reverse().map(c => { const l = LINKS.find(x => x[1] === c.id); const o = l && find(l[0]); return { id: c.id, text: c.text, note: o ? `Replacement for “${o.text}” · tap to review` : `New choice under ${c.pillar} · tap to review`, open: this.pick({t:'choice', id:c.id}) }; }), suggestionNote: sugFor && find(sugFor[0]) ? `Replacement for “${find(sugFor[0]).text}” · tap to review` : sug ? `New choice under ${sug.pillar} · tap to review` : '', openSuggestion: sug ? this.pick({t:'choice', id:sug.id}) : null,
-      weakest: ranked.length ? ranked[0].p : '—', changes, noChanges: !changes.length, changesTitle: `Changes in week ${W}` };
+      weakest: ranked.length ? ranked[0].p : '—', changes, noChanges: !changes.length, changesTitle: 'Changes this week' };
 
     // pillar view
     let pv = null;
@@ -405,9 +406,9 @@ class Component extends DCLogic {
       cv = { pillar: c.pillar, selectPillar: this.pick({t:'pillar', id:c.pillar}), text: c.text, statusLabel: st.label, chipBg: st.chipBg, chipFg: st.chipFg, summary: SUMMARY[c.status], since: wkLabel(c.hist[c.hist.length - 1].wk), isSuggested: c.status === 'suggested',
         nFor, nAgainst: nAg, forPct: Math.round(nFor / tot * 100), againstPct: Math.round(nAg / tot * 100), evCount: c.ev.length, noEvidence: !c.ev.length,
         evidence: c.ev.map((e, i) => ({ text: e.text, source: e.source, accent: e.k === 'support' ? 'var(--green)' : 'var(--red)', select: this.pick({t:'evidence', cid:c.id, idx:i}) })),
-        canEdit: !isPast && c.status !== 'removed' && c.status !== 'suggested', test: c.test === '—' ? 'Removed. No further tests planned.' : c.test,
+        canEdit: c.status !== 'removed' && c.status !== 'suggested', test: c.test === '—' ? 'Removed. No further tests planned.' : c.test,
         hasLinks: !!links.length, links,
-        history: c.hist.slice().reverse().map(h => histRow(c, h)), canRemove: !isPast && c.status !== 'removed' && c.status !== 'suggested',
+        history: c.hist.slice().reverse().map(h => histRow(c, h)), canRemove: c.status !== 'removed' && c.status !== 'suggested',
         // App: pressure-test this choice. Challenge opens Discussions; Research and Plan call /api/node/*.
         canAct: c.status !== 'removed' && c.status !== 'suggested', nodeBusy: this.state.nodeBusy,
         challenge: (e) => { e.stopPropagation(); this.challenge(c); }, research: (e) => { e.stopPropagation(); this.research(c); }, plan: (e) => { e.stopPropagation(); this.plan(c); } };
@@ -430,19 +431,17 @@ class Component extends DCLogic {
       pillars.forEach(p => add(p.x, p.y, 84, 84)); choices.forEach(c => add(c.x, c.y, 156 * c.scale, 52 * c.scale)); orbit.forEach(o => add(o.x, o.y, 176, 44)); this._bounds = B;
       const boxes = {}; const grow = (k, x, y, w, h) => { const b = boxes[k] || (boxes[k] = { minX: x, maxX: x, minY: y, maxY: y }); b.minX = Math.min(b.minX, x - w / 2); b.maxX = Math.max(b.maxX, x + w / 2); b.minY = Math.min(b.minY, y - h / 2); b.maxY = Math.max(b.maxY, y + h / 2); };
       pillars.forEach(p => grow(p.name, p.x, p.y, 84, 84)); rows.forEach(r => grow(r.c.pillar, r.x, r.y, 156, 52)); orbit.forEach(o => grow('orbit', o.x, o.y, 176, 44)); this._boxes = boxes; }
-    const weeks = Array.from({ length: NOW }, (_, i) => i + 1).map(n => { const chg = allC.reduce((a, c) => a + c.hist.filter(h => h.wk === n && h.type !== 'Added').length, 0); return { n, bg: n === W ? 'var(--accent)' : 'transparent', fg: n === W ? 'var(--on-accent)' : 'var(--muted)', dot: n === W ? 'transparent' : chg ? 'var(--muted)' : 'transparent', current: n === W, title: `Week ${n} · confidence ${Math.round(this.overall(n) * 100)}%`, select: (e) => { e.stopPropagation(); clearInterval(this._replay); this.setState({ week: n, replaying: false }); } }; });
     const evTotal = view.reduce((a, c) => a + c.ev.length, 0);
     const ovOpen = this.state.widget === 'overview';
 
     return {
-      ideaName: this.name, ideaPitch: this.pitch, ideaInitial: (this.name || '?').trim().charAt(0).toUpperCase(), now: NOW,
+      ideaName: this.name, ideaPitch: this.pitch, ideaInitial: (this.name || '?').trim().charAt(0).toUpperCase(),
       loading: this.state.loading, missing: this.state.missing,
-      paneRef: this.setPane, worldRef: this.worldRef, pctRef: this.pctRef, edges, curves, pillars, choices, orbit, evCard: evCard || this._lastEvCard || null, evCardOpen: !!evCard, particles, flows, weeks, week: W, isPast,
+      paneRef: this.setPane, worldRef: this.worldRef, pctRef: this.pctRef, edges, curves, pillars, choices, orbit, evCard: evCard || this._lastEvCard || null, evCardOpen: !!evCard, particles, flows,
       zoomIn: (e) => { e.stopPropagation(); this.zoomStep(1.25); }, zoomOut: (e) => { e.stopPropagation(); this.zoomStep(1 / 1.25); },
       zoomFit: (e) => { e.stopPropagation(); this.fit(); },
-      counts: `Week ${W} of ${NOW} · ${active.length} choices · ${evTotal} evidence`,
-      replayLabel: this.state.replaying ? 'Stop' : '▶ Replay',
-      showHint: !expanded.length && !isPast,
+      counts: `${active.length} choices · ${evTotal} evidence`,
+      showHint: !expanded.length,
       toggleAllLabel: expanded.length === PILLARS.length ? 'Collapse' : 'Expand all',
       toggleAll: (e) => { e.stopPropagation(); this.setState(s => ({ expanded: s.expanded.length === PILLARS.length ? [] : [...PILLARS], sel: s.expanded.length === PILLARS.length ? null : s.sel }), () => this.fit()); },
       ideaShadow: mode === 'idea' && sel ? '0 0 0 6px var(--focus-ring), 0 12px 32px var(--shadow)' : '0 0 0 10px color-mix(in srgb, var(--accent) 10%, transparent), 0 12px 32px var(--shadow)',
@@ -467,8 +466,7 @@ class Component extends DCLogic {
       ov, pv, cv, ev,
       hasToast: !!this.state.toast, toast: this.state.toast,
       draft: this.state.draft, setDraft: (e) => this.setState({ draft: e.target.value }),
-      clearSel: () => { if (this._suppressClick) { this._suppressClick = false; return; } this.setState({ sel: null, pinEv: null }); }, selIdea: this.pick({t:'idea'}), goNow: (e) => { e.stopPropagation(); this.setState({ week: NOW }); },
-      replay: (e) => { e.stopPropagation(); if (this.state.replaying) { clearInterval(this._replay); this.setState({ replaying: false }); return; } this.setState({ week: 1, sel: null, replaying: true, expanded: [...PILLARS] }, () => this.fit()); this._replay = setInterval(() => { if (this.state.week >= NOW) { clearInterval(this._replay); this.setState({ replaying: false }, () => this.fit()); return; } this.setState(s => ({ week: s.week + 1 })); }, 1400); },
+      clearSel: () => { if (this._suppressClick) { this._suppressClick = false; return; } this.setState({ sel: null, pinEv: null }); }, selIdea: this.pick({t:'idea'}),
       addFor: (e) => this.addEvidence(e, 'support'), addAgainst: (e) => this.addEvidence(e, 'against'),
       removeChoice: (e) => { e.stopPropagation(); const c = selC; if (!c) return; this.persist(applyUpdates(this.idea, [{ action: 'kill', choiceId: c.id, reason: 'Removed by founder', source: 'plan', at: Date.now() }]), { sel: {t:'pillar', id:c.pillar} }, `“${c.text}” removed · ${c.pillar} recalculated`); },
       // App: accept / reject work on whichever suggestion is open. adopt() kills the pivot parent; reject() drops the suggestion. Both write history.
@@ -531,7 +529,7 @@ class Component extends DCLogic {
     if (!changes.length) return changes;
     const pillarsHit = [...new Set(described.map(ch => LABEL[ch.pillar]))];
     const top = changes[0];
-    this.persist(next, { week: this.now, expanded: [...new Set([...this.state.expanded, ...pillarsHit])], flash: { pillars: pillarsHit, text: top.type, key: Date.now() } });
+    this.persist(next, { expanded: [...new Set([...this.state.expanded, ...pillarsHit])], flash: { pillars: pillarsHit, text: top.type, key: Date.now() } });
     this.reveal(pillarsHit);
     clearTimeout(this._flashT); this._flashT = setTimeout(() => this.setState({ flash: null }), 1800);
     if (toast !== false) this.say(toast || `${top.type} “${top.choiceText}” · ${top.pillar} recalculated`);
