@@ -3,14 +3,30 @@
  * Run against `npm run dev` with MOCK_AI unset:
  *
  *   npx tsx scripts/try-launch.ts
+ *   npx tsx scripts/try-launch.ts --mode nonprofit
  *
- * Spends ~22 model calls on MODELS.fast. PRICE=12 to try another price.
+ * Spends ~22 model calls on MODELS.fast. PRICE=12 to try another price
+ * (hours a month in nonprofit mode, dollars a month otherwise).
  */
-import type { Idea, LaunchSummary, SceneSpec, SimPersona, SimResult, TreeUpdate } from "../src/lib/types";
+import { launchMode } from "../src/server/launch/modes";
+import type { Idea, LaunchSummary, Mode, SceneSpec, SimPersona, SimResult, TreeUpdate } from "../src/lib/types";
 
 const BASE = process.env.BASE ?? "http://localhost:3000";
-const PRICE = Number(process.env.PRICE ?? 8);
-const PITCH = process.env.PITCH ?? "a service that matches dog owners with vetted weekend sitters";
+
+const arg = (flag: string) => {
+  const i = process.argv.indexOf(flag);
+  return i === -1 ? undefined : process.argv[i + 1];
+};
+const MODE = (arg("--mode") ?? process.env.MODE ?? "startup") as Mode;
+const NONPROFIT = MODE === "nonprofit";
+const M = launchMode(MODE);
+
+const PRICE = Number(process.env.PRICE ?? (NONPROFIT ? 4 : 8));
+const PITCH =
+  process.env.PITCH ??
+  (NONPROFIT
+    ? "a free after-school coding club for middle schoolers in Dorchester"
+    : "a service that matches dog owners with vetted weekend sitters");
 
 async function post<T>(path: string, body: unknown): Promise<{ data: T; ms: number }> {
   const t = Date.now();
@@ -29,7 +45,10 @@ async function main() {
 
   const tree = await post<{ idea: Idea }>("/api/tree", {
     pitch: PITCH,
-    team: { roles: ["full stack dev"], skills: ["typescript"], tech: ["next.js"] },
+    mode: MODE,
+    team: NONPROFIT
+      ? { roles: ["organiser"], skills: ["community outreach"], tech: ["google sheets"], hoursPerWeek: 12 }
+      : { roles: ["full stack dev"], skills: ["typescript"], tech: ["next.js"] },
   });
   const idea = tree.data.idea;
   console.log(`tree      ${String(tree.ms).padStart(6)}ms  ${idea.choices.length} choices  id=${idea.id}`);
@@ -47,7 +66,7 @@ async function main() {
   for (const p of ps) byGroup[p.groupId] = (byGroup[p.groupId] ?? 0) + 1;
   console.log(
     `personas  ${String(personas.ms).padStart(6)}ms  ${ps.length} total  ${JSON.stringify(byGroup)}  ` +
-      `budgets $${Math.min(...ps.map((p) => p.budget))}-$${Math.max(...ps.map((p) => p.budget))}`
+      `budgets ${M.unitLabel(Math.min(...ps.map((p) => p.budget)))} to ${M.unitLabel(Math.max(...ps.map((p) => p.budget)))}`
   );
   console.log(`            e.g. ${ps[0].name}: ${ps[0].blurb.slice(0, 70)}`);
 
@@ -58,7 +77,7 @@ async function main() {
   const { results, summary, updates } = run.data;
   console.log(
     `run       ${String(run.ms).padStart(6)}ms  buy=${summary.buy} curious=${summary.curious} ` +
-      `leave=${summary.leave}  drop-off=$${summary.dropOffPrice}`
+      `leave=${summary.leave}  drop-off=${M.unitLabel(summary.dropOffPrice)}`
   );
   console.log(`            byGroup ${JSON.stringify(summary.byGroup)}`);
 
@@ -70,10 +89,23 @@ async function main() {
     console.log(`  ${u.action.padEnd(10)} ${String(u.delta).padStart(4)}  ${u.choiceId?.padEnd(8)}  ${u.reason}`);
   }
 
+  const byId = new Map(idea.choices.map((c) => [c.id, c]));
+  const touched = updates.map((u) => byId.get(u.choiceId ?? "")?.pillar).filter(Boolean);
+
   console.log("\nchecks:");
+  console.log(`  tree mode:             ${idea.mode === MODE ? "yes" : `NO (${idea.mode})`}`);
   console.log(`  personas match scene:  ${ps.length === s.groups.reduce((n, g) => n + g.count, 0) ? "yes" : "NO"}`);
   console.log(`  one result per persona: ${results.length === ps.length ? "yes" : "NO"}`);
   console.log(`  reasons <= 8 words:    ${results.every((r) => r.reason.split(/\s+/).length <= 10) ? "yes" : "some longer"}`);
+  if (NONPROFIT) {
+    // The one rule an Open House must never break.
+    const onFunding = touched.filter((p) => p === "revenue").length;
+    console.log(`  nothing touches Funding: ${onFunding === 0 ? "yes" : `NO (${onFunding})`}`);
+    console.log(`  all figures are people: ${s.groups.every((g) => g.figure === "person") ? "yes" : "NO"}`);
+    const priced = results.filter((r) => /\$|\bprice|\bcost|afford|expensive/i.test(r.reason)).length;
+    console.log(`  no price-shaped reasons: ${priced === 0 ? "yes" : `${priced} mention money`}`);
+    console.log(`  updates landed on:     ${[...new Set(touched)].join(", ") || "nothing"}`);
+  }
   console.log(`  launch total:          ${scene.ms + personas.ms + run.ms}ms (bar: under 25000ms)`);
   console.log(`  everything:            ${Date.now() - total}ms`);
 }
