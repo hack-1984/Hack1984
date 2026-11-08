@@ -29,8 +29,8 @@ const FX = {
   Risks:{glyph:'!', sizes:['10px'], dur:'4s', inner:'none'},
 };
 const SCORE = {strengthened:1, added:.6, guess:.4, weakened:.2, removed:0};
-const STATUS = {
-  strengthened:{label:'Strengthened', dot:'var(--green)', dotBorder:'transparent', border:'var(--border)', bg:'var(--surface)', color:'var(--text)', style:'solid', chipBg:'var(--green-tint)', chipFg:'var(--green-text)'},
+export const STATUS = {
+  strengthened:{label:'Strengthened', dot:'var(--green)', dotBorder:'transparent', border:'var(--green-line)', bg:'var(--surface)', color:'var(--text)', style:'solid', chipBg:'var(--green-tint)', chipFg:'var(--green-text)'},
   added:{label:'Added', dot:'var(--surface)', dotBorder:'var(--muted)', border:'var(--border)', bg:'var(--surface)', color:'var(--text)', style:'solid', chipBg:'var(--surface-2)', chipFg:'var(--muted)'},
   guess:{label:'Guess', dot:'var(--surface)', dotBorder:'var(--muted)', border:'var(--border)', bg:'var(--surface)', color:'var(--text)', style:'solid', chipBg:'var(--surface-2)', chipFg:'var(--muted)'},
   weakened:{label:'Weakened', dot:'var(--red)', dotBorder:'transparent', border:'var(--red-line)', bg:'var(--surface)', color:'var(--text)', style:'solid', chipBg:'var(--red-tint)', chipFg:'var(--red-text)'},
@@ -74,9 +74,17 @@ const spread = (items, r, s) => {
 const line = (a, b) => `M${a[0]} ${a[1]} L${b[0]} ${b[1]}`;
 const seg = (a, b, o) => { /* o.id: stable React key */ const dx = b[0] - a[0], dy = b[1] - a[1]; return { x: a[0], y: a[1], len: Math.hypot(dx, dy), rot: Math.atan2(dy, dx) * 180 / Math.PI, style: o.dash ? 'dashed' : 'solid', ...o }; };
 const wkLabel = n => 'wk ' + n;
-const confColor = v => v >= .75 ? 'var(--green)' : v >= .45 ? 'var(--amber)' : 'var(--red)';
+// Signal thresholds, the same ones the landing page teaches: green from 70, amber from 45, red below.
+export const confColor = v => v >= .70 ? 'var(--green)' : v >= .45 ? 'var(--amber)' : 'var(--red)';
 // Small text in a signal color uses the darker -text shades so it stays readable.
-const confText = v => v >= .75 ? 'var(--green-text)' : v >= .45 ? 'var(--amber-text)' : 'var(--red-text)';
+export const confText = v => v >= .70 ? 'var(--green-text)' : v >= .45 ? 'var(--amber-text)' : 'var(--red-text)';
+// App: a choice's confidence as a small ring in the pillars' language: one signal colour filling
+// conf% of the circle over the --border track, the number inside. Removed choices get a flat grey ring.
+export const confRing = (conf, lo, hi, status) => {
+  if (status === 'removed') return { ring: 'var(--border)', text: 'var(--muted)', pct: conf, lo, hi };
+  const v = conf / 100;
+  return { ring: `conic-gradient(${confColor(v)} ${(conf * 3.6).toFixed(1)}deg, var(--border) 0)`, text: confText(v), pct: conf, lo, hi };
+};
 const ACTIVE_SHADOW = '0 0 0 3px var(--focus-ring), 0 4px 12px var(--shadow)';
 const statusAt = (c, W) => {
   const h = c.hist.filter(x => x.wk <= W); if (!h.length) return null;
@@ -95,7 +103,7 @@ class Component extends DCLogic {
     super(p);
     this.idea = null; this.ideaId = null; this.team = null; this.now = 1; this.name = ''; this.pitch = '';
     this.state = { sel:null, hoverIdea:false, hover:null, draft:'', toast:null, expanded:[], replaying:false, loading:true, missing:false, discuss:null, nodeBusy:null,
-      choices: [], resources: [], links: [], wmem: {}, week: 1, widget: 'overview', flash: null };
+      choices: [], resources: [], links: [], wmem: {}, week: 1, widget: 'overview', flash: null, pinEv: null };
   }
   // App: the map's drawing data, derived from the stored Idea. Pillar names are the design's startup labels (they key FX and angles).
   derive(idea) {
@@ -132,7 +140,7 @@ class Component extends DCLogic {
     } catch (err) { console.error('[map] load', err); this.setState({ loading: false, missing: true }); }
     this._key = (e) => {
       if (e.target && /TEXTAREA|INPUT/.test(e.target.tagName)) return;
-      if (e.key === 'Escape') this.setState({sel:null});
+      if (e.key === 'Escape') this.setState({sel:null, pinEv:null});
       if (e.key === '+' || e.key === '=') this.zoomStep(1.25);
       if (e.key === '-') this.zoomStep(1 / 1.25);
       if (e.key === '0') this.fit();
@@ -303,12 +311,28 @@ class Component extends DCLogic {
     LINKS.forEach(([a, b]) => { const ra = rowOf(a), rb = rowOf(b); if (!ra || !rb) return; const hi = selC && (selC.id === a || selC.id === b); const m = pol(ringR + 70, (ra.ang + rb.ang) / 2); curves.push({ d: `M${ra.x} ${ra.y} Q${m[0]} ${m[1]} ${rb.x} ${rb.y}`, stroke: 'var(--muted)', w: 1.25, dash: '3 3', op: hi ? .9 : .4 }); });
 
     const orbit = []; const seen = {}; const uniq = k => (seen[k] = (seen[k] || 0) + 1) > 1 ? k + '#' + seen[k] : k;
-    const evItem = (c, e, i) => ({ text: e.text, kind: e.k === 'support' ? 'for' : 'against', accent: e.k === 'support' ? 'var(--green)' : 'var(--red)', kindColor: e.k === 'support' ? 'var(--green-text)' : 'var(--red-text)', key: c.id + ':' + i, select: this.pick({t:'evidence', cid:c.id, idx:i}) });
+    const evItem = (c, e, i) => { const key = c.id + ':' + i; return { text: e.text, kind: e.k === 'support' ? 'for' : 'against', accent: e.k === 'support' ? 'var(--green)' : 'var(--red)', kindColor: e.k === 'support' ? 'var(--green-text)' : 'var(--red-text)', key, ev: e, choice: c, enter: this.hoverOn('e:' + key), leave: this.hoverOff('e:' + key), select: (ev) => { ev.stopPropagation(); this.setState(s => ({ pinEv: s.pinEv && s.pinEv.cid === c.id && s.pinEv.idx === i ? null : { cid: c.id, idx: i } })); } }; };
     const resItem = (r) => ({ text: r.name, kind: r.have ? 'have' : 'missing', accent: r.have ? 'var(--muted)' : 'var(--red)', kindColor: r.have ? 'var(--muted)' : 'var(--red-text)', key: 'r:' + r.id, select: this.pick({t:'resource', id:r.id}) });
-    const fan = (items, cx, cy, ang, step) => items.forEach((it, i) => { const a = ang + (i - (items.length - 1) / 2) * step; const [x, y] = pol(R3x, a); const active = (mode === 'evidence' && it.key === sel.cid + ':' + sel.idx) || (mode === 'resource' && it.key === 'r:' + sel.id); const oid = uniq('o:' + it.key); orbit.push({ ...it, id: oid, x, y, delay: (i * .06) + 's', scale: 1, enter: null, leave: null, border: active ? 'var(--accent)' : 'var(--border)', shadow: active ? ACTIVE_SHADOW : '0 2px 8px var(--shadow)' }); edges.push(seg([cx, cy], [x, y], { id: 'f' + oid, stroke: active ? 'var(--accent)' : 'var(--border)', w: 1.25, dash: it.key.startsWith('r:'), op: .85 })); });
+    const fan = (items, cx, cy, ang, step) => items.forEach((it, i) => { const a = ang + (i - (items.length - 1) / 2) * step; const [x, y] = pol(R3x, a); const active = (mode === 'evidence' && it.key === sel.cid + ':' + sel.idx) || (mode === 'resource' && it.key === 'r:' + sel.id); const oid = uniq('o:' + it.key); orbit.push({ ...it, id: oid, x, y, delay: (i * .06) + 's', scale: 1, enter: it.enter || null, leave: it.leave || null, border: active ? 'var(--accent)' : 'var(--border)', shadow: active ? ACTIVE_SHADOW : '0 2px 8px var(--shadow)' }); edges.push(seg([cx, cy], [x, y], { id: 'f' + oid, stroke: active ? 'var(--accent)' : 'var(--border)', w: 1.25, dash: it.key.startsWith('r:'), op: .85 })); });
     if (selC) { const r = rowOf(selC.id); if (r) fan([...selC.ev.map((e, i) => evItem(selC, e, i)), ...selC.res.map(id => resItem(RES.find(x => x.id === id)))], r.x, r.y, r.ang, 15); }
     if (mode === 'pillar') { view.filter(c => c.pillar === sel.id).forEach(c => { const r = rowOf(c.id); const items = [...c.ev.map((e, i) => evItem(c, e, i)), ...c.res.map(id => resItem(RES.find(x => x.id === id)))].slice(0, 4); fan(items, r.x, r.y, r.ang, 12); }); }
     if (selRes) { const users = view.filter(c => c.res.includes(selRes.id)); if (users.length) { const angs = users.map(c => rowOf(c.id).ang); const mean = angs.reduce((a, b) => a + b, 0) / angs.length; const [x, y] = pol(R3x, mean); orbit.push({ ...resItem(selRes), id: 'o:res', x, y, delay: '0s', scale: 1, enter: null, leave: null, border: 'var(--accent)', shadow: ACTIVE_SHADOW }); users.forEach(c => { const r = rowOf(c.id); edges.push(seg([r.x, r.y], [x, y], { id: 'ue:' + c.id, stroke: 'var(--accent)', w: 1.25, dash: true, op: .8 })); }); } }
+
+    // App: the Research card. Pinned by clicking an evidence card, previewed by hovering one. It lists every
+    // source behind that evidence's choice, like the landing page's card; rows open the evidence when pinned.
+    let evCard = null;
+    const pin = this.state.pinEv && find(this.state.pinEv.cid) ? this.state.pinEv : null;
+    const hovKey = H && H.startsWith('e:') ? H.slice(2) : null;
+    const target = pin || (hovKey ? { cid: hovKey.slice(0, hovKey.lastIndexOf(':')), idx: +hovKey.slice(hovKey.lastIndexOf(':') + 1) } : null);
+    const cardC = target && find(target.cid);
+    if (cardC && cardC.ev.length) {
+      const pinned = !!pin;
+      evCard = { pinned, title: cardC.text, count: cardC.ev.length, pillar: cardC.pillar,
+        rows: cardC.ev.map((e, i) => ({ text: e.text, source: e.source, tag: e.k === 'support' ? 'FOR' : 'AGAINST', accent: e.k === 'support' ? 'var(--green)' : 'var(--red)', tagColor: e.k === 'support' ? 'var(--green-text)' : 'var(--red-text)', active: i === target.idx,
+          select: pinned ? (ev) => { this.pick({t:'evidence', cid:cardC.id, idx:i})(ev); this.setState({ pinEv: { cid: cardC.id, idx: i } }); } : null })),
+        close: (ev) => { ev.stopPropagation(); this.setState({ pinEv: null }); } };
+      this._lastEvCard = evCard; // the card keeps its content while it slides away
+    }
 
         const particles = [], flows = [];
     PILLARS.forEach((p, i) => {
@@ -318,7 +342,7 @@ class Component extends DCLogic {
       fx.sizes.forEach((size, j) => particles.push({ path, glyph: fx.glyph, size, dur: fx.dur, delay: `${(-(j * parseFloat(fx.dur) / fx.sizes.length) - i * .37).toFixed(2)}s`, inner: fx.inner }));
     });
 
-    const pillarInfo = p => { const avg = this.pillarScore(W, p); const v = avg ?? 0; return { avg: v, has: avg !== null, pct: Math.round(v * 100), label: avg === null ? 'Empty' : v >= .75 ? 'Strong' : v >= .45 ? 'Mixed' : 'Weak', labelColor: confText(v), ringColor: confColor(v) }; };
+    const pillarInfo = p => { const avg = this.pillarScore(W, p); const v = avg ?? 0; return { avg: v, has: avg !== null, pct: Math.round(v * 100), label: avg === null ? 'Empty' : v >= .70 ? 'Strong' : v >= .45 ? 'Mixed' : 'Weak', labelColor: confText(v), ringColor: confColor(v) }; };
     const pillars = PILLARS.map(p => {
       const info = pillarInfo(p); const active = pillarActive(p); const [x, y] = pPos(p); const shrunk = focused && !active; const hk = 'p:' + p;
       const nC = view.filter(c => c.pillar === p && c.status !== 'removed').length; const open = expanded.includes(p); const i = PILLARS.indexOf(p);
@@ -328,7 +352,9 @@ class Component extends DCLogic {
     const choiceRow = c => { const st = STATUS[c.status]; return { dot: st.dot, dotBorder: st.dotBorder, deco: c.status === 'removed' ? 'line-through' : 'none', text: c.text, sub: `${st.label} · ${c.ev.length} evidence`, select: this.pick({t:'choice', id:c.id}) }; };
     const choices = rows.map(({ c, x, y, j, collapsed }) => {
       const st = STATUS[c.status]; const active = selC && selC.id === c.id; const d = isDim(c.id);
-      return { id: c.id, ghost: c.status !== 'removed' && c.ghost ? c.ghost : '', x, y, delay: (j * .07) + 's', scale: collapsed ? .62 : 1, pe: 'auto', enter: null, leave: null, text: c.text, bg: st.bg, dotBorder: st.dotBorder, border: active ? 'var(--accent)' : st.border, borderStyle: st.style, color: st.color, dot: st.dot, deco: c.status === 'removed' ? 'line-through' : 'none', shadow: active ? ACTIVE_SHADOW : '0 1px 2px var(--shadow)', meta: c.status === 'suggested' ? '?' : (c.ev.length ? c.ev.length + ' ev' : '—'), metaColor: 'var(--muted)', op: collapsed ? .45 : d ? .3 : 1, select: this.pick(active ? null : {t:'choice', id:c.id}) };
+      const [lo, hi] = c.interval || [c.confidence, c.confidence]; const cr = confRing(c.confidence, lo, hi, c.status);
+      return { id: c.id, ghost: c.status !== 'removed' && c.ghost ? c.ghost : '', x, y, delay: (j * .07) + 's', scale: collapsed ? .62 : 1, pe: 'auto', enter: null, leave: null, text: c.text, bg: st.bg, dotBorder: st.dotBorder, border: active ? 'var(--accent)' : st.border, borderStyle: st.style, color: st.color, dot: st.dot, deco: c.status === 'removed' ? 'line-through' : 'none', shadow: active ? ACTIVE_SHADOW : '0 1px 2px var(--shadow)',
+        ring: cr.ring, conf: cr.pct, confColor: cr.text, range: `${lo}–${hi}`, confTitle: `Confidence ${c.confidence}%, likely ${lo}–${hi} · ${c.ev.length} evidence`, meta: c.status === 'suggested' ? '?' : (c.ev.length ? c.ev.length + ' ev' : '—'), metaColor: 'var(--muted)', op: collapsed ? .45 : d ? .3 : 1, select: this.pick(active ? null : {t:'choice', id:c.id}) };
     });
     const resChip = (id, extra) => { const r = RES.find(x => x.id === id); return { name: r.name + (r.have ? '' : ' · missing'), border: r.have ? 'var(--border)' : 'var(--red-line)', fg: r.have ? 'var(--text)' : 'var(--red-text)', select: this.pick({t:'resource', id}) , ...extra }; };
     const histRow = (c, h) => ({ week: wkLabel(h.wk), type: h.type, note: h.note, color: TYPE_COLOR[h.type], dot: TYPE_DOT[h.type], choiceText: c.text, select: (e) => { e.stopPropagation(); this.setState({ sel: {t:'choice', id:c.id}, week: Math.max(h.wk, 1) }); } });
@@ -409,7 +435,7 @@ class Component extends DCLogic {
     return {
       ideaName: this.name, ideaPitch: this.pitch, ideaInitial: (this.name || '?').trim().charAt(0).toUpperCase(), now: NOW,
       loading: this.state.loading, missing: this.state.missing,
-      paneRef: this.setPane, worldRef: this.worldRef, pctRef: this.pctRef, edges, curves, pillars, choices, orbit, particles, flows, weeks, week: W, isPast,
+      paneRef: this.setPane, worldRef: this.worldRef, pctRef: this.pctRef, edges, curves, pillars, choices, orbit, evCard: evCard || this._lastEvCard || null, evCardOpen: !!evCard, particles, flows, weeks, week: W, isPast,
       zoomIn: (e) => { e.stopPropagation(); this.zoomStep(1.25); }, zoomOut: (e) => { e.stopPropagation(); this.zoomStep(1 / 1.25); },
       zoomFit: (e) => { e.stopPropagation(); this.fit(); },
       counts: `Week ${W} of ${NOW} · ${active.length} choices · ${evTotal} evidence`,
@@ -434,7 +460,7 @@ class Component extends DCLogic {
       ov, pv, cv, ev, rv,
       hasToast: !!this.state.toast, toast: this.state.toast,
       draft: this.state.draft, setDraft: (e) => this.setState({ draft: e.target.value }),
-      clearSel: () => { if (this._suppressClick) { this._suppressClick = false; return; } this.setState({ sel: null }); }, selIdea: this.pick({t:'idea'}), goNow: (e) => { e.stopPropagation(); this.setState({ week: NOW }); },
+      clearSel: () => { if (this._suppressClick) { this._suppressClick = false; return; } this.setState({ sel: null, pinEv: null }); }, selIdea: this.pick({t:'idea'}), goNow: (e) => { e.stopPropagation(); this.setState({ week: NOW }); },
       replay: (e) => { e.stopPropagation(); if (this.state.replaying) { clearInterval(this._replay); this.setState({ replaying: false }); return; } this.setState({ week: 1, sel: null, replaying: true, expanded: [...PILLARS] }, () => this.fit()); this._replay = setInterval(() => { if (this.state.week >= NOW) { clearInterval(this._replay); this.setState({ replaying: false }, () => this.fit()); return; } this.setState(s => ({ week: s.week + 1 })); }, 1400); },
       addFor: (e) => this.addEvidence(e, 'support'), addAgainst: (e) => this.addEvidence(e, 'against'),
       removeChoice: (e) => { e.stopPropagation(); const c = selC; if (!c) return; this.persist(applyUpdates(this.idea, [{ action: 'kill', choiceId: c.id, reason: 'Removed by founder', source: 'plan', at: Date.now() }]), { sel: {t:'pillar', id:c.pillar} }, `“${c.text}” removed · ${c.pillar} recalculated`); },

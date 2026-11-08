@@ -5,7 +5,7 @@
 // design's data shape (choices with ev/hist/res/test, resources, links), which
 // src/screens/idea-map/logic.js renders. Each field says where it comes from.
 import { PILLARS, PILLAR_BY_KEY } from "@/lib/pillars";
-import type { PillarKey, TeamProfile, TreeUpdate } from "@/lib/types";
+import type { EvidenceTier, PillarKey, TeamProfile, TreeUpdate } from "@/lib/types";
 import { histTypeFor, support, type HistType, type StoredChoice, type StoredIdea } from "./schema";
 
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
@@ -20,6 +20,7 @@ export interface MapEvidence {
   source: string; // Evidence.origin, plus the source domain when known
   url?: string; // Source.url via sourceId, else Evidence.url
   provider?: "tavily" | "exa"; // Source.provider, for the engine badge
+  tier: EvidenceTier; // Evidence.tier: simulated, researched or real
 }
 
 export interface MapHist {
@@ -35,6 +36,7 @@ export interface MapChoice {
   text: string; // Choice.label
   detail: string; // Choice.detail
   confidence: number; // Choice.confidence, 0-100
+  interval: [number, number]; // confidenceInterval(): the band the map draws around confidence
   status: "active" | "killed" | "proposed"; // Choice.status, raw; the screen derives its own from hist
   res: string[]; // MapResource ids this choice depends on
   test: string; // first undone plan step, else "—"
@@ -79,6 +81,18 @@ const LINK_LABEL: Record<NonNullable<StoredChoice["relation"]>, string> = {
   refines: "Narrower version",
   complements: "Goes together",
 };
+
+/**
+ * The band the map draws around a choice's confidence. The backend gives a point estimate;
+ * the band says how much evidence stands behind it. No evidence is ±25. Each piece narrows it,
+ * real evidence most, simulated least, down to ±5. Clamped to 0–100.
+ */
+const TIER_NARROWS: Record<EvidenceTier, number> = { simulated: 2, researched: 4, real: 6 };
+export function confidenceInterval(confidence: number, tiers: EvidenceTier[]): [number, number] {
+  const half = Math.max(5, 25 - tiers.reduce((a, t) => a + (TIER_NARROWS[t] ?? 2), 0));
+  const c = Math.max(0, Math.min(100, confidence));
+  return [Math.max(0, Math.round(c - half)), Math.min(100, Math.round(c + half))];
+}
 
 const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "").slice(0, 32);
 
@@ -146,6 +160,7 @@ export function toMapModel(idea: StoredIdea, team?: TeamProfile | null, now = Da
         source: domain ? `${e.origin} · ${domain}` : e.origin,
         url,
         provider: src?.provider,
+        tier: e.tier,
       };
     });
 
@@ -158,6 +173,7 @@ export function toMapModel(idea: StoredIdea, team?: TeamProfile | null, now = Da
       text: c.label,
       detail: c.detail,
       confidence: c.confidence,
+      interval: confidenceInterval(c.confidence, c.evidence.map((e) => e.tier)),
       status: c.status,
       res,
       test,

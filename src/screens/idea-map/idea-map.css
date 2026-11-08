@@ -40,3 +40,17 @@ body:has(.pg-im){margin:0;background:var(--bg);font-family:'Geist',system-ui,san
 .im-breathe-ring{position:absolute;inset:-12px;border-radius:50%;background:color-mix(in srgb,var(--accent) 12%,transparent);z-index:-1;pointer-events:none;animation:im-halo 3.2s ease-in-out infinite}
 @keyframes im-halo{0%,100%{transform:scale(.92);opacity:.9}50%{transform:scale(1.06);opacity:.45}}
 @media (prefers-reduced-motion:reduce){.im-breathe-ring{animation:none}}
+
+/* Confidence ring on choice pills: one conic layer set in logic.js (signal colour to conf%, --border track), number inside. */
+.im-conf-ring{position:relative;width:30px;height:30px;flex:none;border-radius:50%;display:flex;align-items:center;justify-content:center;box-sizing:border-box}
+.im-conf-core{width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;box-sizing:border-box;font-family:'Geist Mono',monospace;font-size:8px;font-weight:600;letter-spacing:-.02em;line-height:1}
+/* Research card: docked to the bottom of the canvas, rises while an evidence card is hovered, stays when pinned. */
+.im-research-tab{position:absolute;left:24px;bottom:0;width:380px;max-height:min(60%,420px);display:flex;flex-direction:column;overflow:hidden;box-sizing:border-box;border-radius:16px 16px 0 0;background:var(--surface);border:1px solid var(--border);border-bottom:none;color:var(--text);box-shadow:0 -8px 40px var(--shadow),0 -1px 0 var(--border);z-index:4;pointer-events:none;transform:translateY(calc(100% + 12px));transition:transform .32s cubic-bezier(.22,1,.36,1)}
+.im-research-tab[data-open]{transform:translateY(0)}
+.im-research-tab[data-pinned]{pointer-events:auto}
+.im-research-tab>div:nth-child(2){overflow:auto;min-height:0}
+.im-research-row-live{cursor:pointer;transition:background .15s}
+.im-research-row-live:hover{background:var(--surface-2)}
+.im-ev-dot{animation:im-evPulse 1.4s ease-in-out infinite}
+@keyframes im-evPulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.5);opacity:.55}}
+@media (prefers-reduced-motion:reduce){.im-research-tab{transition:none}.im-ev-dot{animation:none}.im-research-row-live{transition:none}}
