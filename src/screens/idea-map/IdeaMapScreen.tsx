@@ -15,7 +15,7 @@ export default function IdeaMapScreen(props: Record<string, unknown>) {
   // clientOnly: which idea to show comes from the URL and this browser's saved ideas.
   const v = useLogic(Logic, props, { clientOnly: true });
   if (!v) return <div className="pg-im" />;
-  const { ideaInitial, ideaName, ideaPitch, now, accept, addAgainst, addFor, choices, clearSel, counts, curves, cv, draft, edges, ev, goNow, hasToast, hoverIdea, hoverOff, hoverOn, ideaShadow, isChoice, isEvidence, isIdea, isPast, isPillar, isResource, orbit, ov, paneRef, particles, pillars, pv, reject, removeChoice, replay, replayLabel, rv, selIdea, setDraft, showHint, toast, toggleAll, toggleAllLabel, week, weeks, zoom, zoomFit, zoomH, zoomIn, zoomOut, zoomPct, zoomW } = v;
+  const { ideaInitial, ideaName, ideaPitch, now, accept, addAgainst, addFor, choices, clearSel, counts, curves, cv, draft, edges, ev, goNow, hasToast, hoverIdea, hoverOff, hoverOn, ideaShadow, isChoice, isEvidence, isIdea, isPast, isPillar, isResource, orbit, ov, paneRef, pctRef, particles, pillars, pv, reject, removeChoice, replay, replayLabel, rv, selIdea, setDraft, showHint, toast, toggleAll, toggleAllLabel, week, weeks, worldRef, zoomFit, zoomIn, zoomOut } = v;
   return (
     <div className="pg-im">
       <div style={{ display: "flex", flexDirection: "column", height: "100vh", background: "var(--bg)" }}>
@@ -62,10 +62,12 @@ export default function IdeaMapScreen(props: Record<string, unknown>) {
         <div style={{ display: "flex", flex: "1", minHeight: "0" }}>
           <div style={{ flex: "1", minWidth: "0", position: "relative" }}>
             {" "}
-            <div ref={paneRef} style={{ position: "absolute", inset: "0", overflow: "auto", backgroundColor: "var(--bg)", backgroundImage: "linear-gradient(var(--grid-line) 1px,transparent 1px),linear-gradient(90deg,var(--grid-line) 1px,transparent 1px)", backgroundSize: "24px 24px" }} onClick={clearSel}>
+            {/* Viewport. Pan and zoom are one transform on the world wrapper below, written by camera.ts
+                outside React (no scrolling, no re-render per frame). The grid is moved with it. */}
+            <div ref={paneRef} className="im-pane" style={{ position: "absolute", inset: "0", overflow: "hidden", backgroundColor: "var(--bg)", backgroundImage: "linear-gradient(var(--grid-line) 1px,transparent 1px),linear-gradient(90deg,var(--grid-line) 1px,transparent 1px)" }} onClick={clearSel}>
               {" "}
-              <div style={{ width: `${zoomW ?? ""}px`, height: `${zoomH ?? ""}px`, minWidth: "100%", minHeight: "100%", display: "flex", alignItems: "center", justifyContent: "center" } as CSSProperties}>
-                <div style={{ position: "relative", width: "1340px", height: "1100px", flex: "none", transform: `scale(${zoom ?? ""})`, transformOrigin: "center center", transition: "transform .2s ease-out" } as CSSProperties}>
+              <div>
+                <div ref={worldRef} style={{ position: "absolute", left: "0", top: "0", width: "1340px", height: "1100px", transformOrigin: "0 0" } as CSSProperties}>
                   {" "}
                   <svg width="1340" height="1100" style={{ position: "absolute", inset: "0", overflow: "visible" }}>
                     <circle cx="670" cy="550" r="200" fill="none" style={{ stroke: "var(--border)" }} strokeWidth="1" />
@@ -78,17 +80,17 @@ export default function IdeaMapScreen(props: Record<string, unknown>) {
                   </svg>
                   {" "}
                   {(edges ?? []).map((e: any, $index: number) => (
-                    <Fragment key={$index}>
+                    <Fragment key={e?.id ?? $index}>
                       {" "}
                       <div style={{ position: "absolute", left: `${e?.x ?? ""}px`, top: `${e?.y ?? ""}px`, width: `${e?.len ?? ""}px`, height: "0", borderTop: `${e?.w ?? ""}px ${e?.style ?? ""} ${e?.stroke ?? ""}`, transform: `rotate(${e?.rot ?? ""}deg)`, transformOrigin: "0 0", opacity: `${e?.op ?? ""}`, transition: "left .5s cubic-bezier(.2,.8,.2,1),top .5s cubic-bezier(.2,.8,.2,1),width .5s cubic-bezier(.2,.8,.2,1),transform .5s cubic-bezier(.2,.8,.2,1),opacity .3s", pointerEvents: "none", animation: "im-edgeIn .4s ease-out both" } as CSSProperties} />
                       {" "}
                     </Fragment>
                   ))}
                   {" "}
-                  {(pillars ?? []).map((p: any, $index: number) => (
-                    <Fragment key={$index}>
+                  {(pillars ?? []).map((p: any) => (
+                    <Fragment key={p?.name}>
                       {" "}
-                      <div style={{ position: "absolute", left: `${p?.x ?? ""}px`, top: `${p?.y ?? ""}px`, transform: `translate(-50%,-50%) scale(${p?.scale ?? ""})`, width: "72px", height: "72px", borderRadius: "50%", padding: "4px", boxSizing: "border-box", background: `${p?.ring ?? ""}`, cursor: "pointer", opacity: `${p?.op ?? ""}`, transition: "left .5s cubic-bezier(.2,.8,.2,1),top .5s cubic-bezier(.2,.8,.2,1),opacity .3s,box-shadow .2s,transform .35s cubic-bezier(.2,.8,.2,1)", boxShadow: `${p?.shadow ?? ""}`, animation: "im-nodeIn .4s ease-out backwards", animationDelay: `${p?.delay ?? ""}` } as CSSProperties} onClick={p?.select} onMouseEnter={p?.enter} onMouseLeave={p?.leave} title={p?.title}>
+                      <div data-node="pillar" style={{ position: "absolute", left: `${p?.x ?? ""}px`, top: `${p?.y ?? ""}px`, transform: `translate(-50%,-50%) scale(${p?.scale ?? ""})`, width: "72px", height: "72px", borderRadius: "50%", padding: "4px", boxSizing: "border-box", background: `${p?.ring ?? ""}`, cursor: "pointer", opacity: `${p?.op ?? ""}`, transition: "left .5s cubic-bezier(.2,.8,.2,1),top .5s cubic-bezier(.2,.8,.2,1),opacity .3s,box-shadow .2s,transform .35s cubic-bezier(.2,.8,.2,1)", boxShadow: `${p?.shadow ?? ""}`, animation: "im-nodeIn .4s ease-out backwards", animationDelay: `${p?.delay ?? ""}` } as CSSProperties} onClick={p?.select} onMouseEnter={p?.enter} onMouseLeave={p?.leave} title={p?.title}>
                         {" "}
                         <div style={{ position: "absolute", right: "-4px", top: "-4px", minWidth: "20px", height: "20px", padding: "0 6px", boxSizing: "border-box", borderRadius: "999px", background: `${p?.badgeBg ?? ""}`, color: `${p?.badgeFg ?? ""}`, border: `1.5px solid ${p?.badgeBorder ?? ""}`, fontSize: "10px", fontWeight: "600", display: "flex", alignItems: "center", justifyContent: "center", animation: "im-badgePop .3s ease-out backwards", animationDelay: `${p?.badgeDelay ?? ""}` } as CSSProperties}>
                           {p?.badge}
@@ -120,10 +122,10 @@ export default function IdeaMapScreen(props: Record<string, unknown>) {
                     </Fragment>
                   ))}
                   {" "}
-                  {(choices ?? []).map((c: any, $index: number) => (
-                    <Fragment key={$index}>
+                  {(choices ?? []).map((c: any) => (
+                    <Fragment key={c?.id}>
                       {" "}
-                      <div style={{ position: "absolute", left: `${c?.x ?? ""}px`, top: `${c?.y ?? ""}px`, transform: `translate(-50%,-50%) scale(${c?.scale ?? ""})`, width: "156px", minHeight: "44px", display: "flex", alignItems: "center", gap: "8px", padding: "6px 10px 6px 10px", boxSizing: "border-box", borderRadius: "10px", background: `${c?.bg ?? ""}`, border: `1.5px ${c?.borderStyle ?? ""} ${c?.border ?? ""}`, color: `${c?.color ?? ""}`, boxShadow: `${c?.shadow ?? ""}`, cursor: "pointer", opacity: `${c?.op ?? ""}`, pointerEvents: `${c?.pe ?? ""}`, transition: "left .5s cubic-bezier(.2,.8,.2,1),top .5s cubic-bezier(.2,.8,.2,1),opacity .3s,box-shadow .2s,transform .35s cubic-bezier(.2,.8,.2,1)", animation: "im-nodeIn .4s ease-out backwards", animationDelay: `${c?.delay ?? ""}` } as CSSProperties} onClick={c?.select} onMouseEnter={c?.enter} onMouseLeave={c?.leave}>
+                      <div data-node="choice" style={{ position: "absolute", left: `${c?.x ?? ""}px`, top: `${c?.y ?? ""}px`, transform: `translate(-50%,-50%) scale(${c?.scale ?? ""})`, width: "156px", minHeight: "44px", display: "flex", alignItems: "center", gap: "8px", padding: "6px 10px 6px 10px", boxSizing: "border-box", borderRadius: "10px", background: `${c?.bg ?? ""}`, border: `1.5px ${c?.borderStyle ?? ""} ${c?.border ?? ""}`, color: `${c?.color ?? ""}`, boxShadow: `${c?.shadow ?? ""}`, cursor: "pointer", opacity: `${c?.op ?? ""}`, pointerEvents: `${c?.pe ?? ""}`, transition: "left .5s cubic-bezier(.2,.8,.2,1),top .5s cubic-bezier(.2,.8,.2,1),opacity .3s,box-shadow .2s,transform .35s cubic-bezier(.2,.8,.2,1)", animation: "im-nodeIn .4s ease-out backwards", animationDelay: `${c?.delay ?? ""}` } as CSSProperties} onClick={c?.select} onMouseEnter={c?.enter} onMouseLeave={c?.leave}>
                         <span style={{ width: "8px", height: "8px", borderRadius: "50%", background: `${c?.dot ?? ""}`, border: `1px solid ${c?.dotBorder ?? ""}`, flex: "none", boxSizing: "border-box" } as CSSProperties} />
                         <div style={{ flex: "1", minWidth: "0", fontSize: "11.5px", fontWeight: "500", lineHeight: "1.25", textDecoration: `${c?.deco ?? ""}`, textWrap: "pretty" } as CSSProperties}>
                           {c?.text}
@@ -136,10 +138,10 @@ export default function IdeaMapScreen(props: Record<string, unknown>) {
                     </Fragment>
                   ))}
                   {" "}
-                  {(orbit ?? []).map((o: any, $index: number) => (
-                    <Fragment key={$index}>
+                  {(orbit ?? []).map((o: any) => (
+                    <Fragment key={o?.id}>
                       {" "}
-                      <div style={{ position: "absolute", left: `${o?.x ?? ""}px`, top: `${o?.y ?? ""}px`, transform: `translate(-50%,-50%) scale(${o?.scale ?? ""})`, width: "176px", display: "flex", alignItems: "center", gap: "8px", padding: "7px 10px", boxSizing: "border-box", borderRadius: "8px", background: "var(--surface)", border: `1px solid ${o?.border ?? ""}`, borderLeft: `3px solid ${o?.accent ?? ""}`, boxShadow: `${o?.shadow ?? ""}`, cursor: "pointer", transition: "transform .35s cubic-bezier(.2,.8,.2,1),box-shadow .2s", animation: "im-nodeIn .35s ease-out backwards", animationDelay: `${o?.delay ?? ""}` } as CSSProperties} onClick={o?.select} onMouseEnter={o?.enter} onMouseLeave={o?.leave}>
+                      <div data-node="orbit" style={{ position: "absolute", left: `${o?.x ?? ""}px`, top: `${o?.y ?? ""}px`, transform: `translate(-50%,-50%) scale(${o?.scale ?? ""})`, width: "176px", display: "flex", alignItems: "center", gap: "8px", padding: "7px 10px", boxSizing: "border-box", borderRadius: "8px", background: "var(--surface)", border: `1px solid ${o?.border ?? ""}`, borderLeft: `3px solid ${o?.accent ?? ""}`, boxShadow: `${o?.shadow ?? ""}`, cursor: "pointer", transition: "transform .35s cubic-bezier(.2,.8,.2,1),box-shadow .2s", animation: "im-nodeIn .35s ease-out backwards", animationDelay: `${o?.delay ?? ""}` } as CSSProperties} onClick={o?.select} onMouseEnter={o?.enter} onMouseLeave={o?.leave}>
                         <div style={{ flex: "1", minWidth: "0", fontSize: "10.5px", lineHeight: "1.3", color: "var(--text)", display: "-webkit-box", WebkitLineClamp: "2", WebkitBoxOrient: "vertical", overflow: "hidden" }}>
                           {o?.text}
                         </div>
@@ -151,7 +153,8 @@ export default function IdeaMapScreen(props: Record<string, unknown>) {
                     </Fragment>
                   ))}
                   {" "}
-                  <div className="im-hover0" style={{ position: "absolute", left: "670px", top: "550px", transform: "translate(-50%,-50%)", width: "104px", height: "104px", borderRadius: "50%", background: "var(--surface)", border: "2px solid var(--accent)", boxShadow: `${ideaShadow ?? ""}`, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", zIndex: "2", transition: "transform .25s cubic-bezier(.34,1.56,.64,1)", animation: "im-breathe 3.2s ease-in-out infinite" } as CSSProperties} onClick={selIdea} onMouseEnter={hoverOn} onMouseLeave={hoverOff}>
+                  <div data-node="idea" className="im-hover0" style={{ position: "absolute", left: "670px", top: "550px", transform: "translate(-50%,-50%)", width: "104px", height: "104px", borderRadius: "50%", background: "var(--surface)", border: "2px solid var(--accent)", boxShadow: `${ideaShadow ?? ""}`, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", zIndex: "2", transition: "transform .25s cubic-bezier(.34,1.56,.64,1)" } as CSSProperties} onClick={selIdea} onMouseEnter={hoverOn} onMouseLeave={hoverOff}>
+                    <span className="im-breathe-ring" aria-hidden="true" />
                     <div style={{ width: "64px", height: "64px", borderRadius: "50%", background: "var(--accent)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--on-accent)", fontSize: "30px", fontWeight: "700", letterSpacing: "-.04em" }}>
                       {ideaInitial}
                     </div>
@@ -187,14 +190,24 @@ export default function IdeaMapScreen(props: Record<string, unknown>) {
             </div>
             {" "}
             <div style={{ position: "absolute", right: "16px", top: "16px", display: "flex", alignItems: "center", gap: "2px", padding: "4px", borderRadius: "999px", background: "var(--surface)", border: "1px solid var(--border)", boxShadow: "0 4px 16px var(--shadow)", zIndex: "4" }}>
-              <button className="im-hover1" style={{ width: "28px", height: "28px", borderRadius: "999px", border: "none", background: "transparent", color: "var(--text)", fontSize: "16px", cursor: "pointer", lineHeight: "1" }} onClick={zoomOut} title="Zoom out (−)">
+              <button className="im-hover1" style={{ width: "28px", height: "28px", borderRadius: "999px", border: "none", background: "transparent", color: "var(--text)", fontSize: "16px", cursor: "pointer", lineHeight: "1" }} onClick={zoomOut} title="Zoom out (−)" aria-label="Zoom out">
                 −
               </button>
-              <button className="im-hover1" style={{ height: "28px", minWidth: "44px", padding: "0 6px", borderRadius: "999px", border: "none", background: "transparent", color: "var(--muted)", fontSize: "11px", fontFamily: "'Geist Mono',monospace", cursor: "pointer" }} onClick={zoomFit} title="Fit to view (0)">
-                {zoomPct}
-              </button>
-              <button className="im-hover1" style={{ width: "28px", height: "28px", borderRadius: "999px", border: "none", background: "transparent", color: "var(--text)", fontSize: "16px", cursor: "pointer", lineHeight: "1" }} onClick={zoomIn} title="Zoom in (+)">
+              <span ref={pctRef} aria-label="Zoom level" style={{ minWidth: "44px", textAlign: "center", color: "var(--muted)", fontSize: "11px", fontFamily: "'Geist Mono',monospace" }}>
+                100%
+              </span>
+              <button className="im-hover1" style={{ width: "28px", height: "28px", borderRadius: "999px", border: "none", background: "transparent", color: "var(--text)", fontSize: "16px", cursor: "pointer", lineHeight: "1" }} onClick={zoomIn} title="Zoom in (+)" aria-label="Zoom in">
                 +
+              </button>
+              <span aria-hidden="true" style={{ width: "1px", height: "18px", background: "var(--border)", margin: "0 4px" }} />
+              <button className="im-hover1" style={{ display: "inline-flex", alignItems: "center", gap: "6px", height: "28px", padding: "0 10px 0 8px", borderRadius: "999px", border: "none", background: "transparent", color: "var(--text)", fontSize: "11px", fontWeight: "600", cursor: "pointer" }} onClick={zoomFit} title="Fit to screen (0)">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M8 3H5a2 2 0 0 0-2 2v3" />
+                  <path d="M21 8V5a2 2 0 0 0-2-2h-3" />
+                  <path d="M3 16v3a2 2 0 0 0 2 2h3" />
+                  <path d="M16 21h3a2 2 0 0 0 2-2v-3" />
+                </svg>
+                Fit to screen
               </button>
             </div>
             {" "}
@@ -222,7 +235,7 @@ export default function IdeaMapScreen(props: Record<string, unknown>) {
               <>
                 {" "}
                 <div style={{ position: "absolute", left: "16px", top: "16px", padding: "6px 12px", borderRadius: "999px", background: "var(--surface)", border: "1px solid var(--border)", fontSize: "11px", color: "var(--muted)", zIndex: "4", animation: "im-panelIn .5s ease-out .6s both", pointerEvents: "none" }}>
-                  Tap a pillar to open its choices · tap a choice to see its evidence
+                  Tap a pillar to open its choices · drag to move · pinch or ⌘-scroll to zoom
                 </div>
                 {" "}
               </>

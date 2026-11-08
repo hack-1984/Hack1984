@@ -31,3 +31,12 @@ body:has(.pg-im){margin:0;background:var(--bg);font-family:'Geist',system-ui,san
 .im-primary:hover{filter:brightness(1.25)}
 :where(.pg-im) textarea::placeholder{color:var(--muted)}
 .im-input:focus{outline:none;border-color:var(--accent) !important;box-shadow:0 0 0 3px var(--focus-ring)}
+
+/* Pan and zoom: the canvas grabs, nodes keep their pointer cursor, touch gestures are ours. */
+.im-pane{cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none}
+.im-pane.im-grabbing{cursor:grabbing}
+.im-pane.im-grabbing [data-node]{cursor:grabbing !important}
+/* The idea's breathing halo animates transform + opacity only, so it never forces a repaint. */
+.im-breathe-ring{position:absolute;inset:-12px;border-radius:50%;background:color-mix(in srgb,var(--accent) 12%,transparent);z-index:-1;pointer-events:none;animation:im-halo 3.2s ease-in-out infinite}
+@keyframes im-halo{0%,100%{transform:scale(.92);opacity:.9}50%{transform:scale(1.06);opacity:.45}}
+@media (prefers-reduced-motion:reduce){.im-breathe-ring{animation:none}}
