@@ -105,3 +105,22 @@ export async function researchFailures(idea: Idea): Promise<{ category: string; 
   }
   return { category, results };
 }
+
+/**
+ * One search, capped at searchTimeoutMs, keeping only results whose URL `seen` hasn't had yet
+ * (and adding them to it). Lets the streaming run extract each search the moment it returns,
+ * instead of waiting for all four. Web content is data only.
+ */
+export async function searchOne(query: string, seen: Set<string>): Promise<SearchResult[]> {
+  const hits = await withTimeout(search(query, cfg.resultsPerQuery), cfg.searchTimeoutMs);
+  const out: SearchResult[] = [];
+  for (const r of hits) {
+    if (!r.url || !/^https?:\/\//.test(r.url) || seen.has(r.url) || !r.content?.trim()) continue;
+    seen.add(r.url);
+    out.push({ title: r.title, url: r.url, content: r.content.slice(0, cfg.maxResultChars) });
+  }
+  return out;
+}
+
+/** Whether web search is available at all (no key = hand-written failures only). */
+export const canSearch = () => !!process.env.TAVILY_API_KEY;

@@ -3,12 +3,13 @@
 // Graveyard: similar startups that shut down, shown as gravestones.
 // Opening a grave the first time haunts the choice it threatens (once per grave per idea).
 // "Learn from this" adds the grave's fix as a suggested choice in Overview's "Waiting on you".
-// Every idea calls /api/graveyard/detail; results are cached per idea in this browser.
+// Graves stream in from /api/graveyard/stream and rise into the yard one by one as they're found,
+// with a live status line while the search runs. Finished results are cached per idea in this browser.
 // Layout from design/sprout-mocks/App.dc.html; colors from the Sprout theme.
-import { useCallback, useEffect, useRef, useState } from "react";
-import { fetchGraveyard } from "@/ideas/api";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { streamGraveyard } from "@/ideas/api";
 import { loadWidgetCache, saveWidgetCache } from "@/ideas/store";
-import type { GraveyardDetailResponse, WireUpdate } from "@/ideas/wire";
+import type { GraveRecord, GraveyardDetailResponse, WireUpdate } from "@/ideas/wire";
 import type { WidgetCtx } from "./types";
 
 interface Grave {
@@ -44,8 +45,8 @@ const host = (u: string) => {
   }
 };
 
-function apiGraves(res: GraveyardDetailResponse, label: (key: string) => string): Grave[] {
-  return res.records.slice(0, SLOTS.length).map((r, i) => ({
+function toGraves(records: GraveRecord[], adjacent: boolean, label: (key: string) => string): Grave[] {
+  return records.slice(0, SLOTS.length).map((r, i) => ({
     name: r.name,
     years: r.founded && r.died ? `${r.founded}–${r.died}` : r.died ? `Shut down ${r.died}` : "",
     epitaph: r.epitaph,
@@ -54,7 +55,7 @@ function apiGraves(res: GraveyardDetailResponse, label: (key: string) => string)
     story: r.story,
     fix: r.lesson,
     sources: r.sources ?? [],
-    adjacent: res.adjacent,
+    adjacent,
     similarity: r.similarity,
     ...SLOTS[i],
     haunt: r.updates.find((u) => u.action === "haunt"),
@@ -62,34 +63,75 @@ function apiGraves(res: GraveyardDetailResponse, label: (key: string) => string)
   }));
 }
 
-type Load = { state: "loading" } | { state: "error"; message: string } | { state: "ready"; graves: Grave[] };
+type Phase = "searching" | "done" | "error";
 
 export default function GraveyardWidget({ ctx }: { ctx: WidgetCtx }) {
   const { ideaId, buildIdea } = ctx;
-  const [load, setLoad] = useState<Load>(() => {
-    const cached = loadWidgetCache<GraveyardDetailResponse>(ideaId, "graveyard");
-    return cached ? { state: "ready", graves: apiGraves(cached, ctx.showPillar) } : { state: "loading" };
-  });
+  const kind = buildIdea()?.mode === "nonprofit" ? ["organization", "organizations"] : ["startup", "startups"];
+  const [cached] = useState(() => loadWidgetCache<GraveyardDetailResponse>(ideaId, "graveyard"));
+  const [records, setRecords] = useState<GraveRecord[]>(cached?.records ?? []);
+  const [adjacent, setAdjacent] = useState(cached?.adjacent ?? false);
+  const [phase, setPhase] = useState<Phase>(cached ? "done" : "searching");
+  const [status, setStatus] = useState(`Looking for similar ${kind[1]} that shut down…`);
+  const [error, setError] = useState<string | null>(null);
   const [sel, setSel] = useState<number | null>(null);
   const mem = (ctx.wmem.graveyard ?? {}) as { haunted?: Record<string, boolean>; learned?: Record<string, boolean> };
-
-  const fetchNow = useCallback(() => {
-    setLoad({ state: "loading" });
-    fetchGraveyard(buildIdea())
-      .then((res) => {
-        saveWidgetCache(ideaId, "graveyard", res);
-        setLoad({ state: "ready", graves: apiGraves(res, ctx.showPillar) });
-      })
-      .catch((e: Error) => setLoad({ state: "error", message: e.message }));
-  }, [buildIdea, ideaId, ctx.showPillar]);
-
-  // Fetch once if this idea has nothing cached.
-  const started = useRef(false);
+  const abort = useRef<AbortController | null>(null);
+  // ctx.buildIdea is a new function every render; read it through a ref so the search isn't restarted by re-renders.
+  const buildRef = useRef(buildIdea);
   useEffect(() => {
-    if (load.state !== "loading" || started.current) return;
-    started.current = true;
-    fetchNow();
-  }, [load.state, fetchNow]);
+    buildRef.current = buildIdea;
+  });
+
+  // Follow the search live: each grave is added the moment the server finds it.
+  // State only changes inside the stream's callbacks.
+  const follow = useCallback(() => {
+    abort.current?.abort();
+    const ac = new AbortController();
+    abort.current = ac;
+    const found: GraveRecord[] = [];
+    let adj = false;
+    streamGraveyard(
+      buildRef.current(),
+      (e) => {
+        if (e.type === "status") setStatus(e.text);
+        else if (e.type === "grave") {
+          if (found.some((r) => r.name === e.record.name)) return;
+          found.push(e.record);
+          setRecords([...found]);
+        } else if (e.type === "done") {
+          adj = e.adjacent;
+          setAdjacent(adj);
+          setPhase("done");
+          saveWidgetCache(ideaId, "graveyard", { records: found, adjacent: adj } satisfies GraveyardDetailResponse);
+        } else if (e.type === "error") {
+          setError(e.message);
+          setPhase("error");
+        }
+      },
+      ac.signal
+    ).catch((err: Error) => {
+      if (ac.signal.aborted) return;
+      setError(err.message);
+      setPhase("error");
+    });
+  }, [ideaId]);
+
+  /** "Search again": reset the yard's status, then follow a fresh stream. */
+  function search() {
+    setPhase("searching");
+    setError(null);
+    follow();
+  }
+
+  // Search if this idea has nothing cached, and stop listening when the widget closes. Starting again
+  // (React's dev double-mount, or reopening mid-search) costs nothing: the server shares one run per
+  // idea and replays the graves already found.
+  useEffect(() => {
+    if (cached) return;
+    follow();
+    return () => abort.current?.abort();
+  }, [cached, follow]);
 
   // The haunt lands a moment after the grave opens, so the founder sees the grave first.
   // If the widget closes before then, apply it straight away rather than losing it.
@@ -105,7 +147,7 @@ export default function GraveyardWidget({ ctx }: { ctx: WidgetCtx }) {
     }
   }, []);
 
-  const graves = load.state === "ready" ? load.graves : [];
+  const graves = useMemo(() => toGraves(records, adjacent, ctx.showPillar), [records, adjacent, ctx.showPillar]);
   const g = sel !== null ? graves[sel] : null;
 
   function pick(i: number) {
@@ -142,29 +184,37 @@ export default function GraveyardWidget({ ctx }: { ctx: WidgetCtx }) {
     <section className="wg-panel" aria-label="Graveyard">
       <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
         <h2 className="wg-title">Graveyard</h2>
-        {load.state === "ready" ? (
+        {phase === "done" ? (
           <span className="wg-eyebrow">
-            {graves.length} similar {graves.length === 1 ? "startup" : "startups"} that shut down
+            {graves.length} similar {graves.length === 1 ? kind[0] : kind[1]} that shut down
           </span>
         ) : null}
       </div>
 
-      {load.state === "loading" ? (
-        <p className="wg-muted" role="status">
-          Digging up similar startups…
-        </p>
+      {phase === "searching" ? (
+        <div className="gy-status" role="status" aria-live="polite">
+          <span className="gy-spin" aria-hidden="true" />
+          <span>
+            {status}
+            {graves.length ? ` ${graves.length} found so far.` : ""}
+          </span>
+        </div>
       ) : null}
 
-      {load.state === "error" ? (
+      {phase === "error" ? (
         <div className="wg-error" role="alert">
-          <span>{load.message}</span>
-          <button type="button" className="wg-btn" style={{ alignSelf: "flex-start", minHeight: "36px" }} onClick={fetchNow}>
-            Try again
+          <span>
+            {error}
+            {graves.length ? ` The ${graves.length} found so far are below.` : ""}
+          </span>
+          <button type="button" className="wg-btn" style={{ alignSelf: "flex-start", minHeight: "36px" }} onClick={search}>
+            Search again
           </button>
         </div>
       ) : null}
 
-      {load.state === "ready" && !graves.length ? <p className="wg-muted">No similar shutdowns found for this idea.</p> : null}
+      {phase === "done" && adjacent && graves.length ? <p className="wg-muted">No close matches. These shut down in nearby markets.</p> : null}
+      {phase === "done" && !graves.length ? <p className="wg-muted">No similar shutdowns found for this idea.</p> : null}
 
       {graves.length ? (
         <>
