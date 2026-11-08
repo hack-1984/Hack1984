@@ -55,6 +55,9 @@ const settle = (s: Session | null) => {
   return current;
 };
 
+/** The shared auth'd client, for src/lib/db. Throws when Supabase env vars are missing. */
+export const supabaseClient = sb;
+
 export const supabaseSession: SessionApi = {
   backend: "supabase",
   DEMO_LIMITS,
