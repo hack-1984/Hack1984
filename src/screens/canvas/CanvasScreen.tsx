@@ -91,7 +91,7 @@ export default function CanvasScreen(props: Record<string, unknown>) {
       <header style={{ position: "sticky", top: "0", zIndex: "50", opacity: `${navOp ?? ""}`, transform: `translateY(${navY ?? ""})`, transition: "opacity .12s linear,transform .12s linear", pointerEvents: `${navPe ?? ""}` } as CSSProperties}>
         {ann ? (
           <>
-            <div style={{ height: "44px", background: "#0F2E20", color: "#F2F5F3", fontSize: "13px", display: "flex", alignItems: "center", justifyContent: "center", position: "relative", padding: "0 48px 0 20px" }}>
+            <div style={{ height: "44px", background: "#0F2E20", color: "#F2F5F3", fontSize: "13px", display: "flex", alignItems: "center", justifyContent: "center", position: "relative", padding: "0 48px" }}>
               <span style={{ whiteSpace: "nowrap" }}>
                 <Link href="/map" style={{ textDecoration: "underline", textUnderlineOffset: "3px" }}>
                   Try a Demo →
