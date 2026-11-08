@@ -2,64 +2,74 @@
 
 // IdeaMap screen, ported from the Claude Design file "Idea Map.dc.html"
 // (claude.ai/design project 64b283df-0e77-4c88-936d-707b3f0b3f61).
-// Markup and inline styles are the design's, converted 1:1; behaviour is in ./logic.js.
+// Markup is the design's; colors use the Sprout theme variables (globals.css).
+// Behaviour is in ./logic.js.
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { Fragment, type CSSProperties } from "react";
+import Link from "next/link";
 import { useLogic } from "../dc";
 import Logic from "./logic";
 import "./idea-map.css";
 
 export default function IdeaMapScreen(props: Record<string, unknown>) {
-  const v = useLogic(Logic, props);
+  // clientOnly: which idea to show comes from the URL and this browser's saved ideas.
+  const v = useLogic(Logic, props, { clientOnly: true });
   if (!v) return <div className="pg-im" />;
-  const { accept, addAgainst, addFor, choices, clearSel, counts, curves, cv, draft, edges, ev, goNow, hasToast, hoverIdea, hoverOff, hoverOn, ideaShadow, isChoice, isEvidence, isIdea, isPast, isPillar, isResource, orbit, ov, paneRef, particles, pillars, pv, reject, removeChoice, replay, replayLabel, rv, selIdea, setDraft, showHint, toast, toggleAll, toggleAllLabel, week, weeks, zoom, zoomFit, zoomH, zoomIn, zoomOut, zoomPct, zoomW } = v;
+  const { ideaInitial, ideaName, ideaPitch, now, accept, addAgainst, addFor, choices, clearSel, counts, curves, cv, draft, edges, ev, goNow, hasToast, hoverIdea, hoverOff, hoverOn, ideaShadow, isChoice, isEvidence, isIdea, isPast, isPillar, isResource, orbit, ov, paneRef, particles, pillars, pv, reject, removeChoice, replay, replayLabel, rv, selIdea, setDraft, showHint, toast, toggleAll, toggleAllLabel, week, weeks, zoom, zoomFit, zoomH, zoomIn, zoomOut, zoomPct, zoomW } = v;
   return (
     <div className="pg-im">
-      <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "#f9fafb" }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "16px", padding: "14px 20px", borderBottom: "1px solid #e5e7eb", background: "#fff", flexWrap: "wrap" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-            <div style={{ width: "22px", height: "22px", borderRadius: "6px", background: "#111827" }} />
-            <div style={{ fontSize: "14px", fontWeight: "600" }}>
-              Idea map
+      <div style={{ display: "flex", flexDirection: "column", height: "100vh", background: "var(--bg)" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "16px", padding: "8px 20px 8px 12px", borderBottom: "1px solid var(--border)", background: "var(--surface)", flexWrap: "wrap", flex: "none" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "12px", minWidth: "0" }}>
+            {/* Back to the ideas dashboard. A real link, so it works from the keyboard and with any panel open. */}
+            <Link href="/sessions" className="im-back" style={{ display: "inline-flex", alignItems: "center", gap: "6px", minHeight: "44px", padding: "0 14px 0 10px", boxSizing: "border-box", borderRadius: "999px", border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text)", fontSize: "13px", fontWeight: "500", textDecoration: "none", whiteSpace: "nowrap", transition: "background .15s,border-color .15s" }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M19 12H5" />
+                <path d="M12 19l-7-7 7-7" />
+              </svg>
+              Your ideas
+            </Link>
+            <div style={{ fontSize: "14px", fontWeight: "600", whiteSpace: "nowrap" }}>
+              {ideaName}
             </div>
-            <div style={{ fontSize: "12px", color: "#6b7280" }}>
+            <div style={{ fontSize: "12px", color: "var(--muted)" }}>
               {counts}
             </div>
           </div>
-          <div style={{ display: "flex", gap: "14px", fontSize: "11px", color: "#4b5563", flexWrap: "wrap" }}>
+          <div style={{ display: "flex", gap: "14px", fontSize: "11px", color: "var(--muted)", flexWrap: "wrap" }}>
             <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-              <span style={{ width: "10px", height: "10px", borderRadius: "50%", background: "#15803d" }} />
+              <span style={{ width: "10px", height: "10px", borderRadius: "50%", background: "var(--green)" }} />
               Supported
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-              <span style={{ width: "10px", height: "10px", borderRadius: "50%", background: "#fff", border: "1.5px solid #9ca3af" }} />
+              <span style={{ width: "10px", height: "10px", borderRadius: "50%", boxSizing: "border-box", background: "transparent", border: "1.5px solid var(--muted)" }} />
               Untested
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-              <span style={{ width: "10px", height: "10px", borderRadius: "50%", background: "#dc2626" }} />
+              <span style={{ width: "10px", height: "10px", borderRadius: "50%", background: "var(--red)" }} />
               Weakened
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-              <span style={{ width: "10px", height: "10px", borderRadius: "50%", background: "#fff", border: "1.5px dashed #111827" }} />
+              <span style={{ width: "10px", height: "10px", borderRadius: "50%", boxSizing: "border-box", background: "transparent", border: "1.5px dashed var(--accent)" }} />
               Suggested
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-              <span style={{ width: "10px", height: "10px", borderRadius: "50%", background: "#e5e7eb" }} />
+              <span style={{ width: "10px", height: "10px", borderRadius: "50%", background: "var(--border)" }} />
               Removed
             </div>
           </div>
         </div>
-        <div style={{ display: "flex", height: "calc(100vh - 53px)", minHeight: "0" }}>
+        <div style={{ display: "flex", flex: "1", minHeight: "0" }}>
           <div style={{ flex: "1", minWidth: "0", position: "relative" }}>
             {" "}
-            <div ref={paneRef} style={{ position: "absolute", inset: "0", overflow: "auto", backgroundColor: "#f9fafb", backgroundImage: "linear-gradient(#11182710 1px,transparent 1px),linear-gradient(90deg,#11182710 1px,transparent 1px)", backgroundSize: "24px 24px" }} onClick={clearSel}>
+            <div ref={paneRef} style={{ position: "absolute", inset: "0", overflow: "auto", backgroundColor: "var(--bg)", backgroundImage: "linear-gradient(var(--grid-line) 1px,transparent 1px),linear-gradient(90deg,var(--grid-line) 1px,transparent 1px)", backgroundSize: "24px 24px" }} onClick={clearSel}>
               {" "}
               <div style={{ width: `${zoomW ?? ""}px`, height: `${zoomH ?? ""}px`, minWidth: "100%", minHeight: "100%", display: "flex", alignItems: "center", justifyContent: "center" } as CSSProperties}>
                 <div style={{ position: "relative", width: "1340px", height: "1100px", flex: "none", transform: `scale(${zoom ?? ""})`, transformOrigin: "center center", transition: "transform .2s ease-out" } as CSSProperties}>
                   {" "}
                   <svg width="1340" height="1100" style={{ position: "absolute", inset: "0", overflow: "visible" }}>
-                    <circle cx="670" cy="550" r="200" fill="none" stroke="#111827" strokeOpacity=".08" strokeWidth="1" />
-                    <circle cx="670" cy="550" r="385" fill="none" stroke="#111827" strokeOpacity=".08" strokeWidth="1" strokeDasharray="2 6" />
+                    <circle cx="670" cy="550" r="200" fill="none" style={{ stroke: "var(--border)" }} strokeWidth="1" />
+                    <circle cx="670" cy="550" r="385" fill="none" style={{ stroke: "var(--border)" }} strokeWidth="1" strokeDasharray="2 6" />
                     {(curves ?? []).map((e: any, $index: number) => (
                       <Fragment key={$index}>
                         <path d={e?.d} fill="none" stroke={e?.stroke} strokeWidth={e?.w} strokeDasharray={e?.dash} opacity={e?.op} style={{ transition: "opacity .3s" }} />
@@ -84,7 +94,7 @@ export default function IdeaMapScreen(props: Record<string, unknown>) {
                           {p?.badge}
                         </div>
                         {" "}
-                        <div style={{ width: "100%", height: "100%", borderRadius: "50%", background: "#fff", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "1px", fontSize: "11px", fontWeight: "600", color: "#111827", letterSpacing: "-.01em" }}>
+                        <div style={{ width: "100%", height: "100%", borderRadius: "50%", background: "var(--surface)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "1px", fontSize: "11px", fontWeight: "600", color: "var(--text)", letterSpacing: "-.01em" }}>
                           <span>
                             {p?.name}
                           </span>
@@ -102,7 +112,7 @@ export default function IdeaMapScreen(props: Record<string, unknown>) {
                     <Fragment key={$index}>
                       {" "}
                       <div style={{ position: "absolute", left: "0", top: "0", width: "16px", height: "16px", display: "flex", alignItems: "center", justifyContent: "center", pointerEvents: "none", offsetPath: `path('${f?.path ?? ""}')`, offsetRotate: "0deg", animation: `im-fxTravel ${f?.dur ?? ""} linear infinite`, animationDelay: `${f?.delay ?? ""}`, opacity: "0" } as CSSProperties}>
-                        <span style={{ display: "block", fontFamily: "'Geist Mono',monospace", fontSize: `${f?.size ?? ""}`, fontWeight: "500", color: "#6b7280", lineHeight: "1" } as CSSProperties}>
+                        <span style={{ display: "block", fontFamily: "'Geist Mono',monospace", fontSize: `${f?.size ?? ""}`, fontWeight: "500", color: "var(--muted)", lineHeight: "1" } as CSSProperties}>
                           {f?.glyph}
                         </span>
                       </div>
@@ -129,8 +139,8 @@ export default function IdeaMapScreen(props: Record<string, unknown>) {
                   {(orbit ?? []).map((o: any, $index: number) => (
                     <Fragment key={$index}>
                       {" "}
-                      <div style={{ position: "absolute", left: `${o?.x ?? ""}px`, top: `${o?.y ?? ""}px`, transform: `translate(-50%,-50%) scale(${o?.scale ?? ""})`, width: "176px", display: "flex", alignItems: "center", gap: "8px", padding: "7px 10px", boxSizing: "border-box", borderRadius: "8px", background: "#fff", border: `1px solid ${o?.border ?? ""}`, borderLeft: `3px solid ${o?.accent ?? ""}`, boxShadow: `${o?.shadow ?? ""}`, cursor: "pointer", transition: "transform .35s cubic-bezier(.2,.8,.2,1),box-shadow .2s", animation: "im-nodeIn .35s ease-out backwards", animationDelay: `${o?.delay ?? ""}` } as CSSProperties} onClick={o?.select} onMouseEnter={o?.enter} onMouseLeave={o?.leave}>
-                        <div style={{ flex: "1", minWidth: "0", fontSize: "10.5px", lineHeight: "1.3", color: "#374151", display: "-webkit-box", WebkitLineClamp: "2", WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+                      <div style={{ position: "absolute", left: `${o?.x ?? ""}px`, top: `${o?.y ?? ""}px`, transform: `translate(-50%,-50%) scale(${o?.scale ?? ""})`, width: "176px", display: "flex", alignItems: "center", gap: "8px", padding: "7px 10px", boxSizing: "border-box", borderRadius: "8px", background: "var(--surface)", border: `1px solid ${o?.border ?? ""}`, borderLeft: `3px solid ${o?.accent ?? ""}`, boxShadow: `${o?.shadow ?? ""}`, cursor: "pointer", transition: "transform .35s cubic-bezier(.2,.8,.2,1),box-shadow .2s", animation: "im-nodeIn .35s ease-out backwards", animationDelay: `${o?.delay ?? ""}` } as CSSProperties} onClick={o?.select} onMouseEnter={o?.enter} onMouseLeave={o?.leave}>
+                        <div style={{ flex: "1", minWidth: "0", fontSize: "10.5px", lineHeight: "1.3", color: "var(--text)", display: "-webkit-box", WebkitLineClamp: "2", WebkitBoxOrient: "vertical", overflow: "hidden" }}>
                           {o?.text}
                         </div>
                         <div style={{ fontSize: "8.5px", fontFamily: "'Geist Mono',monospace", color: `${o?.kindColor ?? ""}`, flex: "none", textTransform: "uppercase" } as CSSProperties}>
@@ -141,30 +151,30 @@ export default function IdeaMapScreen(props: Record<string, unknown>) {
                     </Fragment>
                   ))}
                   {" "}
-                  <div className="im-hover0" style={{ position: "absolute", left: "670px", top: "550px", transform: "translate(-50%,-50%)", width: "104px", height: "104px", borderRadius: "50%", background: "#fff", border: "2px solid #111827", boxShadow: `${ideaShadow ?? ""}`, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", zIndex: "2", transition: "transform .25s cubic-bezier(.34,1.56,.64,1)", animation: "im-breathe 3.2s ease-in-out infinite" } as CSSProperties} onClick={selIdea} onMouseEnter={hoverOn} onMouseLeave={hoverOff}>
-                    <div style={{ width: "64px", height: "64px", borderRadius: "50%", background: "#111827", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: "30px", fontWeight: "700", letterSpacing: "-.04em" }}>
-                      P
+                  <div className="im-hover0" style={{ position: "absolute", left: "670px", top: "550px", transform: "translate(-50%,-50%)", width: "104px", height: "104px", borderRadius: "50%", background: "var(--surface)", border: "2px solid var(--accent)", boxShadow: `${ideaShadow ?? ""}`, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", zIndex: "2", transition: "transform .25s cubic-bezier(.34,1.56,.64,1)", animation: "im-breathe 3.2s ease-in-out infinite" } as CSSProperties} onClick={selIdea} onMouseEnter={hoverOn} onMouseLeave={hoverOff}>
+                    <div style={{ width: "64px", height: "64px", borderRadius: "50%", background: "var(--accent)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--on-accent)", fontSize: "30px", fontWeight: "700", letterSpacing: "-.04em" }}>
+                      {ideaInitial}
                     </div>
                   </div>
                   {" "}
                   {hoverIdea ? (
                     <>
                       {" "}
-                      <div style={{ position: "absolute", left: "670px", top: "482px", transform: "translate(-50%,-100%)", width: "240px", padding: "12px 14px", boxSizing: "border-box", borderRadius: "10px", background: "#111827", color: "#fff", boxShadow: "0 12px 32px #11182740", zIndex: "3", pointerEvents: "none" }}>
+                      <div style={{ position: "absolute", left: "670px", top: "482px", transform: "translate(-50%,-100%)", width: "240px", padding: "12px 14px", boxSizing: "border-box", borderRadius: "10px", background: "var(--surface-2)", border: "1px solid var(--border)", color: "var(--text)", boxShadow: "0 12px 32px var(--shadow)", zIndex: "3", pointerEvents: "none" }}>
                         {" "}
-                        <div style={{ fontSize: "9px", fontWeight: "600", letterSpacing: ".08em", textTransform: "uppercase", color: "#9ca3af", fontFamily: "'Geist Mono',monospace", marginBottom: "5px" }}>
-                          Pantry · the idea
+                        <div style={{ fontSize: "9px", fontWeight: "600", letterSpacing: ".08em", textTransform: "uppercase", color: "var(--muted)", fontFamily: "'Geist Mono',monospace", marginBottom: "5px" }}>
+                          {ideaName}{" · the idea"}
                         </div>
                         {" "}
                         <div style={{ fontSize: "12.5px", lineHeight: "1.4", textWrap: "pretty" }}>
-                          A $8/month meal-planning app for college students on tight budgets.
+                          {ideaPitch}
                         </div>
                         {" "}
-                        <div style={{ fontSize: "10px", color: "#9ca3af", marginTop: "6px" }}>
+                        <div style={{ fontSize: "10px", color: "var(--muted)", marginTop: "6px" }}>
                           Click for the overview
                         </div>
                         {" "}
-                        <div style={{ position: "absolute", left: "50%", bottom: "-6px", width: "12px", height: "12px", background: "#111827", transform: "translateX(-50%) rotate(45deg)" }} />
+                        <div style={{ position: "absolute", left: "50%", bottom: "-6px", width: "12px", height: "12px", background: "var(--surface-2)", borderRight: "1px solid var(--border)", borderBottom: "1px solid var(--border)", boxSizing: "border-box", transform: "translateX(-50%) rotate(45deg)" }} />
                         {" "}
                       </div>
                       {" "}
@@ -176,34 +186,34 @@ export default function IdeaMapScreen(props: Record<string, unknown>) {
               {" "}
             </div>
             {" "}
-            <div style={{ position: "absolute", right: "16px", top: "16px", display: "flex", alignItems: "center", gap: "2px", padding: "4px", borderRadius: "999px", background: "#fff", border: "1px solid #e5e7eb", boxShadow: "0 4px 16px #11182714", zIndex: "4" }}>
-              <button className="im-hover1" style={{ width: "28px", height: "28px", borderRadius: "999px", border: "none", background: "transparent", color: "#111827", fontSize: "16px", cursor: "pointer", lineHeight: "1" }} onClick={zoomOut} title="Zoom out (−)">
+            <div style={{ position: "absolute", right: "16px", top: "16px", display: "flex", alignItems: "center", gap: "2px", padding: "4px", borderRadius: "999px", background: "var(--surface)", border: "1px solid var(--border)", boxShadow: "0 4px 16px var(--shadow)", zIndex: "4" }}>
+              <button className="im-hover1" style={{ width: "28px", height: "28px", borderRadius: "999px", border: "none", background: "transparent", color: "var(--text)", fontSize: "16px", cursor: "pointer", lineHeight: "1" }} onClick={zoomOut} title="Zoom out (−)">
                 −
               </button>
-              <button className="im-hover1" style={{ height: "28px", minWidth: "44px", padding: "0 6px", borderRadius: "999px", border: "none", background: "transparent", color: "#4b5563", fontSize: "11px", fontFamily: "'Geist Mono',monospace", cursor: "pointer" }} onClick={zoomFit} title="Fit to view (0)">
+              <button className="im-hover1" style={{ height: "28px", minWidth: "44px", padding: "0 6px", borderRadius: "999px", border: "none", background: "transparent", color: "var(--muted)", fontSize: "11px", fontFamily: "'Geist Mono',monospace", cursor: "pointer" }} onClick={zoomFit} title="Fit to view (0)">
                 {zoomPct}
               </button>
-              <button className="im-hover1" style={{ width: "28px", height: "28px", borderRadius: "999px", border: "none", background: "transparent", color: "#111827", fontSize: "16px", cursor: "pointer", lineHeight: "1" }} onClick={zoomIn} title="Zoom in (+)">
+              <button className="im-hover1" style={{ width: "28px", height: "28px", borderRadius: "999px", border: "none", background: "transparent", color: "var(--text)", fontSize: "16px", cursor: "pointer", lineHeight: "1" }} onClick={zoomIn} title="Zoom in (+)">
                 +
               </button>
             </div>
             {" "}
-            <div style={{ position: "absolute", left: "50%", bottom: "16px", transform: "translateX(-50%)", display: "flex", alignItems: "center", gap: "4px", padding: "5px 6px 5px 12px", borderRadius: "999px", background: "#fff", border: "1px solid #e5e7eb", boxShadow: "0 4px 16px #11182714", zIndex: "4" }}>
-              <span style={{ fontSize: "10px", fontFamily: "'Geist Mono',monospace", color: "#6b7280", letterSpacing: ".06em", marginRight: "4px" }}>
+            <div style={{ position: "absolute", left: "50%", bottom: "16px", transform: "translateX(-50%)", display: "flex", alignItems: "center", gap: "4px", padding: "5px 6px 5px 12px", borderRadius: "999px", background: "var(--surface)", border: "1px solid var(--border)", boxShadow: "0 4px 16px var(--shadow)", zIndex: "4" }}>
+              <span style={{ fontSize: "10px", fontFamily: "'Geist Mono',monospace", color: "var(--muted)", letterSpacing: ".06em", marginRight: "4px" }}>
                 WEEK
               </span>
               {(weeks ?? []).map((w: any, $index: number) => (
                 <Fragment key={$index}>
-                  <button style={{ width: "28px", height: "28px", borderRadius: "999px", border: "none", background: `${w?.bg ?? ""}`, color: `${w?.fg ?? ""}`, fontSize: "11px", fontWeight: "600", cursor: "pointer", position: "relative" } as CSSProperties} onClick={w?.select} title={w?.title}>
+                  <button className={w?.current ? undefined : "im-hover1"} aria-pressed={!!w?.current} style={{ width: "28px", height: "28px", borderRadius: "999px", border: "none", background: `${w?.bg ?? ""}`, color: `${w?.fg ?? ""}`, fontSize: "11px", fontWeight: "600", cursor: "pointer", position: "relative" } as CSSProperties} onClick={w?.select} title={w?.title}>
                     {w?.n}
                     <span style={{ position: "absolute", left: "50%", bottom: "3px", transform: "translateX(-50%)", width: "4px", height: "4px", borderRadius: "50%", background: `${w?.dot ?? ""}` } as CSSProperties} />
                   </button>
                 </Fragment>
               ))}
-              <button style={{ height: "28px", padding: "0 12px", marginLeft: "4px", borderRadius: "999px", border: "1px solid #e5e7eb", background: "#fff", color: "#111827", fontSize: "11px", fontWeight: "600", cursor: "pointer" }} onClick={replay}>
+              <button className="im-hover1" style={{ height: "28px", padding: "0 12px", marginLeft: "4px", borderRadius: "999px", border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text)", fontSize: "11px", fontWeight: "600", cursor: "pointer" }} onClick={replay}>
                 {replayLabel}
               </button>
-              <button style={{ height: "28px", padding: "0 12px", borderRadius: "999px", border: "1px solid #e5e7eb", background: "#fff", color: "#111827", fontSize: "11px", fontWeight: "600", cursor: "pointer" }} onClick={toggleAll}>
+              <button className="im-hover1" style={{ height: "28px", padding: "0 12px", borderRadius: "999px", border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text)", fontSize: "11px", fontWeight: "600", cursor: "pointer" }} onClick={toggleAll}>
                 {toggleAllLabel}
               </button>
             </div>
@@ -211,7 +221,7 @@ export default function IdeaMapScreen(props: Record<string, unknown>) {
             {showHint ? (
               <>
                 {" "}
-                <div style={{ position: "absolute", left: "16px", top: "16px", padding: "6px 12px", borderRadius: "999px", background: "#fff", border: "1px solid #e5e7eb", fontSize: "11px", color: "#4b5563", zIndex: "4", animation: "im-panelIn .5s ease-out .6s both", pointerEvents: "none" }}>
+                <div style={{ position: "absolute", left: "16px", top: "16px", padding: "6px 12px", borderRadius: "999px", background: "var(--surface)", border: "1px solid var(--border)", fontSize: "11px", color: "var(--muted)", zIndex: "4", animation: "im-panelIn .5s ease-out .6s both", pointerEvents: "none" }}>
                   Tap a pillar to open its choices · tap a choice to see its evidence
                 </div>
                 {" "}
@@ -221,11 +231,11 @@ export default function IdeaMapScreen(props: Record<string, unknown>) {
             {isPast ? (
               <>
                 {" "}
-                <div style={{ position: "absolute", left: "16px", top: "16px", padding: "6px 12px", borderRadius: "999px", background: "#111827", color: "#fff", fontSize: "11px", fontWeight: "500", zIndex: "4", display: "flex", alignItems: "center", gap: "8px" }}>
+                <div style={{ position: "absolute", left: "16px", top: "16px", padding: "6px 12px", borderRadius: "999px", background: "var(--surface-2)", border: "1px solid var(--border)", color: "var(--text)", fontSize: "11px", fontWeight: "500", zIndex: "4", display: "flex", alignItems: "center", gap: "8px" }}>
                   <span>
-                    {"Viewing week "}{week}{" of 6 · read-only"}
+                    {"Viewing week "}{week}{" of "}{now}{" · read-only"}
                   </span>
-                  <button style={{ border: "none", background: "#374151", color: "#fff", borderRadius: "999px", height: "20px", padding: "0 8px", fontSize: "10px", fontWeight: "600", cursor: "pointer" }} onClick={goNow}>
+                  <button style={{ border: "none", background: "var(--primary)", color: "var(--on-primary)", borderRadius: "999px", height: "20px", padding: "0 8px", fontSize: "10px", fontWeight: "600", cursor: "pointer" }} onClick={goNow}>
                     Back to now
                   </button>
                 </div>
@@ -236,7 +246,7 @@ export default function IdeaMapScreen(props: Record<string, unknown>) {
             {hasToast ? (
               <>
                 {" "}
-                <div style={{ position: "absolute", left: "50%", top: "16px", transform: "translateX(-50%)", padding: "8px 14px", borderRadius: "10px", background: "#111827", color: "#fff", fontSize: "12px", boxShadow: "0 8px 24px #11182733", zIndex: "5", animation: "im-toastIn .25s ease-out", whiteSpace: "nowrap" }}>
+                <div style={{ position: "absolute", left: "50%", top: "16px", transform: "translateX(-50%)", padding: "8px 14px", borderRadius: "10px", background: "var(--surface-2)", border: "1px solid var(--border)", color: "var(--text)", fontSize: "12px", boxShadow: "0 8px 24px var(--shadow)", zIndex: "5", animation: "im-toastIn .25s ease-out", whiteSpace: "nowrap" }}>
                   {toast}
                 </div>
                 {" "}
@@ -244,25 +254,29 @@ export default function IdeaMapScreen(props: Record<string, unknown>) {
             ) : null}
             {" "}
           </div>
-          <div style={{ flex: "0 0 320px", borderLeft: "1px solid #e5e7eb", background: "#fff", display: "flex", flexDirection: "column", overflow: "auto" }}>
+          <div style={{ flex: "0 0 320px", borderLeft: "1px solid var(--border)", background: "var(--surface)", display: "flex", flexDirection: "column", overflow: "auto" }}>
             {isIdea ? (
               <>
                 <div style={{ animation: "im-panelIn .35s cubic-bezier(.2,.8,.2,1) both" }}>
                   {" "}
-                  <div style={{ padding: "20px 20px 16px", borderBottom: "1px solid #e5e7eb" }}>
+                  <div style={{ padding: "20px 20px 16px", borderBottom: "1px solid var(--border)" }}>
                     {" "}
-                    <div style={{ fontSize: "10px", fontFamily: "'Geist Mono',monospace", color: "#6b7280", textTransform: "uppercase", letterSpacing: ".06em", marginBottom: "8px" }}>
-                      {"Pantry · week "}{week}
+                    <div style={{ fontSize: "10px", fontFamily: "'Geist Mono',monospace", color: "var(--muted)", textTransform: "uppercase", letterSpacing: ".06em", marginBottom: "8px" }}>
+                      {"Overview · week "}{week}
                     </div>
                     {" "}
-                    <div style={{ fontSize: "15px", fontWeight: "600", lineHeight: "1.35", textWrap: "pretty" }}>
-                      A $8/month meal-planning app for college students on tight budgets.
+                    <div style={{ fontSize: "18px", fontWeight: "600", lineHeight: "1.3", textWrap: "pretty" }}>
+                      {ideaName}
+                    </div>
+                    {/* Description: 3 lines max, full text on hover (same treatment as the dashboard cards). */}
+                    <div title={ideaPitch} style={{ marginTop: "4px", fontSize: "12.5px", color: "var(--muted)", lineHeight: "1.4", display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+                      {ideaPitch}
                     </div>
                     {" "}
                     <div style={{ display: "flex", alignItems: "center", gap: "14px", marginTop: "16px" }}>
                       <div style={{ width: "84px", height: "84px", borderRadius: "50%", padding: "7px", boxSizing: "border-box", background: `${ov?.ring ?? ""}`, flex: "none", animation: "im-countUp .4s cubic-bezier(.34,1.56,.64,1) both" } as CSSProperties}>
                         {" "}
-                        <div style={{ width: "100%", height: "100%", borderRadius: "50%", background: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "20px", fontWeight: "700", letterSpacing: "-.04em", color: `${ov?.scoreColor ?? ""}` } as CSSProperties}>
+                        <div style={{ width: "100%", height: "100%", borderRadius: "50%", background: "var(--surface)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "20px", fontWeight: "700", letterSpacing: "-.04em", color: `${ov?.scoreColor ?? ""}` } as CSSProperties}>
                           <span>{ov?.score}</span>%
                         </div>
                         {" "}
@@ -281,35 +295,35 @@ export default function IdeaMapScreen(props: Record<string, unknown>) {
                     </div>
                     {" "}
                     <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: "6px", marginTop: "14px" }}>
-                      <div style={{ padding: "8px 6px", borderRadius: "8px", background: "#f9fafb", textAlign: "center" }}>
-                        <div style={{ fontSize: "16px", fontWeight: "700", color: "#15803d" }}>
+                      <div style={{ padding: "8px 6px", borderRadius: "8px", background: "var(--surface-2)", textAlign: "center" }}>
+                        <div style={{ fontSize: "16px", fontWeight: "700", color: "var(--green-text)" }}>
                           {ov?.nSup}
                         </div>
-                        <div style={{ fontSize: "9.5px", color: "#6b7280" }}>
+                        <div style={{ fontSize: "9.5px", color: "var(--muted)" }}>
                           Supported
                         </div>
                       </div>
-                      <div style={{ padding: "8px 6px", borderRadius: "8px", background: "#f9fafb", textAlign: "center" }}>
-                        <div style={{ fontSize: "16px", fontWeight: "700", color: "#4b5563" }}>
+                      <div style={{ padding: "8px 6px", borderRadius: "8px", background: "var(--surface-2)", textAlign: "center" }}>
+                        <div style={{ fontSize: "16px", fontWeight: "700", color: "var(--text)" }}>
                           {ov?.nUnt}
                         </div>
-                        <div style={{ fontSize: "9.5px", color: "#6b7280" }}>
+                        <div style={{ fontSize: "9.5px", color: "var(--muted)" }}>
                           Untested
                         </div>
                       </div>
-                      <div style={{ padding: "8px 6px", borderRadius: "8px", background: "#f9fafb", textAlign: "center" }}>
-                        <div style={{ fontSize: "16px", fontWeight: "700", color: "#b91c1c" }}>
+                      <div style={{ padding: "8px 6px", borderRadius: "8px", background: "var(--surface-2)", textAlign: "center" }}>
+                        <div style={{ fontSize: "16px", fontWeight: "700", color: "var(--red-text)" }}>
                           {ov?.nWeak}
                         </div>
-                        <div style={{ fontSize: "9.5px", color: "#6b7280" }}>
+                        <div style={{ fontSize: "9.5px", color: "var(--muted)" }}>
                           Weakened
                         </div>
                       </div>
-                      <div style={{ padding: "8px 6px", borderRadius: "8px", background: "#f9fafb", textAlign: "center" }}>
-                        <div style={{ fontSize: "16px", fontWeight: "700", color: "#111827" }}>
+                      <div style={{ padding: "8px 6px", borderRadius: "8px", background: "var(--surface-2)", textAlign: "center" }}>
+                        <div style={{ fontSize: "16px", fontWeight: "700", color: "var(--green-text)" }}>
                           {ov?.nSug}
                         </div>
-                        <div style={{ fontSize: "9.5px", color: "#6b7280" }}>
+                        <div style={{ fontSize: "9.5px", color: "var(--muted)" }}>
                           Suggested
                         </div>
                       </div>
@@ -320,9 +334,9 @@ export default function IdeaMapScreen(props: Record<string, unknown>) {
                   {ov?.hasSuggestion ? (
                     <>
                       {" "}
-                      <div style={{ margin: "16px 20px 0", padding: "12px 14px", borderRadius: "10px", border: "1.5px dashed #111827", cursor: "pointer" }} onClick={ov?.openSuggestion}>
+                      <div style={{ margin: "16px 20px 0", padding: "12px 14px", borderRadius: "10px", border: "1.5px dashed var(--accent)", background: "var(--accent-tint)", cursor: "pointer" }} onClick={ov?.openSuggestion}>
                         {" "}
-                        <div style={{ fontSize: "10px", fontFamily: "'Geist Mono',monospace", color: "#6b7280", textTransform: "uppercase", letterSpacing: ".06em" }}>
+                        <div style={{ fontSize: "10px", fontFamily: "'Geist Mono',monospace", color: "var(--muted)", textTransform: "uppercase", letterSpacing: ".06em" }}>
                           Waiting on you
                         </div>
                         {" "}
@@ -330,7 +344,7 @@ export default function IdeaMapScreen(props: Record<string, unknown>) {
                           {ov?.suggestionText}
                         </div>
                         {" "}
-                        <div style={{ fontSize: "11px", color: "#6b7280", marginTop: "3px" }}>
+                        <div style={{ fontSize: "11px", color: "var(--muted)", marginTop: "3px" }}>
                           Replacement for “{ov?.suggestionFor}” · tap to review
                         </div>
                         {" "}
@@ -339,15 +353,15 @@ export default function IdeaMapScreen(props: Record<string, unknown>) {
                     </>
                   ) : null}
                   {" "}
-                  <div style={{ padding: "16px 20px", borderBottom: "1px solid #e5e7eb" }}>
+                  <div style={{ padding: "16px 20px", borderBottom: "1px solid var(--border)" }}>
                     {" "}
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: "10px" }}>
-                      <div style={{ fontSize: "11px", fontWeight: "600", color: "#6b7280" }}>
+                      <div style={{ fontSize: "11px", fontWeight: "600", color: "var(--muted)" }}>
                         Pillars
                       </div>
-                      <div style={{ fontSize: "10px", color: "#9ca3af" }}>
+                      <div style={{ fontSize: "10px", color: "var(--muted)" }}>
                         {"weakest: "}
-                        <span style={{ color: "#b91c1c", fontWeight: "600" }}>
+                        <span style={{ color: "var(--red-text)", fontWeight: "600" }}>
                           {ov?.weakest}
                         </span>
                       </div>
@@ -358,7 +372,7 @@ export default function IdeaMapScreen(props: Record<string, unknown>) {
                         <Fragment key={$index}>
                           <div className="im-hover1" style={{ display: "flex", alignItems: "center", gap: "10px", cursor: "pointer", padding: "3px 6px", margin: "0 -6px", borderRadius: "6px", animation: "im-rowIn .35s ease-out both", animationDelay: `${p?.rowDelay ?? ""}` } as CSSProperties} onClick={p?.select}>
                             <div style={{ width: "26px", height: "26px", borderRadius: "50%", padding: "3px", boxSizing: "border-box", background: `${p?.ring ?? ""}`, flex: "none" } as CSSProperties}>
-                              <div style={{ width: "100%", height: "100%", borderRadius: "50%", background: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "9px", fontFamily: "'Geist Mono',monospace", color: "#6b7280" }}>
+                              <div style={{ width: "100%", height: "100%", borderRadius: "50%", background: "var(--surface)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "9px", fontFamily: "'Geist Mono',monospace", color: "var(--muted)" }}>
                                 {p?.glyph}
                               </div>
                             </div>
@@ -378,15 +392,15 @@ export default function IdeaMapScreen(props: Record<string, unknown>) {
                     {" "}
                   </div>
                   {" "}
-                  <div style={{ padding: "16px 20px", borderBottom: "1px solid #e5e7eb" }}>
+                  <div style={{ padding: "16px 20px", borderBottom: "1px solid var(--border)" }}>
                     {" "}
-                    <div style={{ fontSize: "11px", fontWeight: "600", color: "#6b7280", marginBottom: "10px" }}>
+                    <div style={{ fontSize: "11px", fontWeight: "600", color: "var(--muted)", marginBottom: "10px" }}>
                       Resource gaps
                     </div>
                     {" "}
                     {ov?.noGaps ? (
                       <>
-                        <div style={{ fontSize: "12px", color: "#9ca3af" }}>
+                        <div style={{ fontSize: "12px", color: "var(--muted)" }}>
                           Every active choice is covered.
                         </div>
                       </>
@@ -396,11 +410,11 @@ export default function IdeaMapScreen(props: Record<string, unknown>) {
                       {(ov?.gaps ?? []).map((g: any, $index: number) => (
                         <Fragment key={$index}>
                           <div className="im-hover1" style={{ display: "flex", alignItems: "center", gap: "10px", cursor: "pointer", padding: "3px 6px", margin: "0 -6px", borderRadius: "6px" }} onClick={g?.select}>
-                            <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#dc2626", flex: "none" }} />
+                            <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "var(--red)", flex: "none" }} />
                             <div style={{ flex: "1", fontSize: "12px", fontWeight: "500" }}>
                               {g?.name}
                             </div>
-                            <div style={{ fontSize: "10px", color: "#6b7280" }}>
+                            <div style={{ fontSize: "10px", color: "var(--muted)" }}>
                               {"blocks "}{g?.n}
                             </div>
                           </div>
@@ -412,13 +426,13 @@ export default function IdeaMapScreen(props: Record<string, unknown>) {
                   {" "}
                   <div style={{ padding: "16px 20px" }}>
                     {" "}
-                    <div style={{ fontSize: "11px", fontWeight: "600", color: "#6b7280", marginBottom: "10px" }}>
+                    <div style={{ fontSize: "11px", fontWeight: "600", color: "var(--muted)", marginBottom: "10px" }}>
                       {ov?.changesTitle}
                     </div>
                     {" "}
                     {ov?.noChanges ? (
                       <>
-                        <div style={{ fontSize: "12px", color: "#9ca3af" }}>
+                        <div style={{ fontSize: "12px", color: "var(--muted)" }}>
                           Nothing changed this week.
                         </div>
                       </>
@@ -441,7 +455,7 @@ export default function IdeaMapScreen(props: Record<string, unknown>) {
                                 </span>
                               </div>
                               {" "}
-                              <div style={{ fontSize: "11px", color: "#6b7280", lineHeight: "1.4", marginTop: "1px" }}>
+                              <div style={{ fontSize: "11px", color: "var(--muted)", lineHeight: "1.4", marginTop: "1px" }}>
                                 {h?.note}
                               </div>
                               {" "}
@@ -460,9 +474,9 @@ export default function IdeaMapScreen(props: Record<string, unknown>) {
               <>
                 <div style={{ animation: "im-panelIn .35s cubic-bezier(.2,.8,.2,1) both" }}>
                   {" "}
-                  <div style={{ padding: "20px 20px 16px", borderBottom: "1px solid #e5e7eb" }}>
+                  <div style={{ padding: "20px 20px 16px", borderBottom: "1px solid var(--border)" }}>
                     {" "}
-                    <div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "10px", fontFamily: "'Geist Mono',monospace", color: "#6b7280", textTransform: "uppercase", letterSpacing: ".06em", marginBottom: "8px" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "10px", fontFamily: "'Geist Mono',monospace", color: "var(--muted)", textTransform: "uppercase", letterSpacing: ".06em", marginBottom: "8px" }}>
                       <span style={{ cursor: "pointer" }} onClick={selIdea}>
                         Overview
                       </span>
@@ -475,7 +489,7 @@ export default function IdeaMapScreen(props: Record<string, unknown>) {
                     </div>
                     {" "}
                     <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                      <div style={{ width: "32px", height: "32px", borderRadius: "50%", background: "#111827", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Geist Mono',monospace", fontSize: "15px" }}>
+                      <div style={{ width: "32px", height: "32px", borderRadius: "50%", background: "var(--accent-tint)", border: "1px solid var(--accent)", boxSizing: "border-box", color: "var(--text)", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Geist Mono',monospace", fontSize: "15px" }}>
                         {pv?.glyph}
                       </div>
                       <div style={{ fontSize: "18px", fontWeight: "600" }}>
@@ -486,7 +500,7 @@ export default function IdeaMapScreen(props: Record<string, unknown>) {
                     <div style={{ display: "flex", alignItems: "center", gap: "14px", marginTop: "14px" }}>
                       <div style={{ width: "72px", height: "72px", borderRadius: "50%", padding: "6px", boxSizing: "border-box", background: `${pv?.ring ?? ""}`, flex: "none", animation: "im-countUp .4s cubic-bezier(.34,1.56,.64,1) both" } as CSSProperties}>
                         {" "}
-                        <div style={{ width: "100%", height: "100%", borderRadius: "50%", background: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "17px", fontWeight: "700", letterSpacing: "-.04em", color: `${pv?.labelColor ?? ""}` } as CSSProperties}>
+                        <div style={{ width: "100%", height: "100%", borderRadius: "50%", background: "var(--surface)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "17px", fontWeight: "700", letterSpacing: "-.04em", color: `${pv?.labelColor ?? ""}` } as CSSProperties}>
                           <span>{pv?.pct}</span>%
                         </div>
                         {" "}
@@ -495,7 +509,7 @@ export default function IdeaMapScreen(props: Record<string, unknown>) {
                         <div style={{ fontSize: "12px", fontWeight: "600", color: `${pv?.labelColor ?? ""}` } as CSSProperties}>
                           {pv?.label}
                         </div>
-                        <div style={{ fontSize: "11px", color: "#6b7280", lineHeight: "1.4" }}>
+                        <div style={{ fontSize: "11px", color: "var(--muted)", lineHeight: "1.4" }}>
                           {pv?.summary}
                         </div>
                       </div>
@@ -503,26 +517,26 @@ export default function IdeaMapScreen(props: Record<string, unknown>) {
                     {" "}
                   </div>
                   {" "}
-                  <div style={{ padding: "16px 20px", borderBottom: "1px solid #e5e7eb" }}>
+                  <div style={{ padding: "16px 20px", borderBottom: "1px solid var(--border)" }}>
                     {" "}
-                    <div style={{ fontSize: "11px", fontWeight: "600", color: "#6b7280", marginBottom: "10px" }}>
+                    <div style={{ fontSize: "11px", fontWeight: "600", color: "var(--muted)", marginBottom: "10px" }}>
                       Choices
                     </div>
                     {" "}
                     <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
                       {(pv?.choices ?? []).map((c: any, $index: number) => (
                         <Fragment key={$index}>
-                          <div className="im-hover2" style={{ display: "flex", alignItems: "center", gap: "10px", padding: "8px 10px", borderRadius: "8px", border: "1px solid #e5e7eb", cursor: "pointer" }} onClick={c?.select}>
+                          <div className="im-hover2" style={{ display: "flex", alignItems: "center", gap: "10px", padding: "8px 10px", borderRadius: "8px", border: "1px solid var(--border)", cursor: "pointer" }} onClick={c?.select}>
                             <span style={{ width: "8px", height: "8px", borderRadius: "50%", background: `${c?.dot ?? ""}`, border: `1px solid ${c?.dotBorder ?? ""}`, boxSizing: "border-box", flex: "none" } as CSSProperties} />
                             <div style={{ flex: "1", minWidth: "0" }}>
                               <div style={{ fontSize: "12px", fontWeight: "500", textDecoration: `${c?.deco ?? ""}` } as CSSProperties}>
                                 {c?.text}
                               </div>
-                              <div style={{ fontSize: "10px", color: "#6b7280" }}>
+                              <div style={{ fontSize: "10px", color: "var(--muted)" }}>
                                 {c?.sub}
                               </div>
                             </div>
-                            <span style={{ fontSize: "10px", color: "#9ca3af" }}>
+                            <span style={{ fontSize: "10px", color: "var(--muted)" }}>
                               →
                             </span>
                           </div>
@@ -532,15 +546,15 @@ export default function IdeaMapScreen(props: Record<string, unknown>) {
                     {" "}
                   </div>
                   {" "}
-                  <div style={{ padding: "16px 20px", borderBottom: "1px solid #e5e7eb" }}>
+                  <div style={{ padding: "16px 20px", borderBottom: "1px solid var(--border)" }}>
                     {" "}
-                    <div style={{ fontSize: "11px", fontWeight: "600", color: "#6b7280", marginBottom: "10px" }}>
+                    <div style={{ fontSize: "11px", fontWeight: "600", color: "var(--muted)", marginBottom: "10px" }}>
                       What would move this pillar
                     </div>
                     {" "}
                     {pv?.noTests ? (
                       <>
-                        <div style={{ fontSize: "12px", color: "#9ca3af" }}>
+                        <div style={{ fontSize: "12px", color: "var(--muted)" }}>
                           Every choice here is backed. Keep monitoring.
                         </div>
                       </>
@@ -549,9 +563,9 @@ export default function IdeaMapScreen(props: Record<string, unknown>) {
                     <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
                       {(pv?.tests ?? []).map((t: any, $index: number) => (
                         <Fragment key={$index}>
-                          <div style={{ padding: "10px 12px", borderRadius: "8px", background: "#f9fafb", cursor: "pointer" }} onClick={t?.select}>
+                          <div style={{ padding: "10px 12px", borderRadius: "8px", background: "var(--surface-2)", cursor: "pointer" }} onClick={t?.select}>
                             {" "}
-                            <div style={{ fontSize: "10px", color: "#6b7280", marginBottom: "3px" }}>
+                            <div style={{ fontSize: "10px", color: "var(--muted)", marginBottom: "3px" }}>
                               Test for “{t?.choice}”
                             </div>
                             {" "}
@@ -566,15 +580,15 @@ export default function IdeaMapScreen(props: Record<string, unknown>) {
                     {" "}
                   </div>
                   {" "}
-                  <div style={{ padding: "16px 20px", borderBottom: "1px solid #e5e7eb" }}>
+                  <div style={{ padding: "16px 20px", borderBottom: "1px solid var(--border)" }}>
                     {" "}
-                    <div style={{ fontSize: "11px", fontWeight: "600", color: "#6b7280", marginBottom: "10px" }}>
+                    <div style={{ fontSize: "11px", fontWeight: "600", color: "var(--muted)", marginBottom: "10px" }}>
                       Resources
                     </div>
                     {" "}
                     {pv?.noRes ? (
                       <>
-                        <div style={{ fontSize: "12px", color: "#9ca3af" }}>
+                        <div style={{ fontSize: "12px", color: "var(--muted)" }}>
                           {"Nothing beyond the team's time."}
                         </div>
                       </>
@@ -594,7 +608,7 @@ export default function IdeaMapScreen(props: Record<string, unknown>) {
                   {" "}
                   <div style={{ padding: "16px 20px" }}>
                     {" "}
-                    <div style={{ fontSize: "11px", fontWeight: "600", color: "#6b7280", marginBottom: "10px" }}>
+                    <div style={{ fontSize: "11px", fontWeight: "600", color: "var(--muted)", marginBottom: "10px" }}>
                       History
                     </div>
                     {" "}
@@ -602,7 +616,7 @@ export default function IdeaMapScreen(props: Record<string, unknown>) {
                       {(pv?.history ?? []).map((h: any, $index: number) => (
                         <Fragment key={$index}>
                           <div style={{ display: "flex", gap: "12px", cursor: "pointer" }} onClick={h?.select}>
-                            <div style={{ fontSize: "10px", fontFamily: "'Geist Mono',monospace", color: "#9ca3af", flex: "none", width: "36px", paddingTop: "2px" }}>
+                            <div style={{ fontSize: "10px", fontFamily: "'Geist Mono',monospace", color: "var(--muted)", flex: "none", width: "36px", paddingTop: "2px" }}>
                               {h?.week}
                             </div>
                             <div style={{ flex: "1" }}>
@@ -615,7 +629,7 @@ export default function IdeaMapScreen(props: Record<string, unknown>) {
                                   {h?.choiceText}
                                 </span>
                               </div>
-                              <div style={{ fontSize: "11px", color: "#6b7280", lineHeight: "1.4" }}>
+                              <div style={{ fontSize: "11px", color: "var(--muted)", lineHeight: "1.4" }}>
                                 {h?.note}
                               </div>
                             </div>
@@ -633,9 +647,9 @@ export default function IdeaMapScreen(props: Record<string, unknown>) {
               <>
                 <div style={{ animation: "im-panelIn .35s cubic-bezier(.2,.8,.2,1) both" }}>
                   {" "}
-                  <div style={{ padding: "20px 20px 16px", borderBottom: "1px solid #e5e7eb" }}>
+                  <div style={{ padding: "20px 20px 16px", borderBottom: "1px solid var(--border)" }}>
                     {" "}
-                    <div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "10px", fontFamily: "'Geist Mono',monospace", color: "#6b7280", textTransform: "uppercase", letterSpacing: ".06em", marginBottom: "8px" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "10px", fontFamily: "'Geist Mono',monospace", color: "var(--muted)", textTransform: "uppercase", letterSpacing: ".06em", marginBottom: "8px" }}>
                       <span style={{ cursor: "pointer" }} onClick={selIdea}>
                         Overview
                       </span>
@@ -651,7 +665,7 @@ export default function IdeaMapScreen(props: Record<string, unknown>) {
                       <span style={{ fontSize: "10px", fontWeight: "600", padding: "2px 8px", borderRadius: "999px", background: `${cv?.chipBg ?? ""}`, color: `${cv?.chipFg ?? ""}` } as CSSProperties}>
                         {cv?.statusLabel}
                       </span>
-                      <span style={{ fontSize: "10px", color: "#9ca3af" }}>
+                      <span style={{ fontSize: "10px", color: "var(--muted)" }}>
                         {"since "}{cv?.since}
                       </span>
                     </div>
@@ -660,24 +674,24 @@ export default function IdeaMapScreen(props: Record<string, unknown>) {
                       {cv?.text}
                     </div>
                     {" "}
-                    <div style={{ fontSize: "12px", color: "#6b7280", marginTop: "6px", lineHeight: "1.45" }}>
+                    <div style={{ fontSize: "12px", color: "var(--muted)", marginTop: "6px", lineHeight: "1.45" }}>
                       {cv?.summary}
                     </div>
                     {" "}
-                    <div style={{ display: "flex", gap: "2px", marginTop: "14px", height: "6px", borderRadius: "3px", overflow: "hidden", background: "#e5e7eb" }}>
-                      <div style={{ width: `${cv?.forPct ?? ""}%`, background: "#15803d", transition: "width .3s" } as CSSProperties} />
-                      <div style={{ width: `${cv?.againstPct ?? ""}%`, background: "#dc2626", transition: "width .3s" } as CSSProperties} />
+                    <div style={{ display: "flex", gap: "2px", marginTop: "14px", height: "6px", borderRadius: "3px", overflow: "hidden", background: "var(--border)" }}>
+                      <div style={{ width: `${cv?.forPct ?? ""}%`, background: "var(--green)", transition: "width .3s" } as CSSProperties} />
+                      <div style={{ width: `${cv?.againstPct ?? ""}%`, background: "var(--red)", transition: "width .3s" } as CSSProperties} />
                     </div>
                     {" "}
-                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: "10px", color: "#6b7280", marginTop: "5px" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: "10px", color: "var(--muted)", marginTop: "5px" }}>
                       <span>
-                        <b style={{ color: "#15803d" }}>
+                        <b style={{ color: "var(--green-text)" }}>
                           {cv?.nFor}
                         </b>
                         {" for"}
                       </span>
                       <span>
-                        <b style={{ color: "#b91c1c" }}>
+                        <b style={{ color: "var(--red-text)" }}>
                           {cv?.nAgainst}
                         </b>
                         {" against"}
@@ -688,10 +702,10 @@ export default function IdeaMapScreen(props: Record<string, unknown>) {
                       <>
                         {" "}
                         <div style={{ display: "flex", gap: "8px", marginTop: "14px" }}>
-                          <button style={{ flex: "1", height: "34px", borderRadius: "999px", border: "none", background: "#111827", color: "#fff", fontSize: "12px", fontWeight: "600", cursor: "pointer" }} onClick={accept}>
+                          <button className="im-primary" style={{ flex: "1", height: "34px", borderRadius: "999px", border: "none", background: "var(--primary)", color: "var(--on-primary)", fontSize: "12px", fontWeight: "600", cursor: "pointer" }} onClick={accept}>
                             Accept replacement
                           </button>
-                          <button style={{ flex: "1", height: "34px", borderRadius: "999px", border: "1px solid #d1d5db", background: "#fff", color: "#374151", fontSize: "12px", fontWeight: "600", cursor: "pointer" }} onClick={reject}>
+                          <button className="im-hover1" style={{ flex: "1", height: "34px", borderRadius: "999px", border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text)", fontSize: "12px", fontWeight: "600", cursor: "pointer" }} onClick={reject}>
                             Reject
                           </button>
                         </div>
@@ -701,15 +715,15 @@ export default function IdeaMapScreen(props: Record<string, unknown>) {
                     {" "}
                   </div>
                   {" "}
-                  <div style={{ padding: "16px 20px", borderBottom: "1px solid #e5e7eb" }}>
+                  <div style={{ padding: "16px 20px", borderBottom: "1px solid var(--border)" }}>
                     {" "}
-                    <div style={{ fontSize: "11px", fontWeight: "600", color: "#6b7280", marginBottom: "10px" }}>
+                    <div style={{ fontSize: "11px", fontWeight: "600", color: "var(--muted)", marginBottom: "10px" }}>
                       {"Evidence · "}{cv?.evCount}
                     </div>
                     {" "}
                     {cv?.noEvidence ? (
                       <>
-                        <div style={{ fontSize: "12px", color: "#9ca3af", fontStyle: "italic", marginBottom: "8px" }}>
+                        <div style={{ fontSize: "12px", color: "var(--muted)", fontStyle: "italic", marginBottom: "8px" }}>
                           No evidence yet. This is a guess.
                         </div>
                       </>
@@ -718,12 +732,12 @@ export default function IdeaMapScreen(props: Record<string, unknown>) {
                     <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
                       {(cv?.evidence ?? []).map((ev: any, $index: number) => (
                         <Fragment key={$index}>
-                          <div className="im-hover2" style={{ display: "flex", gap: "10px", alignItems: "flex-start", padding: "8px 10px", borderRadius: "8px", border: "1px solid #e5e7eb", borderLeft: `3px solid ${ev?.accent ?? ""}`, cursor: "pointer" } as CSSProperties} onClick={ev?.select}>
+                          <div className="im-hover2" style={{ display: "flex", gap: "10px", alignItems: "flex-start", padding: "8px 10px", borderRadius: "8px", border: "1px solid var(--border)", borderLeft: `3px solid ${ev?.accent ?? ""}`, cursor: "pointer" } as CSSProperties} onClick={ev?.select}>
                             <div style={{ flex: "1" }}>
                               <div style={{ fontSize: "12px", lineHeight: "1.4" }}>
                                 {ev?.text}
                               </div>
-                              <div style={{ fontSize: "10px", color: "#9ca3af", marginTop: "3px", fontFamily: "'Geist Mono',monospace" }}>
+                              <div style={{ fontSize: "10px", color: "var(--muted)", marginTop: "3px", fontFamily: "'Geist Mono',monospace" }}>
                                 {ev?.source}
                               </div>
                             </div>
@@ -735,15 +749,15 @@ export default function IdeaMapScreen(props: Record<string, unknown>) {
                     {cv?.canEdit ? (
                       <>
                         {" "}
-                        <div style={{ marginTop: "12px", padding: "10px", borderRadius: "8px", background: "#f9fafb" }}>
+                        <div style={{ marginTop: "12px", padding: "10px", borderRadius: "8px", border: "1px solid var(--border)" }}>
                           {" "}
-                          <textarea value={draft} onChange={setDraft} placeholder="Add what you learned… e.g. 7 of 10 testers finished setup" style={{ width: "100%", boxSizing: "border-box", minHeight: "52px", border: "1px solid #e5e7eb", borderRadius: "6px", padding: "8px", fontSize: "12px", resize: "vertical", background: "#fff", outline: "none" }} />
+                          <textarea className="im-input" aria-label="What you learned" value={draft} onChange={setDraft} placeholder="Add what you learned… e.g. 7 of 10 testers finished setup" style={{ width: "100%", boxSizing: "border-box", minHeight: "52px", border: "1px solid var(--border)", borderRadius: "6px", padding: "8px", fontSize: "12px", resize: "vertical", background: "var(--surface-2)", color: "var(--text)" }} />
                           {" "}
                           <div style={{ display: "flex", gap: "6px", marginTop: "8px" }}>
-                            <button style={{ flex: "1", height: "30px", borderRadius: "999px", border: "1px solid #bbf7d0", background: "#fff", color: "#15803d", fontSize: "11px", fontWeight: "600", cursor: "pointer" }} onClick={addFor}>
+                            <button style={{ flex: "1", height: "30px", borderRadius: "999px", border: "1px solid var(--green-line)", background: "var(--surface)", color: "var(--green-text)", fontSize: "11px", fontWeight: "600", cursor: "pointer" }} onClick={addFor}>
                               Supports it
                             </button>
-                            <button style={{ flex: "1", height: "30px", borderRadius: "999px", border: "1px solid #fecaca", background: "#fff", color: "#b91c1c", fontSize: "11px", fontWeight: "600", cursor: "pointer" }} onClick={addAgainst}>
+                            <button style={{ flex: "1", height: "30px", borderRadius: "999px", border: "1px solid var(--red-line)", background: "var(--surface)", color: "var(--red-text)", fontSize: "11px", fontWeight: "600", cursor: "pointer" }} onClick={addAgainst}>
                               Undermines it
                             </button>
                           </div>
@@ -755,27 +769,27 @@ export default function IdeaMapScreen(props: Record<string, unknown>) {
                     {" "}
                   </div>
                   {" "}
-                  <div style={{ padding: "16px 20px", borderBottom: "1px solid #e5e7eb" }}>
+                  <div style={{ padding: "16px 20px", borderBottom: "1px solid var(--border)" }}>
                     {" "}
-                    <div style={{ fontSize: "11px", fontWeight: "600", color: "#6b7280", marginBottom: "8px" }}>
+                    <div style={{ fontSize: "11px", fontWeight: "600", color: "var(--muted)", marginBottom: "8px" }}>
                       Next test
                     </div>
                     {" "}
-                    <div style={{ fontSize: "12px", lineHeight: "1.45", padding: "10px 12px", borderRadius: "8px", background: "#f9fafb" }}>
+                    <div style={{ fontSize: "12px", lineHeight: "1.45", padding: "10px 12px", borderRadius: "8px", background: "var(--surface-2)" }}>
                       {cv?.test}
                     </div>
                     {" "}
                   </div>
                   {" "}
-                  <div style={{ padding: "16px 20px", borderBottom: "1px solid #e5e7eb" }}>
+                  <div style={{ padding: "16px 20px", borderBottom: "1px solid var(--border)" }}>
                     {" "}
-                    <div style={{ fontSize: "11px", fontWeight: "600", color: "#6b7280", marginBottom: "10px" }}>
+                    <div style={{ fontSize: "11px", fontWeight: "600", color: "var(--muted)", marginBottom: "10px" }}>
                       Requires
                     </div>
                     {" "}
                     {cv?.noResources ? (
                       <>
-                        <div style={{ fontSize: "12px", color: "#9ca3af" }}>
+                        <div style={{ fontSize: "12px", color: "var(--muted)" }}>
                           {"Nothing beyond the team's time."}
                         </div>
                       </>
@@ -796,22 +810,22 @@ export default function IdeaMapScreen(props: Record<string, unknown>) {
                   {cv?.hasLinks ? (
                     <>
                       {" "}
-                      <div style={{ padding: "16px 20px", borderBottom: "1px solid #e5e7eb" }}>
+                      <div style={{ padding: "16px 20px", borderBottom: "1px solid var(--border)" }}>
                         {" "}
-                        <div style={{ fontSize: "11px", fontWeight: "600", color: "#6b7280", marginBottom: "10px" }}>
+                        <div style={{ fontSize: "11px", fontWeight: "600", color: "var(--muted)", marginBottom: "10px" }}>
                           Connected choices
                         </div>
                         {" "}
                         <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
                           {(cv?.links ?? []).map((l: any, $index: number) => (
                             <Fragment key={$index}>
-                              <div className="im-hover2" style={{ display: "flex", alignItems: "center", gap: "10px", padding: "8px 10px", borderRadius: "8px", border: "1px solid #e5e7eb", cursor: "pointer" }} onClick={l?.select}>
+                              <div className="im-hover2" style={{ display: "flex", alignItems: "center", gap: "10px", padding: "8px 10px", borderRadius: "8px", border: "1px solid var(--border)", cursor: "pointer" }} onClick={l?.select}>
                                 <span style={{ width: "8px", height: "8px", borderRadius: "50%", background: `${l?.dot ?? ""}`, border: `1px solid ${l?.dotBorder ?? ""}`, boxSizing: "border-box", flex: "none" } as CSSProperties} />
                                 <div style={{ flex: "1", minWidth: "0" }}>
                                   <div style={{ fontSize: "12px", fontWeight: "500" }}>
                                     {l?.text}
                                   </div>
-                                  <div style={{ fontSize: "10px", color: "#6b7280" }}>
+                                  <div style={{ fontSize: "10px", color: "var(--muted)" }}>
                                     {l?.note}
                                   </div>
                                 </div>
@@ -827,7 +841,7 @@ export default function IdeaMapScreen(props: Record<string, unknown>) {
                   {" "}
                   <div style={{ padding: "16px 20px" }}>
                     {" "}
-                    <div style={{ fontSize: "11px", fontWeight: "600", color: "#6b7280", marginBottom: "10px" }}>
+                    <div style={{ fontSize: "11px", fontWeight: "600", color: "var(--muted)", marginBottom: "10px" }}>
                       History
                     </div>
                     {" "}
@@ -835,14 +849,14 @@ export default function IdeaMapScreen(props: Record<string, unknown>) {
                       {(cv?.history ?? []).map((h: any, $index: number) => (
                         <Fragment key={$index}>
                           <div style={{ display: "flex", gap: "12px", cursor: "pointer" }} onClick={h?.select} title="Jump to this week">
-                            <div style={{ fontSize: "10px", fontFamily: "'Geist Mono',monospace", color: "#9ca3af", flex: "none", width: "36px", paddingTop: "2px" }}>
+                            <div style={{ fontSize: "10px", fontFamily: "'Geist Mono',monospace", color: "var(--muted)", flex: "none", width: "36px", paddingTop: "2px" }}>
                               {h?.week}
                             </div>
                             <div style={{ flex: "1" }}>
                               <div style={{ fontSize: "12px", fontWeight: "600", color: `${h?.color ?? ""}` } as CSSProperties}>
                                 {h?.type}
                               </div>
-                              <div style={{ fontSize: "12px", color: "#4b5563", lineHeight: "1.4" }}>
+                              <div style={{ fontSize: "12px", color: "var(--muted)", lineHeight: "1.4" }}>
                                 {h?.note}
                               </div>
                             </div>
@@ -854,7 +868,7 @@ export default function IdeaMapScreen(props: Record<string, unknown>) {
                     {cv?.canRemove ? (
                       <>
                         {" "}
-                        <button style={{ marginTop: "16px", width: "100%", height: "32px", borderRadius: "999px", border: "1px solid #e5e7eb", background: "#fff", color: "#6b7280", fontSize: "11px", fontWeight: "600", cursor: "pointer" }} onClick={removeChoice}>
+                        <button className="im-hover1" style={{ marginTop: "16px", width: "100%", height: "32px", borderRadius: "999px", border: "1px solid var(--border)", background: "var(--surface)", color: "var(--muted)", fontSize: "11px", fontWeight: "600", cursor: "pointer" }} onClick={removeChoice}>
                           Remove this choice
                         </button>
                         {" "}
@@ -870,9 +884,9 @@ export default function IdeaMapScreen(props: Record<string, unknown>) {
               <>
                 <div style={{ animation: "im-panelIn .35s cubic-bezier(.2,.8,.2,1) both" }}>
                   {" "}
-                  <div style={{ padding: "20px 20px 16px", borderBottom: "1px solid #e5e7eb" }}>
+                  <div style={{ padding: "20px 20px 16px", borderBottom: "1px solid var(--border)" }}>
                     {" "}
-                    <div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "10px", fontFamily: "'Geist Mono',monospace", color: "#6b7280", textTransform: "uppercase", letterSpacing: ".06em", marginBottom: "8px" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "10px", fontFamily: "'Geist Mono',monospace", color: "var(--muted)", textTransform: "uppercase", letterSpacing: ".06em", marginBottom: "8px" }}>
                       <span style={{ cursor: "pointer" }} onClick={selIdea}>
                         Overview
                       </span>
@@ -898,36 +912,36 @@ export default function IdeaMapScreen(props: Record<string, unknown>) {
                       {ev?.text}
                     </div>
                     {" "}
-                    <div style={{ fontSize: "11px", color: "#6b7280", marginTop: "8px", fontFamily: "'Geist Mono',monospace" }}>
+                    <div style={{ fontSize: "11px", color: "var(--muted)", marginTop: "8px", fontFamily: "'Geist Mono',monospace" }}>
                       {ev?.source}
                     </div>
                     {" "}
                   </div>
                   {" "}
-                  <div style={{ padding: "16px 20px", borderBottom: "1px solid #e5e7eb" }}>
+                  <div style={{ padding: "16px 20px", borderBottom: "1px solid var(--border)" }}>
                     {" "}
-                    <div style={{ fontSize: "11px", fontWeight: "600", color: "#6b7280", marginBottom: "10px" }}>
+                    <div style={{ fontSize: "11px", fontWeight: "600", color: "var(--muted)", marginBottom: "10px" }}>
                       What it did
                     </div>
                     {" "}
-                    <div style={{ fontSize: "12px", lineHeight: "1.45", padding: "10px 12px", borderRadius: "8px", background: "#f9fafb" }}>
+                    <div style={{ fontSize: "12px", lineHeight: "1.45", padding: "10px 12px", borderRadius: "8px", background: "var(--surface-2)" }}>
                       {ev?.impact}
                     </div>
                     {" "}
                   </div>
                   {" "}
-                  <div style={{ padding: "16px 20px", borderBottom: "1px solid #e5e7eb" }}>
+                  <div style={{ padding: "16px 20px", borderBottom: "1px solid var(--border)" }}>
                     {" "}
-                    <div style={{ fontSize: "11px", fontWeight: "600", color: "#6b7280", marginBottom: "10px" }}>
+                    <div style={{ fontSize: "11px", fontWeight: "600", color: "var(--muted)", marginBottom: "10px" }}>
                       Affects
                     </div>
                     {" "}
-                    <div className="im-hover2" style={{ display: "flex", alignItems: "center", gap: "10px", padding: "8px 10px", borderRadius: "8px", border: "1px solid #e5e7eb", cursor: "pointer" }} onClick={ev?.selectChoice}>
+                    <div className="im-hover2" style={{ display: "flex", alignItems: "center", gap: "10px", padding: "8px 10px", borderRadius: "8px", border: "1px solid var(--border)", cursor: "pointer" }} onClick={ev?.selectChoice}>
                       <span style={{ width: "8px", height: "8px", borderRadius: "50%", background: `${ev?.dot ?? ""}`, border: `1px solid ${ev?.dotBorder ?? ""}`, boxSizing: "border-box", flex: "none" } as CSSProperties} />
                       <div style={{ flex: "1", fontSize: "12px", fontWeight: "500" }}>
                         {ev?.choiceText}
                       </div>
-                      <span style={{ fontSize: "10px", color: "#9ca3af" }}>
+                      <span style={{ fontSize: "10px", color: "var(--muted)" }}>
                         →
                       </span>
                     </div>
@@ -936,13 +950,13 @@ export default function IdeaMapScreen(props: Record<string, unknown>) {
                   {" "}
                   <div style={{ padding: "16px 20px" }}>
                     {" "}
-                    <div style={{ fontSize: "11px", fontWeight: "600", color: "#6b7280", marginBottom: "10px" }}>
+                    <div style={{ fontSize: "11px", fontWeight: "600", color: "var(--muted)", marginBottom: "10px" }}>
                       Other evidence on this choice
                     </div>
                     {" "}
                     {ev?.noSiblings ? (
                       <>
-                        <div style={{ fontSize: "12px", color: "#9ca3af" }}>
+                        <div style={{ fontSize: "12px", color: "var(--muted)" }}>
                           This is the only evidence so far.
                         </div>
                       </>
@@ -951,7 +965,7 @@ export default function IdeaMapScreen(props: Record<string, unknown>) {
                     <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
                       {(ev?.siblings ?? []).map((s: any, $index: number) => (
                         <Fragment key={$index}>
-                          <div className="im-hover2" style={{ padding: "8px 10px", borderRadius: "8px", border: "1px solid #e5e7eb", borderLeft: `3px solid ${s?.accent ?? ""}`, cursor: "pointer", fontSize: "12px", lineHeight: "1.4" } as CSSProperties} onClick={s?.select}>
+                          <div className="im-hover2" style={{ padding: "8px 10px", borderRadius: "8px", border: "1px solid var(--border)", borderLeft: `3px solid ${s?.accent ?? ""}`, cursor: "pointer", fontSize: "12px", lineHeight: "1.4" } as CSSProperties} onClick={s?.select}>
                             {s?.text}
                           </div>
                         </Fragment>
@@ -967,9 +981,9 @@ export default function IdeaMapScreen(props: Record<string, unknown>) {
               <>
                 <div style={{ animation: "im-panelIn .35s cubic-bezier(.2,.8,.2,1) both" }}>
                   {" "}
-                  <div style={{ padding: "20px 20px 16px", borderBottom: "1px solid #e5e7eb" }}>
+                  <div style={{ padding: "20px 20px 16px", borderBottom: "1px solid var(--border)" }}>
                     {" "}
-                    <div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "10px", fontFamily: "'Geist Mono',monospace", color: "#6b7280", textTransform: "uppercase", letterSpacing: ".06em", marginBottom: "8px" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "10px", fontFamily: "'Geist Mono',monospace", color: "var(--muted)", textTransform: "uppercase", letterSpacing: ".06em", marginBottom: "8px" }}>
                       <span style={{ cursor: "pointer" }} onClick={selIdea}>
                         Overview
                       </span>
@@ -989,14 +1003,14 @@ export default function IdeaMapScreen(props: Record<string, unknown>) {
                       {rv?.name}
                     </div>
                     {" "}
-                    <div style={{ fontSize: "12px", color: "#6b7280", marginTop: "4px", lineHeight: "1.45" }}>
+                    <div style={{ fontSize: "12px", color: "var(--muted)", marginTop: "4px", lineHeight: "1.45" }}>
                       {rv?.summary}
                     </div>
                     {" "}
                     {rv?.missing ? (
                       <>
                         {" "}
-                        <button style={{ marginTop: "14px", width: "100%", height: "34px", borderRadius: "999px", border: "none", background: "#111827", color: "#fff", fontSize: "12px", fontWeight: "600", cursor: "pointer" }} onClick={rv?.acquire}>
+                        <button className="im-primary" style={{ marginTop: "14px", width: "100%", height: "34px", borderRadius: "999px", border: "none", background: "var(--primary)", color: "var(--on-primary)", fontSize: "12px", fontWeight: "600", cursor: "pointer" }} onClick={rv?.acquire}>
                           Mark as acquired
                         </button>
                         {" "}
@@ -1005,26 +1019,26 @@ export default function IdeaMapScreen(props: Record<string, unknown>) {
                     {" "}
                   </div>
                   {" "}
-                  <div style={{ padding: "16px 20px", borderBottom: "1px solid #e5e7eb" }}>
+                  <div style={{ padding: "16px 20px", borderBottom: "1px solid var(--border)" }}>
                     {" "}
-                    <div style={{ fontSize: "11px", fontWeight: "600", color: "#6b7280", marginBottom: "10px" }}>
+                    <div style={{ fontSize: "11px", fontWeight: "600", color: "var(--muted)", marginBottom: "10px" }}>
                       {"Needed by · "}{rv?.n}
                     </div>
                     {" "}
                     <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
                       {(rv?.choices ?? []).map((c: any, $index: number) => (
                         <Fragment key={$index}>
-                          <div className="im-hover2" style={{ display: "flex", alignItems: "center", gap: "10px", padding: "8px 10px", borderRadius: "8px", border: "1px solid #e5e7eb", cursor: "pointer" }} onClick={c?.select}>
+                          <div className="im-hover2" style={{ display: "flex", alignItems: "center", gap: "10px", padding: "8px 10px", borderRadius: "8px", border: "1px solid var(--border)", cursor: "pointer" }} onClick={c?.select}>
                             <span style={{ width: "8px", height: "8px", borderRadius: "50%", background: `${c?.dot ?? ""}`, border: `1px solid ${c?.dotBorder ?? ""}`, boxSizing: "border-box", flex: "none" } as CSSProperties} />
                             <div style={{ flex: "1", minWidth: "0" }}>
                               <div style={{ fontSize: "12px", fontWeight: "500" }}>
                                 {c?.text}
                               </div>
-                              <div style={{ fontSize: "10px", color: "#6b7280" }}>
+                              <div style={{ fontSize: "10px", color: "var(--muted)" }}>
                                 {c?.sub}
                               </div>
                             </div>
-                            <span style={{ fontSize: "10px", color: "#9ca3af" }}>
+                            <span style={{ fontSize: "10px", color: "var(--muted)" }}>
                               →
                             </span>
                           </div>
@@ -1036,7 +1050,7 @@ export default function IdeaMapScreen(props: Record<string, unknown>) {
                   {" "}
                   <div style={{ padding: "16px 20px" }}>
                     {" "}
-                    <div style={{ fontSize: "11px", fontWeight: "600", color: "#6b7280", marginBottom: "10px" }}>
+                    <div style={{ fontSize: "11px", fontWeight: "600", color: "var(--muted)", marginBottom: "10px" }}>
                       All resources
                     </div>
                     {" "}
@@ -1048,7 +1062,7 @@ export default function IdeaMapScreen(props: Record<string, unknown>) {
                             <div style={{ flex: "1", fontSize: "12px", fontWeight: `${r?.weight ?? ""}` } as CSSProperties}>
                               {r?.name}
                             </div>
-                            <div style={{ fontSize: "10px", color: "#6b7280" }}>
+                            <div style={{ fontSize: "10px", color: "var(--muted)" }}>
                               {r?.sub}
                             </div>
                           </div>
