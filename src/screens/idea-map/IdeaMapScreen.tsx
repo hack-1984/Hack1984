@@ -24,7 +24,7 @@ export default function IdeaMapScreen(props: Record<string, unknown>) {
   // clientOnly: which idea to show comes from the URL and this browser's saved ideas.
   const v = useLogic(Logic, props, { clientOnly: true });
   if (!v) return <div className="pg-im" />;
-  const { showPillar, panelOpen, panelW, occupied, closePanel, setPanelW, setDragW, loading, missing, widget, setWidget, showBadge, ideaId, wmem, setWmem, pillarPct, buildIdea, applyWidget, openOverview, team, saveTeam, focus, ideaInitial, ideaName, ideaPitch, now, accept, addAgainst, addFor, choices, clearSel, counts, curves, cv, draft, edges, ev, goNow, hasToast, hoverIdea, hoverOff, hoverOn, evCard, evCardOpen, ideaShadow, isChoice, isEvidence, isIdea, isPast, isPillar, isResource, orbit, ov, paneRef, pctRef, particles, pillars, pv, reject, removeChoice, replay, replayLabel, rv, selIdea, setDraft, showHint, toast, toggleAll, toggleAllLabel, week, weeks, worldRef, zoomFit, zoomIn, zoomOut } = v;
+  const { showPillar, panelOpen, panelW, occupied, closePanel, setPanelW, setDragW, loading, missing, widget, setWidget, showBadge, ideaId, wmem, setWmem, pillarPct, buildIdea, applyWidget, openOverview, team, saveTeam, focus, ideaInitial, ideaName, ideaPitch, now, accept, addAgainst, addFor, choices, clearSel, counts, curves, cv, draft, edges, ev, goNow, hasToast, hoverIdea, hoverOff, hoverOn, evCard, evCardOpen, ideaShadow, isChoice, isEvidence, isIdea, isPast, isPillar, orbit, ov, paneRef, pctRef, particles, pillars, pv, reject, removeChoice, replay, replayLabel, selIdea, setDraft, showHint, toast, toggleAll, toggleAllLabel, week, weeks, worldRef, zoomFit, zoomIn, zoomOut } = v;
   // App: no canned idea. While the stored idea loads, or if it isn't this account's, say so instead of drawing an empty map.
   if (loading || missing) {
     return (
@@ -501,38 +501,6 @@ export default function IdeaMapScreen(props: Record<string, unknown>) {
                     {" "}
                   </div>
                   {" "}
-                  <div style={{ padding: "16px 20px", borderBottom: "1px solid var(--border)" }}>
-                    {" "}
-                    <div style={{ fontSize: "11px", fontWeight: "600", color: "var(--muted)", marginBottom: "10px" }}>
-                      Resource gaps
-                    </div>
-                    {" "}
-                    {ov?.noGaps ? (
-                      <>
-                        <div style={{ fontSize: "12px", color: "var(--muted)" }}>
-                          Every active choice is covered.
-                        </div>
-                      </>
-                    ) : null}
-                    {" "}
-                    <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                      {(ov?.gaps ?? []).map((g: any, $index: number) => (
-                        <Fragment key={$index}>
-                          <div className="im-hover1" style={{ display: "flex", alignItems: "center", gap: "10px", cursor: "pointer", padding: "3px 6px", margin: "0 -6px", borderRadius: "6px" }} onClick={g?.select}>
-                            <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "var(--red)", flex: "none" }} />
-                            <div style={{ flex: "1", fontSize: "12px", fontWeight: "500" }}>
-                              {g?.name}
-                            </div>
-                            <div style={{ fontSize: "10px", color: "var(--muted)" }}>
-                              {"blocks "}{g?.n}
-                            </div>
-                          </div>
-                        </Fragment>
-                      ))}
-                    </div>
-                    {" "}
-                  </div>
-                  {" "}
                   <div style={{ padding: "16px 20px" }}>
                     {" "}
                     <div style={{ fontSize: "11px", fontWeight: "600", color: "var(--muted)", marginBottom: "10px" }}>
@@ -683,32 +651,6 @@ export default function IdeaMapScreen(props: Record<string, unknown>) {
                             </div>
                             {" "}
                           </div>
-                        </Fragment>
-                      ))}
-                    </div>
-                    {" "}
-                  </div>
-                  {" "}
-                  <div style={{ padding: "16px 20px", borderBottom: "1px solid var(--border)" }}>
-                    {" "}
-                    <div style={{ fontSize: "11px", fontWeight: "600", color: "var(--muted)", marginBottom: "10px" }}>
-                      Resources
-                    </div>
-                    {" "}
-                    {pv?.noRes ? (
-                      <>
-                        <div style={{ fontSize: "12px", color: "var(--muted)" }}>
-                          {"Nothing beyond the team's time."}
-                        </div>
-                      </>
-                    ) : null}
-                    {" "}
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
-                      {(pv?.resources ?? []).map((r: any, $index: number) => (
-                        <Fragment key={$index}>
-                          <span style={{ fontSize: "11px", padding: "4px 10px", borderRadius: "999px", border: `1px solid ${r?.border ?? ""}`, color: `${r?.fg ?? ""}`, cursor: "pointer" } as CSSProperties} onClick={r?.select}>
-                            {r?.name}
-                          </span>
                         </Fragment>
                       ))}
                     </div>
@@ -907,32 +849,6 @@ export default function IdeaMapScreen(props: Record<string, unknown>) {
                     {" "}
                   </div>
                   {" "}
-                  <div style={{ padding: "16px 20px", borderBottom: "1px solid var(--border)" }}>
-                    {" "}
-                    <div style={{ fontSize: "11px", fontWeight: "600", color: "var(--muted)", marginBottom: "10px" }}>
-                      Requires
-                    </div>
-                    {" "}
-                    {cv?.noResources ? (
-                      <>
-                        <div style={{ fontSize: "12px", color: "var(--muted)" }}>
-                          {"Nothing beyond the team's time."}
-                        </div>
-                      </>
-                    ) : null}
-                    {" "}
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
-                      {(cv?.resources ?? []).map((r: any, $index: number) => (
-                        <Fragment key={$index}>
-                          <span style={{ fontSize: "11px", padding: "4px 10px", borderRadius: "999px", border: `1px solid ${r?.border ?? ""}`, color: `${r?.fg ?? ""}`, cursor: "pointer" } as CSSProperties} onClick={r?.select}>
-                            {r?.name}
-                          </span>
-                        </Fragment>
-                      ))}
-                    </div>
-                    {" "}
-                  </div>
-                  {" "}
                   {cv?.hasLinks ? (
                     <>
                       {" "}
@@ -1093,104 +1009,6 @@ export default function IdeaMapScreen(props: Record<string, unknown>) {
                         <Fragment key={$index}>
                           <div className="im-hover2" style={{ padding: "8px 10px", borderRadius: "8px", borderStyle: "solid", borderWidth: "1px 1px 1px 3px", borderColor: `var(--border) var(--border) var(--border) ${s?.accent ?? ""}`, cursor: "pointer", fontSize: "12px", lineHeight: "1.4" } as CSSProperties} onClick={s?.select}>
                             {s?.text}
-                          </div>
-                        </Fragment>
-                      ))}
-                    </div>
-                    {" "}
-                  </div>
-                  {" "}
-                </div>
-              </>
-            ) : null}
-            {isResource ? (
-              <>
-                <div style={{ animation: "im-panelIn .35s cubic-bezier(.2,.8,.2,1) both" }}>
-                  {" "}
-                  <div style={{ padding: "20px 20px 16px", borderBottom: "1px solid var(--border)" }}>
-                    {" "}
-                    <div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "10px", fontFamily: "'Geist Mono',monospace", color: "var(--muted)", textTransform: "uppercase", letterSpacing: ".06em", marginBottom: "8px" }}>
-                      <span style={{ cursor: "pointer" }} onClick={selIdea}>
-                        Overview
-                      </span>
-                      <span>
-                        ›
-                      </span>
-                      <span>
-                        Resource
-                      </span>
-                    </div>
-                    {" "}
-                    <span style={{ fontSize: "10px", fontWeight: "600", padding: "2px 8px", borderRadius: "999px", background: `${rv?.chipBg ?? ""}`, color: `${rv?.chipFg ?? ""}` } as CSSProperties}>
-                      {rv?.statusLabel}
-                    </span>
-                    {" "}
-                    <div style={{ fontSize: "18px", fontWeight: "600", marginTop: "10px" }}>
-                      {rv?.name}
-                    </div>
-                    {" "}
-                    <div style={{ fontSize: "12px", color: "var(--muted)", marginTop: "4px", lineHeight: "1.45" }}>
-                      {rv?.summary}
-                    </div>
-                    {" "}
-                    {rv?.missing ? (
-                      <>
-                        {" "}
-                        <button className="im-primary" style={{ marginTop: "14px", width: "100%", height: "34px", borderRadius: "999px", border: "none", background: "var(--primary)", color: "var(--on-primary)", fontSize: "12px", fontWeight: "600", cursor: "pointer" }} onClick={rv?.acquire}>
-                          Mark as acquired
-                        </button>
-                        {" "}
-                      </>
-                    ) : null}
-                    {" "}
-                  </div>
-                  {" "}
-                  <div style={{ padding: "16px 20px", borderBottom: "1px solid var(--border)" }}>
-                    {" "}
-                    <div style={{ fontSize: "11px", fontWeight: "600", color: "var(--muted)", marginBottom: "10px" }}>
-                      {"Needed by · "}{rv?.n}
-                    </div>
-                    {" "}
-                    <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-                      {(rv?.choices ?? []).map((c: any, $index: number) => (
-                        <Fragment key={$index}>
-                          <div className="im-hover2" style={{ display: "flex", alignItems: "center", gap: "10px", padding: "8px 10px", borderRadius: "8px", border: "1px solid var(--border)", cursor: "pointer" }} onClick={c?.select}>
-                            <span style={{ width: "8px", height: "8px", borderRadius: "50%", background: `${c?.dot ?? ""}`, border: `1px solid ${c?.dotBorder ?? ""}`, boxSizing: "border-box", flex: "none" } as CSSProperties} />
-                            <div style={{ flex: "1", minWidth: "0" }}>
-                              <div style={{ fontSize: "12px", fontWeight: "500" }}>
-                                {c?.text}
-                              </div>
-                              <div style={{ fontSize: "10px", color: "var(--muted)" }}>
-                                {c?.sub}
-                              </div>
-                            </div>
-                            <span style={{ fontSize: "10px", color: "var(--muted)" }}>
-                              →
-                            </span>
-                          </div>
-                        </Fragment>
-                      ))}
-                    </div>
-                    {" "}
-                  </div>
-                  {" "}
-                  <div style={{ padding: "16px 20px" }}>
-                    {" "}
-                    <div style={{ fontSize: "11px", fontWeight: "600", color: "var(--muted)", marginBottom: "10px" }}>
-                      All resources
-                    </div>
-                    {" "}
-                    <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-                      {(rv?.all ?? []).map((r: any, $index: number) => (
-                        <Fragment key={$index}>
-                          <div className="im-hover1" style={{ display: "flex", alignItems: "center", gap: "10px", cursor: "pointer", padding: "4px 6px", margin: "0 -6px", borderRadius: "6px" }} onClick={r?.select}>
-                            <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: `${r?.dot ?? ""}`, flex: "none" } as CSSProperties} />
-                            <div style={{ flex: "1", fontSize: "12px", fontWeight: `${r?.weight ?? ""}` } as CSSProperties}>
-                              {r?.name}
-                            </div>
-                            <div style={{ fontSize: "10px", color: "var(--muted)" }}>
-                              {r?.sub}
-                            </div>
                           </div>
                         </Fragment>
                       ))}

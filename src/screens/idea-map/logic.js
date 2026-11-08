@@ -3,7 +3,7 @@
 // colors come from the Sprout theme variables (globals.css), and there is no canned idea: the map
 // shows a saved idea (/map?id=…, else the most recent, else it sends you to plant one).
 //
-// Data model: the stored Idea (src/lib/db) is the source of truth. The map's choices/links/resources
+// Data model: the stored Idea (src/lib/db) is the source of truth. The map's choices and links
 // are derived from it with toMapModel(); every founder or widget action is a TreeUpdate applied with
 // applyUpdates() and saved, then the map is re-derived. Nothing map-shaped is persisted.
 /* eslint-disable */
@@ -115,7 +115,7 @@ class Component extends DCLogic {
     super(p);
     this.idea = null; this.ideaId = null; this.team = null; this.now = 1; this.name = ''; this.pitch = '';
     this.state = { sel:null, hoverIdea:false, hover:null, draft:'', toast:null, expanded:[], replaying:false, loading:true, missing:false, discuss:null, nodeBusy:null,
-      choices: [], resources: [], links: [], wmem: {}, week: 1, widget: 'overview', flash: null, pinEv: null, panelOpen: true, panelW: readPanelW() };
+      choices: [], links: [], wmem: {}, week: 1, widget: 'overview', flash: null, pinEv: null, panelOpen: true, panelW: readPanelW() };
   }
   // The label to SHOW for a pillar the map holds internally as a startup
   // label: "Customer" stays "Customer" on a startup, becomes "People served"
@@ -125,7 +125,7 @@ class Component extends DCLogic {
   derive(idea) {
     const m = toMapModel(idea, this.team);
     this.idea = idea; this.ideaId = idea.id; this.now = m.now; this.name = m.title; this.pitch = m.description || idea.pitch;
-    return { choices: m.choices.map(c => ({ ...c, pillar: LABEL[c.pillarKey] })), resources: m.resources, links: m.links, wmem: idea.widgets || {}, loading: false, missing: false };
+    return { choices: m.choices.map(c => ({ ...c, pillar: LABEL[c.pillarKey] })), links: m.links, wmem: idea.widgets || {}, loading: false, missing: false };
   }
   // First load of an idea: derive and reset the view.
   load(idea) { return { ...this.derive(idea), week: this.now, sel: null, expanded: [], widget: 'overview', flash: null, panelOpen: true }; }
@@ -276,7 +276,7 @@ class Component extends DCLogic {
     if (this.state.hover || this.state.hoverIdea) this.setState({ hover: null, hoverIdea: false });
   }
   say(msg) { clearTimeout(this._toastT); this.setState({toast: msg}); this._toastT = setTimeout(() => this.setState({toast:null}), 2600); }
-  pick(sel) { return (e) => { if (e && e.stopPropagation) e.stopPropagation(); this.setState(s => { let expanded = s.expanded; const cid = sel && (sel.t === 'choice' ? sel.id : sel.t === 'evidence' ? sel.cid : null); if (cid) { const c = s.choices.find(x => x.id === cid); if (c && !expanded.includes(c.pillar)) expanded = [...expanded, c.pillar]; } if (sel && sel.t === 'pillar' && !expanded.includes(sel.id)) expanded = [...expanded, sel.id]; if (sel && sel.t === 'resource') { const ps = s.choices.filter(c => c.res.includes(sel.id)).map(c => c.pillar); expanded = [...new Set([...expanded, ...ps])]; } return { sel, draft:'', expanded, widget: 'overview', panelOpen: true }; }, () => this.reveal(this.state.expanded)); }; }
+  pick(sel) { return (e) => { if (e && e.stopPropagation) e.stopPropagation(); this.setState(s => { let expanded = s.expanded; const cid = sel && (sel.t === 'choice' ? sel.id : sel.t === 'evidence' ? sel.cid : null); if (cid) { const c = s.choices.find(x => x.id === cid); if (c && !expanded.includes(c.pillar)) expanded = [...expanded, c.pillar]; } if (sel && sel.t === 'pillar' && !expanded.includes(sel.id)) expanded = [...expanded, sel.id]; return { sel, draft:'', expanded, widget: 'overview', panelOpen: true }; }, () => this.reveal(this.state.expanded)); }; }
   hoverOn(k) { return () => { if (!this._dragging) this.setState({ hover: k }); }; }
   hoverOff(k) { return () => this.setState(s => s.hover === k ? { hover: null } : null); }
   togglePillar(p) { return (e) => { e.stopPropagation(); this.setState(s => { const open = s.expanded.includes(p); const selected = s.sel && s.sel.t === 'pillar' && s.sel.id === p; if (open && selected) return { expanded: s.expanded.filter(x => x !== p), sel: null }; return { expanded: open ? s.expanded : [...s.expanded, p], sel: {t:'pillar', id:p}, draft:'', widget: 'overview', panelOpen: true }; }, () => this.reveal([p])); }; }
@@ -289,7 +289,7 @@ class Component extends DCLogic {
   renderVals() {
     const showRemoved = this.props.showRemoved ?? true;
     const dim = this.props.dimUnrelated ?? true;
-    const { sel, week: W, choices: allC, resources: RES } = this.state;
+    const { sel, week: W, choices: allC } = this.state;
     const NOW = this.now, LINKS = this.state.links;
     const isPast = W < NOW;
     const view = allC.map(c => ({ ...c, status: statusAt(c, W), ev: c.ev.filter(e => e.wk <= W), hist: c.hist.filter(h => h.wk <= W) })).filter(c => c.status && (showRemoved || c.status !== 'removed'));
@@ -299,17 +299,15 @@ class Component extends DCLogic {
     const mode = !sel ? 'idea' : sel.t;
     const selC = (mode === 'choice' && find(sel.id)) || (mode === 'evidence' && find(sel.cid)) || null;
     const selPillar = mode === 'pillar' ? sel.id : selC ? selC.pillar : null;
-    const selRes = mode === 'resource' ? RES.find(r => r.id === sel.id) : null;
     const related = new Set();
     if (selC) { related.add(selC.id); LINKS.forEach(([a, b]) => { if (a === selC.id) related.add(b); if (b === selC.id) related.add(a); }); }
     if (mode === 'pillar') view.filter(c => c.pillar === sel.id).forEach(c => related.add(c.id));
-    if (selRes) view.filter(c => c.res.includes(selRes.id)).forEach(c => related.add(c.id));
     const focused = mode !== 'idea';
     const isDim = id => dim && focused && !related.has(id);
 
     const H = this.state.hover; const hov = (key, base) => !H || !H.startsWith('p:') ? base : H === key ? base * 1.1 : base * .8;
     const pillarAng = {}; PILLARS.forEach((p, i) => pillarAng[p] = i * 45);
-    const pillarActive0 = p => selPillar === p || (selRes && view.some(c => c.pillar === p && c.res.includes(selRes.id)));
+    const pillarActive0 = p => selPillar === p;
     const pR = p => (focused && !pillarActive0(p)) ? R1 * .66 : R1;
     const pPos = p => pol(pR(p), pillarAng[p]);
     const rows = [];
@@ -331,11 +329,9 @@ class Component extends DCLogic {
 
     const orbit = []; const seen = {}; const uniq = k => (seen[k] = (seen[k] || 0) + 1) > 1 ? k + '#' + seen[k] : k;
     const evItem = (c, e, i) => { const key = c.id + ':' + i; return { text: e.text, kind: e.k === 'support' ? 'for' : 'against', accent: e.k === 'support' ? 'var(--green)' : 'var(--red)', kindColor: e.k === 'support' ? 'var(--green-text)' : 'var(--red-text)', key, ev: e, choice: c, enter: this.hoverOn('e:' + key), leave: this.hoverOff('e:' + key), select: (ev) => { ev.stopPropagation(); this.setState(s => ({ pinEv: s.pinEv && s.pinEv.cid === c.id && s.pinEv.idx === i ? null : { cid: c.id, idx: i } })); } }; };
-    const resItem = (r) => ({ text: r.name, kind: r.have ? 'have' : 'missing', accent: r.have ? 'var(--muted)' : 'var(--red)', kindColor: r.have ? 'var(--muted)' : 'var(--red-text)', key: 'r:' + r.id, select: this.pick({t:'resource', id:r.id}) });
-    const fan = (items, cx, cy, ang, step) => items.forEach((it, i) => { const a = ang + (i - (items.length - 1) / 2) * step; const [x, y] = pol(R3x, a); const active = (mode === 'evidence' && it.key === sel.cid + ':' + sel.idx) || (mode === 'resource' && it.key === 'r:' + sel.id); const oid = uniq('o:' + it.key); orbit.push({ ...it, id: oid, x, y, delay: (i * .06) + 's', scale: 1, enter: it.enter || null, leave: it.leave || null, border: active ? 'var(--accent)' : 'var(--border)', shadow: active ? ACTIVE_SHADOW : '0 2px 8px var(--shadow)' }); edges.push(seg([cx, cy], [x, y], { id: 'f' + oid, stroke: active ? 'var(--accent)' : 'var(--border)', w: 1.25, dash: it.key.startsWith('r:'), op: .85 })); });
-    if (selC) { const r = rowOf(selC.id); if (r) fan([...selC.ev.map((e, i) => evItem(selC, e, i)), ...selC.res.map(id => resItem(RES.find(x => x.id === id)))], r.x, r.y, r.ang, 15); }
-    if (mode === 'pillar') { view.filter(c => c.pillar === sel.id).forEach(c => { const r = rowOf(c.id); const items = [...c.ev.map((e, i) => evItem(c, e, i)), ...c.res.map(id => resItem(RES.find(x => x.id === id)))].slice(0, 4); fan(items, r.x, r.y, r.ang, 12); }); }
-    if (selRes) { const users = view.filter(c => c.res.includes(selRes.id)); if (users.length) { const angs = users.map(c => rowOf(c.id).ang); const mean = angs.reduce((a, b) => a + b, 0) / angs.length; const [x, y] = pol(R3x, mean); orbit.push({ ...resItem(selRes), id: 'o:res', x, y, delay: '0s', scale: 1, enter: null, leave: null, border: 'var(--accent)', shadow: ACTIVE_SHADOW }); users.forEach(c => { const r = rowOf(c.id); edges.push(seg([r.x, r.y], [x, y], { id: 'ue:' + c.id, stroke: 'var(--accent)', w: 1.25, dash: true, op: .8 })); }); } }
+    const fan = (items, cx, cy, ang, step) => items.forEach((it, i) => { const a = ang + (i - (items.length - 1) / 2) * step; const [x, y] = pol(R3x, a); const active = mode === 'evidence' && it.key === sel.cid + ':' + sel.idx; const oid = uniq('o:' + it.key); orbit.push({ ...it, id: oid, x, y, delay: (i * .06) + 's', scale: 1, enter: it.enter || null, leave: it.leave || null, border: active ? 'var(--accent)' : 'var(--border)', shadow: active ? ACTIVE_SHADOW : '0 2px 8px var(--shadow)' }); edges.push(seg([cx, cy], [x, y], { id: 'f' + oid, stroke: active ? 'var(--accent)' : 'var(--border)', w: 1.25, dash: false, op: .85 })); });
+    if (selC) { const r = rowOf(selC.id); if (r) fan(selC.ev.map((e, i) => evItem(selC, e, i)), r.x, r.y, r.ang, 15); }
+    if (mode === 'pillar') { view.filter(c => c.pillar === sel.id).forEach(c => { const r = rowOf(c.id); const items = c.ev.map((e, i) => evItem(c, e, i)).slice(0, 4); fan(items, r.x, r.y, r.ang, 12); }); }
 
     // App: the Research card. Pinned by clicking an evidence card, previewed by hovering one. It lists every
     // source behind that evidence's choice, like the landing page's card; rows open the evidence when pinned.
@@ -375,7 +371,6 @@ class Component extends DCLogic {
       return { id: c.id, ghost: c.status !== 'removed' && c.ghost ? c.ghost : '', x, y, delay: (j * .07) + 's', scale: collapsed ? .62 : 1, pe: 'auto', enter: null, leave: null, text: c.text, bg: st.bg, dotBorder: st.dotBorder, border: active ? 'var(--accent)' : st.border, borderStyle: st.style, color: st.color, dot: st.dot, deco: c.status === 'removed' ? 'line-through' : 'none', shadow: active ? ACTIVE_SHADOW : '0 1px 2px var(--shadow)',
         ring: cr.ring, conf: cr.pct, confColor: cr.text, range: `${lo}–${hi}`, confTitle: `Confidence ${c.confidence}%, likely ${lo}–${hi} · ${c.ev.length} evidence`, meta: c.status === 'suggested' ? '?' : (c.ev.length ? c.ev.length + ' ev' : '—'), metaColor: 'var(--muted)', op: collapsed ? .45 : d ? .3 : 1, select: this.pick(active ? null : {t:'choice', id:c.id}) };
     });
-    const resChip = (id, extra) => { const r = RES.find(x => x.id === id); return { name: r.name + (r.have ? '' : ' · missing'), border: r.have ? 'var(--border)' : 'var(--red-line)', fg: r.have ? 'var(--text)' : 'var(--red-text)', select: this.pick({t:'resource', id}) , ...extra }; };
     const histRow = (c, h) => ({ week: wkLabel(h.wk), type: h.type, note: h.note, color: TYPE_COLOR[h.type], dot: TYPE_DOT[h.type], choiceText: c.text, select: (e) => { e.stopPropagation(); this.setState({ sel: {t:'choice', id:c.id}, week: Math.max(h.wk, 1) }); } });
 
     // overview
@@ -383,23 +378,22 @@ class Component extends DCLogic {
     const active = view.filter(c => c.status !== 'removed');
     const sug = view.find(c => c.status === 'suggested'); const sugFor = sug && LINKS.find(l => l[1] === sug.id); 
     const ranked = PILLARS.map(p => ({ p, ...pillarInfo(p) })).filter(x => x.has).sort((a, b) => a.avg - b.avg);
-    const gaps = RES.filter(r => !r.have).map(r => ({ r, n: active.filter(c => c.res.includes(r.id)).length })).filter(g => g.n).map(g => ({ name: g.r.name, n: g.n + (g.n === 1 ? ' choice' : ' choices'), select: this.pick({t:'resource', id:g.r.id}) }));
     const changes = view.flatMap(c => c.hist.filter(h => h.wk === W).map(h => histRow(c, h)));
     const ovColor = confColor(score / 100);
     const ov = { score, ring: `conic-gradient(${ovColor} ${Math.round(score * 3.6)}deg, var(--border) 0)`, scoreColor: confText(score / 100), delta: dlt === null ? 'First week' : dlt === 0 ? 'No change since last week' : `${dlt > 0 ? '+' : ''}${dlt} since week ${W - 1}`, deltaColor: dlt > 0 ? 'var(--green-text)' : dlt < 0 ? 'var(--red-text)' : 'var(--muted)',
       nSup: active.filter(c => c.status === 'strengthened').length, nUnt: active.filter(c => c.status === 'guess' || c.status === 'added').length, nWeak: active.filter(c => c.status === 'weakened').length, nSug: active.filter(c => c.status === 'suggested').length,
       hasSuggestion: !!sug, suggestionText: sug ? sug.text : '', suggestionFor: sugFor && find(sugFor[0]) ? find(sugFor[0]).text : '',
       suggestions: view.filter(c => c.status === 'suggested').reverse().map(c => { const l = LINKS.find(x => x[1] === c.id); const o = l && find(l[0]); return { id: c.id, text: c.text, note: o ? `Replacement for “${o.text}” · tap to review` : `New choice under ${c.pillar} · tap to review`, open: this.pick({t:'choice', id:c.id}) }; }), suggestionNote: sugFor && find(sugFor[0]) ? `Replacement for “${find(sugFor[0]).text}” · tap to review` : sug ? `New choice under ${sug.pillar} · tap to review` : '', openSuggestion: sug ? this.pick({t:'choice', id:sug.id}) : null,
-      weakest: ranked.length ? ranked[0].p : '—', gaps, noGaps: !gaps.length, changes, noChanges: !changes.length, changesTitle: `Changes in week ${W}` };
+      weakest: ranked.length ? ranked[0].p : '—', changes, noChanges: !changes.length, changesTitle: `Changes in week ${W}` };
 
     // pillar view
     let pv = null;
     if (mode === 'pillar') {
       const p = sel.id; const info = pillarInfo(p); const cs = view.filter(c => c.pillar === p); const act = cs.filter(c => c.status !== 'removed');
-      const evN = cs.reduce((a, c) => a + c.ev.length, 0); const resIds = [...new Set(act.flatMap(c => c.res))]; const gapsN = resIds.filter(id => !RES.find(r => r.id === id).have).length;
+      const evN = cs.reduce((a, c) => a + c.ev.length, 0);
       const tests = act.filter(c => c.status !== 'strengthened' && c.test !== '—').map(c => ({ choice: c.text, text: c.test, select: this.pick({t:'choice', id:c.id}) }));
-      pv = { name: this.show(p), glyph: FX[p].glyph, pct: info.pct, ring: `conic-gradient(${info.ringColor} ${Math.round(info.avg * 360)}deg, var(--border) 0)`, label: info.label, labelColor: info.labelColor, summary: `${act.length} active ${act.length === 1 ? 'choice' : 'choices'} · ${evN} evidence · ${gapsN ? gapsN + ' resource gap' + (gapsN > 1 ? 's' : '') : 'no resource gaps'}`,
-        choices: cs.map(choiceRow), tests, noTests: !tests.length, resources: resIds.map(id => resChip(id)), noRes: !resIds.length,
+      pv = { name: this.show(p), glyph: FX[p].glyph, pct: info.pct, ring: `conic-gradient(${info.ringColor} ${Math.round(info.avg * 360)}deg, var(--border) 0)`, label: info.label, labelColor: info.labelColor, summary: `${act.length} active ${act.length === 1 ? 'choice' : 'choices'} · ${evN} evidence`,
+        choices: cs.map(choiceRow), tests, noTests: !tests.length,
         history: cs.flatMap(c => c.hist.map(h => histRow(c, h))).sort((a, b) => parseInt(b.week.slice(3)) - parseInt(a.week.slice(3))) };
     }
 
@@ -412,7 +406,7 @@ class Component extends DCLogic {
         nFor, nAgainst: nAg, forPct: Math.round(nFor / tot * 100), againstPct: Math.round(nAg / tot * 100), evCount: c.ev.length, noEvidence: !c.ev.length,
         evidence: c.ev.map((e, i) => ({ text: e.text, source: e.source, accent: e.k === 'support' ? 'var(--green)' : 'var(--red)', select: this.pick({t:'evidence', cid:c.id, idx:i}) })),
         canEdit: !isPast && c.status !== 'removed' && c.status !== 'suggested', test: c.test === '—' ? 'Removed. No further tests planned.' : c.test,
-        noResources: !c.res.length, resources: c.res.map(id => resChip(id)), hasLinks: !!links.length, links,
+        hasLinks: !!links.length, links,
         history: c.hist.slice().reverse().map(h => histRow(c, h)), canRemove: !isPast && c.status !== 'removed' && c.status !== 'suggested',
         // App: pressure-test this choice. Challenge opens Discussions; Research and Plan call /api/node/*.
         canAct: c.status !== 'removed' && c.status !== 'suggested', nodeBusy: this.state.nodeBusy,
@@ -429,17 +423,6 @@ class Component extends DCLogic {
         choiceText: c.text, dot: st.dot, dotBorder: st.dotBorder,
         siblings: c.ev.map((s, i) => ({ s, i })).filter(x => x.i !== sel.idx).map(x => ({ text: x.s.text, accent: x.s.k === 'support' ? 'var(--green)' : 'var(--red)', select: this.pick({t:'evidence', cid:c.id, idx:x.i}) })) };
       ev.noSiblings = !ev.siblings.length;
-    }
-
-    // resource view
-    let rv = null;
-    if (selRes) {
-      const users = view.filter(c => c.res.includes(selRes.id) && c.status !== 'removed');
-      rv = { name: selRes.name, missing: !selRes.have, statusLabel: selRes.have ? 'Available' : 'Missing', chipBg: selRes.have ? 'var(--surface-2)' : 'var(--red-tint)', chipFg: selRes.have ? 'var(--muted)' : 'var(--red-text)',
-        summary: selRes.have ? `On hand. ${users.length} ${users.length === 1 ? 'choice depends' : 'choices depend'} on it.` : `Not on hand. ${users.length} ${users.length === 1 ? 'choice is' : 'choices are'} blocked until the team secures it.`,
-        acquire: (e) => { e.stopPropagation(); if (selRes.have) { this.say('Already on hand'); return; } const at = Date.now(); this.persist(applyUpdates(this.idea, users.map(c => ({ action: 'strengthen', choiceId: c.id, delta: 5, feasibility: { ok: true, note: selRes.name }, reason: `Team secured: ${selRes.name}`, source: 'feasibility', at }))), { sel: null }, `${selRes.name} marked as acquired · ${users.length} ${users.length === 1 ? 'choice' : 'choices'} unblocked`); },
-        n: users.length, choices: users.map(choiceRow),
-        all: RES.map(r => { const n = view.filter(c => c.res.includes(r.id) && c.status !== 'removed').length; return { name: r.name, dot: r.have ? 'var(--green)' : 'var(--red)', weight: r.id === selRes.id ? 600 : 400, sub: `${n} ${n === 1 ? 'choice' : 'choices'}`, select: this.pick({t:'resource', id:r.id}) }; }) };
     }
 
     // App: bounds of everything visible, for Fit to screen.
@@ -464,7 +447,7 @@ class Component extends DCLogic {
       toggleAll: (e) => { e.stopPropagation(); this.setState(s => ({ expanded: s.expanded.length === PILLARS.length ? [] : [...PILLARS], sel: s.expanded.length === PILLARS.length ? null : s.sel }), () => this.fit()); },
       ideaShadow: mode === 'idea' && sel ? '0 0 0 6px var(--focus-ring), 0 12px 32px var(--shadow)' : '0 0 0 10px color-mix(in srgb, var(--accent) 10%, transparent), 0 12px 32px var(--shadow)',
       hoverIdea: this.state.hoverIdea, hoverOn: () => this.setState({ hoverIdea: true }), hoverOff: () => this.setState({ hoverIdea: false }),
-      isIdea: ovOpen && mode === 'idea', isPillar: ovOpen && mode === 'pillar', isChoice: ovOpen && mode === 'choice', isEvidence: ovOpen && mode === 'evidence', isResource: ovOpen && mode === 'resource',
+      isIdea: ovOpen && mode === 'idea', isPillar: ovOpen && mode === 'pillar', isChoice: ovOpen && mode === 'choice', isEvidence: ovOpen && mode === 'evidence',
       // App: widgets. The rail switches what the sidebar shows; widgets feed the tree through applyWidget().
       widget: this.state.widget, panelOpen: this.state.panelOpen, panelW: this.state.panelW, occupied: this.occupied(),
       setWidget: (w) => this.setState(s => s.widget === w && s.panelOpen ? { panelOpen: false } : { widget: w, panelOpen: true }),
@@ -481,7 +464,7 @@ class Component extends DCLogic {
       focus: this.state.discuss,
       applyWidget: (updates, sourceLabel, toast) => this.applyWidget(updates, sourceLabel, toast),
       openOverview: () => this.setState({ widget: 'overview', sel: null, panelOpen: true }),
-      ov, pv, cv, ev, rv,
+      ov, pv, cv, ev,
       hasToast: !!this.state.toast, toast: this.state.toast,
       draft: this.state.draft, setDraft: (e) => this.setState({ draft: e.target.value }),
       clearSel: () => { if (this._suppressClick) { this._suppressClick = false; return; } this.setState({ sel: null, pinEv: null }); }, selIdea: this.pick({t:'idea'}), goNow: (e) => { e.stopPropagation(); this.setState({ week: NOW }); },
@@ -493,7 +476,7 @@ class Component extends DCLogic {
       reject: (e) => { e.stopPropagation(); const c = selC; if (!c) return; const l = LINKS.find(x => x[1] === c.id); const old = l ? find(l[0]) : null; this.persist(rejectChoice(this.idea, c.id), { sel: old ? {t:'choice', id:old.id} : null }, old ? `Suggestion rejected · “${old.text}” stays ${STATUS[old.status].label.toLowerCase()}` : 'Suggestion rejected'); },
     };
   }
-  // App: the team card. Saved to the account, then the map is re-derived so its resources follow.
+  // App: the team card. Saved to the account; the map is re-derived so later feasibility checks see it.
   async saveTeam(team) {
     await ideaStore().saveTeam(team);
     this.team = team;

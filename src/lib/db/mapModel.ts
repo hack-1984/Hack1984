@@ -2,7 +2,7 @@
 //
 // Agreed with the backend: the store keeps the backend's Idea (types.ts) and
 // this is derived from it, never stored. Field names follow the Idea Map
-// design's data shape (choices with ev/hist/res/test, resources, links), which
+// design's data shape (choices with ev/hist/test, links), which
 // src/screens/idea-map/logic.js renders. Each field says where it comes from.
 import { PILLARS, PILLAR_BY_KEY } from "@/lib/pillars";
 import type { EvidenceTier, PillarKey, TeamProfile, TreeUpdate } from "@/lib/types";
@@ -38,18 +38,11 @@ export interface MapChoice {
   confidence: number; // Choice.confidence, 0-100
   interval: [number, number]; // confidenceInterval(): the band the map draws around confidence
   status: "active" | "killed" | "proposed"; // Choice.status, raw; the screen derives its own from hist
-  res: string[]; // MapResource ids this choice depends on
   test: string; // first undone plan step, else "—"
   ev: MapEvidence[];
   hist: MapHist[]; // at least one row; the first comes from status and confidence
   support: 0 | 1 | 2; // distinct source domains: unsupported, single, corroborated
   ghost?: string; // Choice.marker: the dead startup haunting this choice
-}
-
-export interface MapResource {
-  id: string;
-  name: string;
-  have: boolean; // team entries are had; feasibility gaps are missing
 }
 
 /** [fromId, toId, label] exactly as the design's LINKS. */
@@ -60,7 +53,6 @@ export interface MapModel {
   description: string; // StoredIdea.description
   pillars: string[]; // eight labels for the mode, fixed order
   choices: MapChoice[];
-  resources: MapResource[];
   links: MapLink[]; // parentId → child, labelled by relation
   now: number; // current week number; the slider's max
 }
@@ -94,24 +86,10 @@ export function confidenceInterval(confidence: number, tiers: EvidenceTier[]): [
   return [Math.max(0, Math.round(c - half)), Math.min(100, Math.round(c + half))];
 }
 
-const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "").slice(0, 32);
-
-export function toMapModel(idea: StoredIdea, team?: TeamProfile | null, now = Date.now()): MapModel {
+// `team` is kept in the signature for callers; the map no longer draws team resources.
+export function toMapModel(idea: StoredIdea, _team?: TeamProfile | null, now = Date.now()): MapModel {
   const sources = new Map((idea.sources ?? []).map((s) => [s.id, s]));
   const label = (k: PillarKey) => (idea.mode === "nonprofit" ? PILLAR_BY_KEY[k].nonprofit : PILLAR_BY_KEY[k].startup);
-
-  // Resources: what the team has, plus one missing resource per infeasible choice.
-  const resources: MapResource[] = [];
-  const seen = new Set<string>();
-  const addRes = (name: string, have: boolean) => {
-    const id = (have ? "have-" : "gap-") + slug(name);
-    if (!seen.has(id) && name.trim()) {
-      seen.add(id);
-      resources.push({ id, name, have });
-    }
-    return id;
-  };
-  for (const name of [...(team?.roles ?? []), ...(team?.skills ?? []), ...(team?.tech ?? [])]) addRes(name, true);
 
   // Which update carried each piece of evidence, so we can call it for or against.
   const kindOf = new Map<string, "support" | "against">();
@@ -125,9 +103,6 @@ export function toMapModel(idea: StoredIdea, team?: TeamProfile | null, now = Da
   }
 
   const choices: MapChoice[] = idea.choices.map((c) => {
-    const res: string[] = [];
-    if (c.feasibility && !c.feasibility.ok) res.push(addRes(c.feasibility.note, false));
-
     const hist: MapHist[] = idea.history
       .filter((u) => u.choiceId === c.id)
       .map((u) => ({ wk: weekOf(u.at, idea.createdAt), type: HIST_TYPE[u.action], note: u.reason }));
@@ -175,7 +150,6 @@ export function toMapModel(idea: StoredIdea, team?: TeamProfile | null, now = Da
       confidence: c.confidence,
       interval: confidenceInterval(c.confidence, c.evidence.map((e) => e.tier)),
       status: c.status,
-      res,
       test,
       ev,
       hist,
@@ -193,7 +167,6 @@ export function toMapModel(idea: StoredIdea, team?: TeamProfile | null, now = Da
     description: idea.description,
     pillars: PILLARS.map((p) => label(p.key)),
     choices,
-    resources,
     links,
     now: weekOf(now, idea.createdAt),
   };

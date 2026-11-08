@@ -1,7 +1,7 @@
 "use client";
 
-// Team: who's building this, saved to the founder's account (ctx.saveTeam → ideaStore().saveTeam),
-// so it also shows as the map's resources. "Save and check" then asks /api/feasibility whether
+// Team: who's building this, saved to the founder's account (ctx.saveTeam → ideaStore().saveTeam).
+// "Save and check" then asks /api/feasibility whether
 // the team can realistically build each choice; flagged choices are weakened on the tree with
 // a note, and choices that play to the team's strengths are strengthened.
 import { useState, type FormEvent } from "react";
