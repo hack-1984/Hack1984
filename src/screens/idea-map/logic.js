@@ -7,6 +7,8 @@ import React from "react";
 import { DCLogic } from "../dc";
 import { getIdea, loadMapState, saveMapState } from "@/ideas/store";
 import { ideaToMap } from "@/ideas/toMap";
+import { applyUpdates } from "@/ideas/applyUpdates";
+import { mapToIdea } from "@/ideas/toIdea";
 import { Camera, MIN_ZOOM, MAX_ZOOM } from "./camera";
 const PILLARS = ['Customer','Problem','Solution','Approach','Edge','Reach','Revenue','Risks'];
 const NOW = 6;
@@ -144,18 +146,21 @@ class Component extends DCLogic {
     const saved = id && typeof window !== 'undefined' ? getIdea(id) : null;
     const data = saved ? ideaToMap(saved.idea, saved.name) : PANTRY;
     this.ideaId = saved ? saved.id : 'pantry';
-    this.now = data.now; this.links = data.links; this.name = data.name; this.pitch = data.pitch;
+    this.now = data.now; this.name = data.name; this.pitch = data.pitch; this.base = saved ? saved.idea : null;
     const edits = typeof window !== 'undefined' ? loadMapState(this.ideaId) : null;
     const choices = edits && Array.isArray(edits.choices) ? edits.choices : data.choices.map(c => ({...c, ev:[...c.ev], hist:[...c.hist]}));
     const resources = edits && Array.isArray(edits.resources) ? edits.resources : data.resources.map(r => ({...r}));
-    this._saved = { choices, resources };
-    return { choices, resources, week: this.now, sel: null, expanded: [] };
+    // Links are state now (widgets add suggestions that replace a choice). wmem: per-widget memory, e.g. graves haunted / learned.
+    const links = edits && Array.isArray(edits.links) ? edits.links : data.links.map(l => [...l]);
+    const wmem = edits && edits.wmem && typeof edits.wmem === 'object' ? edits.wmem : {};
+    this._saved = { choices, resources, links, wmem };
+    return { choices, resources, links, wmem, week: this.now, sel: null, expanded: [], widget: 'overview', flash: null };
   }
   // App: save the founder's edits after every update that changed them.
   setState(update, cb) {
     super.setState(update, () => {
-      const { choices, resources } = this.state;
-      if (choices !== this._saved.choices || resources !== this._saved.resources) { this._saved = { choices, resources }; saveMapState(this.ideaId, { choices, resources }); }
+      const { choices, resources, links, wmem } = this.state; const o = this._saved;
+      if (choices !== o.choices || resources !== o.resources || links !== o.links || wmem !== o.wmem) { this._saved = { choices, resources, links, wmem }; saveMapState(this.ideaId, { choices, resources, links, wmem }); }
       if (cb) cb();
     });
   }
@@ -174,7 +179,7 @@ class Component extends DCLogic {
     };
     window.addEventListener('keydown', this._key);
   }
-  componentWillUnmount() { window.removeEventListener('keydown', this._key); clearInterval(this._replay); clearTimeout(this._toastT); }
+  componentWillUnmount() { window.removeEventListener('keydown', this._key); clearInterval(this._replay); clearTimeout(this._toastT); clearTimeout(this._flashT); }
 
   // ---- App: pan and zoom (camera.ts). Nothing here calls setState. ----
   worldRef = React.createRef();
@@ -202,6 +207,12 @@ class Component extends DCLogic {
     const v = this.fitView(); if (!v) return false;
     if (animate) this.camera.animateTo(v, 320); else this.camera.set(v);
     this._fitted = true; return true;
+  }
+  reveal(keys) {
+    const pane = this._pane, boxes = this._boxes || {}; if (!pane) return;
+    const { x, y, k } = this.camera; const m = 12;
+    const off = [...keys, 'orbit'].map(key => boxes[key]).filter(Boolean).some(b => b.minX * k + x < m || b.maxX * k + x > pane.clientWidth - m || b.minY * k + y < 56 || b.maxY * k + y > pane.clientHeight - 72);
+    if (off) this.fit();
   }
   zoomStep(f) { const pane = this._pane; if (!pane) return; this.camera.zoomAtAnimated(pane.clientWidth / 2, pane.clientHeight / 2, f, 180); }
   // Callback ref for the canvas: attaches input listeners whenever the element mounts (including after
@@ -276,10 +287,10 @@ class Component extends DCLogic {
     if (this.state.hover || this.state.hoverIdea) this.setState({ hover: null, hoverIdea: false });
   }
   say(msg) { clearTimeout(this._toastT); this.setState({toast: msg}); this._toastT = setTimeout(() => this.setState({toast:null}), 2600); }
-  pick(sel) { return (e) => { if (e && e.stopPropagation) e.stopPropagation(); this.setState(s => { let expanded = s.expanded; const cid = sel && (sel.t === 'choice' ? sel.id : sel.t === 'evidence' ? sel.cid : null); if (cid) { const c = s.choices.find(x => x.id === cid); if (c && !expanded.includes(c.pillar)) expanded = [...expanded, c.pillar]; } if (sel && sel.t === 'pillar' && !expanded.includes(sel.id)) expanded = [...expanded, sel.id]; if (sel && sel.t === 'resource') { const ps = s.choices.filter(c => c.res.includes(sel.id)).map(c => c.pillar); expanded = [...new Set([...expanded, ...ps])]; } return { sel, draft:'', expanded }; }); }; }
+  pick(sel) { return (e) => { if (e && e.stopPropagation) e.stopPropagation(); this.setState(s => { let expanded = s.expanded; const cid = sel && (sel.t === 'choice' ? sel.id : sel.t === 'evidence' ? sel.cid : null); if (cid) { const c = s.choices.find(x => x.id === cid); if (c && !expanded.includes(c.pillar)) expanded = [...expanded, c.pillar]; } if (sel && sel.t === 'pillar' && !expanded.includes(sel.id)) expanded = [...expanded, sel.id]; if (sel && sel.t === 'resource') { const ps = s.choices.filter(c => c.res.includes(sel.id)).map(c => c.pillar); expanded = [...new Set([...expanded, ...ps])]; } return { sel, draft:'', expanded, widget: 'overview' }; }, () => this.reveal(this.state.expanded)); }; }
   hoverOn(k) { return () => { if (!this._dragging) this.setState({ hover: k }); }; }
   hoverOff(k) { return () => this.setState(s => s.hover === k ? { hover: null } : null); }
-  togglePillar(p) { return (e) => { e.stopPropagation(); this.setState(s => { const open = s.expanded.includes(p); const selected = s.sel && s.sel.t === 'pillar' && s.sel.id === p; if (open && selected) return { expanded: s.expanded.filter(x => x !== p), sel: null }; return { expanded: open ? s.expanded : [...s.expanded, p], sel: {t:'pillar', id:p}, draft:'' }; }); }; }
+  togglePillar(p) { return (e) => { e.stopPropagation(); this.setState(s => { const open = s.expanded.includes(p); const selected = s.sel && s.sel.t === 'pillar' && s.sel.id === p; if (open && selected) return { expanded: s.expanded.filter(x => x !== p), sel: null }; return { expanded: open ? s.expanded : [...s.expanded, p], sel: {t:'pillar', id:p}, draft:'', widget: 'overview' }; }, () => this.reveal([p])); }; }
   pillarScore(W, p) {
     const cs = this.state.choices.map(c => ({c, st: statusAt(c, W)})).filter(x => x.c.pillar === p && x.st && x.st !== 'suggested' && x.st !== 'removed');
     return cs.length ? cs.reduce((a, x) => a + SCORE[x.st], 0) / cs.length : null;
@@ -290,7 +301,7 @@ class Component extends DCLogic {
     const showRemoved = this.props.showRemoved ?? true;
     const dim = this.props.dimUnrelated ?? true;
     const { sel, week: W, choices: allC, resources: RES } = this.state;
-    const NOW = this.now, LINKS = this.links;
+    const NOW = this.now, LINKS = this.state.links;
     const isPast = W < NOW;
     const view = allC.map(c => ({ ...c, status: statusAt(c, W), ev: c.ev.filter(e => e.wk <= W), hist: c.hist.filter(h => h.wk <= W) })).filter(c => c.status && (showRemoved || c.status !== 'removed'));
     const byId = Object.fromEntries(view.map(c => [c.id, c]));
@@ -349,12 +360,13 @@ class Component extends DCLogic {
     const pillars = PILLARS.map(p => {
       const info = pillarInfo(p); const active = pillarActive(p); const [x, y] = pPos(p); const shrunk = focused && !active; const hk = 'p:' + p;
       const nC = view.filter(c => c.pillar === p && c.status !== 'removed').length; const open = expanded.includes(p); const i = PILLARS.indexOf(p);
-      return { name: p, x, y, glyph: FX[p].glyph, delay: (i * .05) + 's', rowDelay: (i * .04) + 's', badge: open ? '–' : nC, badgeBg: open ? 'var(--accent)' : 'var(--surface)', badgeBorder: open ? 'var(--surface)' : 'var(--border)', badgeFg: open ? 'var(--on-accent)' : 'var(--text)', badgeDelay: (.3 + i * .05) + 's', ring: `conic-gradient(${info.ringColor} ${Math.round(info.avg * 360)}deg, var(--border) 0)`, title: `${info.label} · ${info.pct}%`, shadow: active ? '0 0 0 4px var(--focus-ring)' : '0 1px 2px var(--shadow)', pct: info.pct, label: info.label, labelColor: info.labelColor, op: shrunk ? .85 : 1, scale: hov(hk, shrunk ? .66 : 1), select: this.togglePillar(p), enter: this.hoverOn(hk), leave: this.hoverOff(hk) };
+      const fl = this.state.flash && this.state.flash.pillars.includes(p) ? this.state.flash : null;
+      return { flashing: !!fl, flashText: fl ? fl.text : '', flashKey: fl ? fl.key : 0, name: p, x, y, glyph: FX[p].glyph, delay: (i * .05) + 's', rowDelay: (i * .04) + 's', badge: open ? '–' : nC, badgeBg: open ? 'var(--accent)' : 'var(--surface)', badgeBorder: open ? 'var(--surface)' : 'var(--border)', badgeFg: open ? 'var(--on-accent)' : 'var(--text)', badgeDelay: (.3 + i * .05) + 's', ring: `conic-gradient(${info.ringColor} ${Math.round(info.avg * 360)}deg, var(--border) 0)`, title: `${info.label} · ${info.pct}%`, shadow: active ? '0 0 0 4px var(--focus-ring)' : '0 1px 2px var(--shadow)', pct: info.pct, label: info.label, labelColor: info.labelColor, op: shrunk ? .85 : 1, scale: hov(hk, shrunk ? .66 : 1), select: this.togglePillar(p), enter: this.hoverOn(hk), leave: this.hoverOff(hk) };
     });
     const choiceRow = c => { const st = STATUS[c.status]; return { dot: st.dot, dotBorder: st.dotBorder, deco: c.status === 'removed' ? 'line-through' : 'none', text: c.text, sub: `${st.label} · ${c.ev.length} evidence`, select: this.pick({t:'choice', id:c.id}) }; };
     const choices = rows.map(({ c, x, y, j, collapsed }) => {
       const st = STATUS[c.status]; const active = selC && selC.id === c.id; const d = isDim(c.id);
-      return { id: c.id, x, y, delay: (j * .07) + 's', scale: collapsed ? .62 : 1, pe: 'auto', enter: null, leave: null, text: c.text, bg: st.bg, dotBorder: st.dotBorder, border: active ? 'var(--accent)' : st.border, borderStyle: st.style, color: st.color, dot: st.dot, deco: c.status === 'removed' ? 'line-through' : 'none', shadow: active ? ACTIVE_SHADOW : '0 1px 2px var(--shadow)', meta: c.status === 'suggested' ? '?' : (c.ev.length ? c.ev.length + ' ev' : '—'), metaColor: 'var(--muted)', op: collapsed ? .45 : d ? .3 : 1, select: this.pick(active ? null : {t:'choice', id:c.id}) };
+      return { id: c.id, ghost: c.status !== 'removed' && c.ghost ? c.ghost : '', x, y, delay: (j * .07) + 's', scale: collapsed ? .62 : 1, pe: 'auto', enter: null, leave: null, text: c.text, bg: st.bg, dotBorder: st.dotBorder, border: active ? 'var(--accent)' : st.border, borderStyle: st.style, color: st.color, dot: st.dot, deco: c.status === 'removed' ? 'line-through' : 'none', shadow: active ? ACTIVE_SHADOW : '0 1px 2px var(--shadow)', meta: c.status === 'suggested' ? '?' : (c.ev.length ? c.ev.length + ' ev' : '—'), metaColor: 'var(--muted)', op: collapsed ? .45 : d ? .3 : 1, select: this.pick(active ? null : {t:'choice', id:c.id}) };
     });
     const resChip = (id, extra) => { const r = RES.find(x => x.id === id); return { name: r.name + (r.have ? '' : ' · missing'), border: r.have ? 'var(--border)' : 'var(--red-line)', fg: r.have ? 'var(--text)' : 'var(--red-text)', select: this.pick({t:'resource', id}) , ...extra }; };
     const histRow = (c, h) => ({ week: wkLabel(h.wk), type: h.type, note: h.note, color: TYPE_COLOR[h.type], dot: TYPE_DOT[h.type], choiceText: c.text, select: (e) => { e.stopPropagation(); this.setState({ sel: {t:'choice', id:c.id}, week: Math.max(h.wk, 1) }); } });
@@ -369,7 +381,7 @@ class Component extends DCLogic {
     const ovColor = confColor(score / 100);
     const ov = { score, ring: `conic-gradient(${ovColor} ${Math.round(score * 3.6)}deg, var(--border) 0)`, scoreColor: confText(score / 100), delta: dlt === null ? 'First week' : dlt === 0 ? 'No change since last week' : `${dlt > 0 ? '+' : ''}${dlt} since week ${W - 1}`, deltaColor: dlt > 0 ? 'var(--green-text)' : dlt < 0 ? 'var(--red-text)' : 'var(--muted)',
       nSup: active.filter(c => c.status === 'strengthened').length, nUnt: active.filter(c => c.status === 'guess' || c.status === 'added').length, nWeak: active.filter(c => c.status === 'weakened').length, nSug: active.filter(c => c.status === 'suggested').length,
-      hasSuggestion: !!sug, suggestionText: sug ? sug.text : '', suggestionFor: sugFor && find(sugFor[0]) ? find(sugFor[0]).text : '', openSuggestion: sug ? this.pick({t:'choice', id:sug.id}) : null,
+      hasSuggestion: !!sug, suggestionText: sug ? sug.text : '', suggestionFor: sugFor && find(sugFor[0]) ? find(sugFor[0]).text : '', suggestionNote: sugFor && find(sugFor[0]) ? `Replacement for “${find(sugFor[0]).text}” · tap to review` : sug ? `New choice under ${sug.pillar} · tap to review` : '', openSuggestion: sug ? this.pick({t:'choice', id:sug.id}) : null,
       weakest: ranked.length ? ranked[0].p : '—', gaps, noGaps: !gaps.length, changes, noChanges: !changes.length, changesTitle: `Changes in week ${W}` };
 
     // pillar view
@@ -421,9 +433,12 @@ class Component extends DCLogic {
 
     // App: bounds of everything visible, for Fit to screen.
     { const B = { minX: CX - 60, maxX: CX + 60, minY: CY - 60, maxY: CY + 60 }; const add = (x, y, w, h) => { B.minX = Math.min(B.minX, x - w / 2); B.maxX = Math.max(B.maxX, x + w / 2); B.minY = Math.min(B.minY, y - h / 2); B.maxY = Math.max(B.maxY, y + h / 2); };
-      pillars.forEach(p => add(p.x, p.y, 84, 84)); choices.forEach(c => add(c.x, c.y, 156 * c.scale, 52 * c.scale)); orbit.forEach(o => add(o.x, o.y, 176, 44)); this._bounds = B; }
+      pillars.forEach(p => add(p.x, p.y, 84, 84)); choices.forEach(c => add(c.x, c.y, 156 * c.scale, 52 * c.scale)); orbit.forEach(o => add(o.x, o.y, 176, 44)); this._bounds = B;
+      const boxes = {}; const grow = (k, x, y, w, h) => { const b = boxes[k] || (boxes[k] = { minX: x, maxX: x, minY: y, maxY: y }); b.minX = Math.min(b.minX, x - w / 2); b.maxX = Math.max(b.maxX, x + w / 2); b.minY = Math.min(b.minY, y - h / 2); b.maxY = Math.max(b.maxY, y + h / 2); };
+      pillars.forEach(p => grow(p.name, p.x, p.y, 84, 84)); rows.forEach(r => grow(r.c.pillar, r.x, r.y, 156, 52)); orbit.forEach(o => grow('orbit', o.x, o.y, 176, 44)); this._boxes = boxes; }
     const weeks = Array.from({ length: NOW }, (_, i) => i + 1).map(n => { const chg = allC.reduce((a, c) => a + c.hist.filter(h => h.wk === n && h.type !== 'Added').length, 0); return { n, bg: n === W ? 'var(--accent)' : 'transparent', fg: n === W ? 'var(--on-accent)' : 'var(--muted)', dot: n === W ? 'transparent' : chg ? 'var(--muted)' : 'transparent', current: n === W, title: `Week ${n} · confidence ${Math.round(this.overall(n) * 100)}%`, select: (e) => { e.stopPropagation(); clearInterval(this._replay); this.setState({ week: n, replaying: false }); } }; });
     const evTotal = view.reduce((a, c) => a + c.ev.length, 0);
+    const ovOpen = this.state.widget === 'overview';
 
     return {
       ideaName: this.name, ideaPitch: this.pitch, ideaInitial: (this.name || '?').charAt(0).toUpperCase(), now: NOW,
@@ -437,7 +452,15 @@ class Component extends DCLogic {
       toggleAll: (e) => { e.stopPropagation(); this.setState(s => ({ expanded: s.expanded.length === PILLARS.length ? [] : [...PILLARS], sel: s.expanded.length === PILLARS.length ? null : s.sel }), () => this.fit()); },
       ideaShadow: mode === 'idea' && sel ? '0 0 0 6px var(--focus-ring), 0 12px 32px var(--shadow)' : '0 0 0 10px color-mix(in srgb, var(--accent) 10%, transparent), 0 12px 32px var(--shadow)',
       hoverIdea: this.state.hoverIdea, hoverOn: () => this.setState({ hoverIdea: true }), hoverOff: () => this.setState({ hoverIdea: false }),
-      isIdea: mode === 'idea', isPillar: mode === 'pillar', isChoice: mode === 'choice', isEvidence: mode === 'evidence', isResource: mode === 'resource',
+      isIdea: ovOpen && mode === 'idea', isPillar: ovOpen && mode === 'pillar', isChoice: ovOpen && mode === 'choice', isEvidence: ovOpen && mode === 'evidence', isResource: ovOpen && mode === 'resource',
+      // App: widgets. The rail switches what the sidebar shows; widgets feed the tree through applyWidget().
+      widget: this.state.widget, setWidget: (w) => this.setState({ widget: w }), showBadge: !!sug && !ovOpen,
+      ideaId: this.ideaId, isPantry: this.ideaId === 'pantry', wmem: this.state.wmem,
+      setWmem: (key, patch) => this.setState(s => ({ wmem: { ...s.wmem, [key]: { ...(s.wmem[key] || {}), ...patch } } })),
+      pillarPct: Object.fromEntries(pillars.map(p => [p.name, p.pct])),
+      buildIdea: () => mapToIdea({ id: this.ideaId, pitch: this.pitch, choices: this.state.choices, links: this.state.links, base: this.base }),
+      applyWidget: (updates, sourceLabel, toast) => this.applyWidget(updates, sourceLabel, toast),
+      openOverview: () => this.setState({ widget: 'overview', sel: null }),
       ov, pv, cv, ev, rv,
       hasToast: !!this.state.toast, toast: this.state.toast,
       draft: this.state.draft, setDraft: (e) => this.setState({ draft: e.target.value }),
@@ -453,9 +476,22 @@ class Component extends DCLogic {
   addEvidence(e, k) {
     e.stopPropagation(); const text = this.state.draft.trim(); if (!text) { this.say('Write what you learned first'); return; }
     const id = this.state.sel.id; const c = this.state.choices.find(x => x.id === id); const type = k === 'support' ? 'Strengthened' : 'Weakened';
-    const NOW = this.now;
-    this.setState(s => ({ draft: '', choices: s.choices.map(x => x.id === id ? { ...x, ev: [...x.ev, { k, wk: NOW, text, source: 'Added by you, wk ' + NOW }], hist: [...x.hist, { wk: NOW, type, note: k === 'support' ? 'New supporting evidence' : 'New evidence against' }] } : x) }));
-    this.say(`${type} “${c.text}” · ${c.pillar} recalculated`);
+    // App: same path as every widget result (src/ideas/applyUpdates.ts).
+    this.setState({ draft: '' });
+    this.applyWidget([{ action: k === 'support' ? 'strengthen' : 'weaken', choiceId: id, reason: k === 'support' ? 'New supporting evidence' : 'New evidence against', evidence: [{ type: 'source', text, origin: 'founder', tier: 'real' }], source: 'founder' }],
+      'Added by you, wk ' + this.now, `${type} “${c.text}” · ${c.pillar} recalculated`);
+  }
+  // App: apply TreeUpdates from a widget (or the founder) to the map. Writes evidence + history,
+  // opens the affected pillars and pulses them. Returns what changed, for "What this changed" lists.
+  applyWidget(updates, sourceLabel, toast) {
+    const r = applyUpdates({ choices: this.state.choices, links: this.state.links }, updates, { week: this.now, sourceLabel });
+    if (!r.changes.length) return r.changes;
+    const top = r.changes[0];
+    const text = top.type === 'Suggested' ? 'Suggested' : top.type;
+    this.setState(s => ({ choices: r.choices, links: r.links, week: this.now, expanded: [...new Set([...s.expanded, ...r.pillars])], flash: { pillars: r.pillars, text, key: Date.now() } }), () => this.reveal(r.pillars));
+    clearTimeout(this._flashT); this._flashT = setTimeout(() => this.setState({ flash: null }), 1800);
+    if (toast !== false) this.say(toast || `${top.type} “${top.choiceText}” · ${top.pillar} recalculated`);
+    return r.changes;
   }
 }
 

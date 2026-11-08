@@ -10,12 +10,14 @@ import Link from "next/link";
 import { useLogic } from "../dc";
 import Logic from "./logic";
 import "./idea-map.css";
+import "./widgets/widgets.css";
+import WidgetRail, { type WidgetKey } from "./widgets/WidgetRail";
 
 export default function IdeaMapScreen(props: Record<string, unknown>) {
   // clientOnly: which idea to show comes from the URL and this browser's saved ideas.
   const v = useLogic(Logic, props, { clientOnly: true });
   if (!v) return <div className="pg-im" />;
-  const { ideaInitial, ideaName, ideaPitch, now, accept, addAgainst, addFor, choices, clearSel, counts, curves, cv, draft, edges, ev, goNow, hasToast, hoverIdea, hoverOff, hoverOn, ideaShadow, isChoice, isEvidence, isIdea, isPast, isPillar, isResource, orbit, ov, paneRef, pctRef, particles, pillars, pv, reject, removeChoice, replay, replayLabel, rv, selIdea, setDraft, showHint, toast, toggleAll, toggleAllLabel, week, weeks, worldRef, zoomFit, zoomIn, zoomOut } = v;
+  const { widget, setWidget, showBadge, ideaId, isPantry, wmem, setWmem, pillarPct, buildIdea, applyWidget, openOverview, ideaInitial, ideaName, ideaPitch, now, accept, addAgainst, addFor, choices, clearSel, counts, curves, cv, draft, edges, ev, goNow, hasToast, hoverIdea, hoverOff, hoverOn, ideaShadow, isChoice, isEvidence, isIdea, isPast, isPillar, isResource, orbit, ov, paneRef, pctRef, particles, pillars, pv, reject, removeChoice, replay, replayLabel, rv, selIdea, setDraft, showHint, toast, toggleAll, toggleAllLabel, week, weeks, worldRef, zoomFit, zoomIn, zoomOut } = v;
   return (
     <div className="pg-im">
       <div style={{ display: "flex", flexDirection: "column", height: "100vh", background: "var(--bg)" }}>
@@ -92,6 +94,12 @@ export default function IdeaMapScreen(props: Record<string, unknown>) {
                       {" "}
                       <div data-node="pillar" style={{ position: "absolute", left: `${p?.x ?? ""}px`, top: `${p?.y ?? ""}px`, transform: `translate(-50%,-50%) scale(${p?.scale ?? ""})`, width: "72px", height: "72px", borderRadius: "50%", padding: "4px", boxSizing: "border-box", background: `${p?.ring ?? ""}`, cursor: "pointer", opacity: `${p?.op ?? ""}`, transition: "left .5s cubic-bezier(.2,.8,.2,1),top .5s cubic-bezier(.2,.8,.2,1),opacity .3s,box-shadow .2s,transform .35s cubic-bezier(.2,.8,.2,1)", boxShadow: `${p?.shadow ?? ""}`, animation: "im-nodeIn .4s ease-out backwards", animationDelay: `${p?.delay ?? ""}` } as CSSProperties} onClick={p?.select} onMouseEnter={p?.enter} onMouseLeave={p?.leave} title={p?.title}>
                         {" "}
+                        {p?.flashing ? (
+                          <Fragment key={p?.flashKey}>
+                            <span className="im-flash-ring" aria-hidden="true" />
+                            <span className="im-flash-label" aria-hidden="true">{p?.flashText}</span>
+                          </Fragment>
+                        ) : null}
                         <div style={{ position: "absolute", right: "-4px", top: "-4px", minWidth: "20px", height: "20px", padding: "0 6px", boxSizing: "border-box", borderRadius: "999px", background: `${p?.badgeBg ?? ""}`, color: `${p?.badgeFg ?? ""}`, border: `1.5px solid ${p?.badgeBorder ?? ""}`, fontSize: "10px", fontWeight: "600", display: "flex", alignItems: "center", justifyContent: "center", animation: "im-badgePop .3s ease-out backwards", animationDelay: `${p?.badgeDelay ?? ""}` } as CSSProperties}>
                           {p?.badge}
                         </div>
@@ -126,6 +134,14 @@ export default function IdeaMapScreen(props: Record<string, unknown>) {
                     <Fragment key={c?.id}>
                       {" "}
                       <div data-node="choice" style={{ position: "absolute", left: `${c?.x ?? ""}px`, top: `${c?.y ?? ""}px`, transform: `translate(-50%,-50%) scale(${c?.scale ?? ""})`, width: "156px", minHeight: "44px", display: "flex", alignItems: "center", gap: "8px", padding: "6px 10px 6px 10px", boxSizing: "border-box", borderRadius: "10px", background: `${c?.bg ?? ""}`, border: `1.5px ${c?.borderStyle ?? ""} ${c?.border ?? ""}`, color: `${c?.color ?? ""}`, boxShadow: `${c?.shadow ?? ""}`, cursor: "pointer", opacity: `${c?.op ?? ""}`, pointerEvents: `${c?.pe ?? ""}`, transition: "left .5s cubic-bezier(.2,.8,.2,1),top .5s cubic-bezier(.2,.8,.2,1),opacity .3s,box-shadow .2s,transform .35s cubic-bezier(.2,.8,.2,1)", animation: "im-nodeIn .4s ease-out backwards", animationDelay: `${c?.delay ?? ""}` } as CSSProperties} onClick={c?.select} onMouseEnter={c?.enter} onMouseLeave={c?.leave}>
+                        {c?.ghost ? (
+                          <svg className="im-ghost" viewBox="-11 -11 22 22" role="img" aria-label={`Haunted by ${c.ghost}`}>
+                            <title>{`Haunted by ${c.ghost}`}</title>
+                            <path d="M-8,9 L-8,-1 A8,8 0 0 1 8,-1 L8,9 L5.3,6.5 L2.7,9 L0,6.5 L-2.7,9 L-5.3,6.5 Z" style={{ fill: "var(--surface)", stroke: "var(--text)" }} strokeWidth="1.3" />
+                            <circle cx="-3" cy="-1" r="1.3" style={{ fill: "var(--text)" }} />
+                            <circle cx="3" cy="-1" r="1.3" style={{ fill: "var(--text)" }} />
+                          </svg>
+                        ) : null}
                         <span style={{ width: "8px", height: "8px", borderRadius: "50%", background: `${c?.dot ?? ""}`, border: `1px solid ${c?.dotBorder ?? ""}`, flex: "none", boxSizing: "border-box" } as CSSProperties} />
                         <div style={{ flex: "1", minWidth: "0", fontSize: "11.5px", fontWeight: "500", lineHeight: "1.25", textDecoration: `${c?.deco ?? ""}`, textWrap: "pretty" } as CSSProperties}>
                           {c?.text}
@@ -267,7 +283,10 @@ export default function IdeaMapScreen(props: Record<string, unknown>) {
             ) : null}
             {" "}
           </div>
-          <div style={{ flex: "0 0 320px", borderLeft: "1px solid var(--border)", background: "var(--surface)", display: "flex", flexDirection: "column", overflow: "auto" }}>
+          {/* Sidebar: widget rail on its left edge, then the active widget. */}
+          <div style={{ flex: "0 0 380px", display: "flex", borderLeft: "1px solid var(--border)", background: "var(--surface)", minHeight: "0" }}>
+          <WidgetRail active={widget as WidgetKey} onPick={setWidget} badge={!!showBadge} />
+          <div style={{ flex: "1", minWidth: "0", display: "flex", flexDirection: "column", overflow: "auto" }}>
             {isIdea ? (
               <>
                 <div style={{ animation: "im-panelIn .35s cubic-bezier(.2,.8,.2,1) both" }}>
@@ -358,7 +377,7 @@ export default function IdeaMapScreen(props: Record<string, unknown>) {
                         </div>
                         {" "}
                         <div style={{ fontSize: "11px", color: "var(--muted)", marginTop: "3px" }}>
-                          Replacement for “{ov?.suggestionFor}” · tap to review
+                          {ov?.suggestionNote}
                         </div>
                         {" "}
                       </div>
@@ -1088,9 +1107,36 @@ export default function IdeaMapScreen(props: Record<string, unknown>) {
                 </div>
               </>
             ) : null}
+            {widget === "launch" || widget === "graveyard" || widget === "customer" ? (
+              <WidgetSlot widget={widget} ctx={{ ideaId, isPantry, wmem, setWmem, pillarPct, buildIdea, applyWidget, openOverview }} />
+            ) : null}
+          </div>
           </div>
         </div>
       </div>
     </div>
+  );
+}
+
+/** Context every widget gets from the map. */
+export interface WidgetCtx {
+  ideaId: string;
+  isPantry: boolean;
+  wmem: Record<string, any>;
+  setWmem: (key: string, patch: Record<string, any>) => void;
+  pillarPct: Record<string, number>;
+  buildIdea: () => import("@/lib/types").Idea;
+  applyWidget: (updates: import("@/ideas/wire").WireUpdate[], sourceLabel: string, toast?: string | false) => import("@/ideas/applyUpdates").Change[];
+  openOverview: () => void;
+}
+
+const TITLES: Record<string, string> = { launch: "Launch day", graveyard: "Graveyard", customer: "Customer discussion" };
+
+function WidgetSlot({ widget }: { widget: string; ctx: WidgetCtx }) {
+  return (
+    <section className="wg-panel" aria-label={TITLES[widget]}>
+      <h2 className="wg-title">{TITLES[widget]}</h2>
+      <p className="wg-muted">Coming in the next step.</p>
+    </section>
   );
 }

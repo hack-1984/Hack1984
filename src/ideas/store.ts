@@ -60,6 +60,15 @@ export function saveMapState(id: string, state: unknown) {
   writeJSON(MAP(id), state);
 }
 
+/** Cached widget results per idea (e.g. graveyard records), so a live lookup isn't paid for twice. */
+const WIDGET = (id: string, key: string) => `sprout.widget.${id}.${key}`;
+export function loadWidgetCache<T>(id: string, key: string): T | null {
+  return readJSON<T | null>(WIDGET(id, key), null);
+}
+export function saveWidgetCache(id: string, key: string, value: unknown) {
+  writeJSON(WIDGET(id, key), value);
+}
+
 const EMPTY_TEAM: TeamProfile = { roles: [], skills: [], tech: [] };
 
 /**
