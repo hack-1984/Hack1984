@@ -34,27 +34,18 @@ segment configs at build time. You don't need them; routes are dynamic already.
 
 ---
 
-## The LLM: Claude or OpenAI, one switch
+## The LLM is Claude, as the build plan says
 
 We briefly ran on Gemini while we had no Anthropic key. That's over — the
 Gemini free tier capped at **20 requests per day per model**, which died after
-six pitches. `@google/genai` is uninstalled.
-
-The backend now runs on **either** Anthropic or OpenAI, chosen once at server
-start from the env (`src/lib/ai/provider.ts`). Set one key and it just works;
-`AI_PROVIDER=openai|anthropic` forces it when both are present. The hackathon's
-OpenAI credit is why the second path exists.
+six pitches. `@google/genai` is uninstalled. Use `@anthropic-ai/sdk`.
 
 ```ts
 import { askJSON, search, MODELS } from "@/lib/ai";
 ```
 
-`MODELS.main` and `MODELS.fast` resolve per provider (Sonnet/Haiku, or
-gpt-5/gpt-5-mini, overridable with `OPENAI_MODEL_MAIN` / `OPENAI_MODEL_FAST`).
-Never hard-code a model id in a route.
-
-**On Anthropic we are on a fixed $7 of credits.** That's why `MODELS.main` is
-Sonnet, not Opus:
+**We are on a fixed $7 of credits.** That's the one constraint shaping model
+choice, so `MODELS.main` is Sonnet, not Opus:
 
 | | per `/api/tree` | per Launch Day |
 |---|---|---|
@@ -63,11 +54,11 @@ Sonnet, not Opus:
 | Haiku 5.5 (`MODELS.fast`) | ~$0.004 | ~$0.02 |
 
 Use `MODELS.fast` for anything that fans out — Launch Day's 20 parallel calls
-on a big model would be most of a budget in one click. **Keep `MOCK_AI=1` on
-unless you're deliberately testing real output.** Every live call spends
-someone's real money, on either provider.
+on Opus would be most of the budget in one click. **Keep `MOCK_AI=1` on unless
+you're deliberately testing real output.** Every live call spends someone's
+real money.
 
-On Anthropic, `askJSON` uses `messages.parse()` with `zodOutputFormat()`, so the SDK
+`askJSON` uses `messages.parse()` with `zodOutputFormat()`, so the SDK
 validates against your Zod schema — you get a typed object or a throw. It
 retries 429/5xx with backoff, and checks `stop_reason` for `refusal` and
 `max_tokens` before reading content. Any new direct model call should do the
