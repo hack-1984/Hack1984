@@ -2,7 +2,6 @@ import type {
   Idea,
   LaunchSummary,
   Mode,
-  PillarKey,
   SceneSpec,
   SimPersona,
   SimResult,
@@ -69,40 +68,19 @@ export interface LaunchRunResponse {
 }
 
 /**
- * POST /api/impact — Tony's nonprofit Build.
+ * POST /api/impact — Tony's nonprofit Build. { idea } -> { logicModel, updates }
  *
  * The nonprofit counterpart of /api/build: where a startup ends at a landing
- * page and a pitch, a nonprofit ends at a logic model and something a funder
- * can read. Nonprofit mode only; in startup mode the route returns 400.
+ * page and a pitch, a nonprofit ends at a logic model a funder can read.
+ *
+ * Tony owns the route AND its types, which live beside his other conversation
+ * contracts in src/server/conversation/deps.ts. These are re-exports, not a
+ * second definition: a shape declared in two files drifts, and this one
+ * already had — the placeholder written here during Step 0N guessed at
+ * `{ impact: {...} }` and the shipped route answers `{ logicModel, updates }`.
  */
-export interface ImpactRequest {
-  idea: Idea;
-}
-
-/** One number a funder would ask for, with the reasoning that produced it. */
-export interface ImpactMetric {
-  label: string; // "Students served per year"
-  value: string; // "120" — a string, since some are ranges or rates
-  basis: string; // how it was derived, 1 sentence
-  pillar: PillarKey;
-}
-
-/** Inputs -> activities -> outputs -> outcomes, the standard funder framing. */
-export interface LogicModel {
-  inputs: string[];
-  activities: string[];
-  outputs: string[];
-  outcomes: string[];
-}
-
-export interface ImpactResponse {
-  impact: {
-    headline: string;
-    metrics: ImpactMetric[];
-    logicModel: LogicModel;
-    /** What changes for the people served, in their terms. */
-    outcomes: string[];
-    /** ~250 words a programme officer could read without context. */
-    funderOnePager: string;
-  };
-}
+export type {
+  ImpactReq as ImpactRequest,
+  ImpactRes as ImpactResponse,
+  LogicModel,
+} from "@/server/conversation/deps";
