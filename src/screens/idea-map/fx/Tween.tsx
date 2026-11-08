@@ -15,17 +15,19 @@ export function TweenNumber({ value, duration = 600, format }: { value: number; 
   const target = Number.isFinite(value) ? value : 0;
   const [shown, setShown] = useState(target);
   const [dir, setDir] = useState<"" | "up" | "down">("");
-  const from = useRef(target);
+  // The value currently on screen. Every animation starts from here, so a change back to an
+  // earlier value, or a change that lands mid-flight, always ends on the real target.
+  const shownRef = useRef(target);
   const raf = useRef(0);
   const settle = useRef(0);
 
   useEffect(() => {
-    const start = from.current;
+    const start = shownRef.current;
     if (start === target) return;
     cancelAnimationFrame(raf.current);
     clearTimeout(settle.current);
     if (reduced()) {
-      from.current = target;
+      shownRef.current = target;
       raf.current = requestAnimationFrame(() => setShown(target));
       return () => cancelAnimationFrame(raf.current);
     }
@@ -38,20 +40,16 @@ export function TweenNumber({ value, duration = 600, format }: { value: number; 
       }
       const t = Math.min(1, (now - t0) / duration);
       const v = Math.round(start + (target - start) * EASE(t));
+      shownRef.current = v;
       setShown(v);
       if (t < 1) raf.current = requestAnimationFrame(step);
-      else {
-        from.current = target;
-        settle.current = window.setTimeout(() => setDir(""), 150);
-      }
+      else settle.current = window.setTimeout(() => setDir(""), 150);
     };
     raf.current = requestAnimationFrame(step);
     return () => {
       cancelAnimationFrame(raf.current);
       clearTimeout(settle.current);
-      from.current = shown; // a value change mid-flight continues from where we are
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [target, duration]);
 
   return <span className={dir ? `fx-tween fx-tween-${dir}` : "fx-tween"}>{format ? format(shown) : String(shown)}</span>;
