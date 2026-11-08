@@ -36,10 +36,7 @@ body:has(.pg-new){margin:0;background:var(--bg);font-family:'Geist',system-ui,sa
 .nw-btn-primary:hover:not(:disabled){filter:brightness(1.25)}
 .nw-btn-primary:disabled{opacity:.4;cursor:not-allowed}
 
-.nw-planting{display:flex;flex-direction:column;align-items:flex-start;gap:10px;padding:8px 0 4px}
-.nw-seed{color:var(--accent);animation:nw-grow 1.6s ease-in-out infinite;transform-origin:50% 90%}
-@keyframes nw-grow{0%,100%{transform:scale(.85);opacity:.7}50%{transform:scale(1.05);opacity:1}}
-@media (prefers-reduced-motion:reduce){.nw-seed{animation:none}}
+/* While planting, the card hands over to the full-viewport scene (planting.css). */
 @media (max-width:480px){.nw-card{padding:24px 20px}.nw-actions{flex-direction:column-reverse}.nw-btn{width:100%}}
 
 /* Startup / Nonprofit picker. Mode decides which research runs, so it is

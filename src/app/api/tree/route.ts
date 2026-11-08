@@ -2,15 +2,11 @@ import { NextResponse } from "next/server";
 import { nanoid } from "nanoid";
 import type { TreeRequest, TreeResponse } from "@/lib/contracts";
 import { fixtureFor } from "@/lib/modes";
-import type { Idea, TeamProfile } from "@/lib/types";
-import { TTLCache, cacheKey } from "@/server/cache";
+import { cacheKey } from "@/server/cache";
 import { extractBundle, gatherHits } from "@/server/research/gather";
 import { assembleIdea, generateChoices } from "@/server/research/generateTree";
-
-const EMPTY_TEAM: TeamProfile = { roles: [], skills: [], tech: [] };
-
-/** Keyed on pitch + team, per the plan. */
-const treeCache = new TTLCache<Idea>();
+// Keyed on pitch + team, per the plan. Shared with /api/tree/stream.
+import { EMPTY_TEAM, treeCache } from "@/server/research/treeCache";
 
 /** POST /api/tree — Ethan's intake. { pitch, team } -> { idea } */
 export async function POST(req: Request) {

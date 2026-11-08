@@ -3,6 +3,7 @@ import { MODELS, askJSON, search, type SearchHit } from "@/lib/ai";
 import type { Mode, ResearchBundle } from "@/lib/types";
 import { QUERY_KEYS, Queries, researchMode, type QuerySet } from "./modes";
 import { peerOrganizations, peerUrls, revenueNote, type PeerOrg } from "./propublica";
+import { domainOf, type PlantEvent } from "@/ideas/planting";
 
 /**
  * Research for one pitch: write queries, run them, extract a bundle.
@@ -35,6 +36,9 @@ export interface GatherResult {
   peers: PeerOrg[];
 }
 
+/** Progress listener for the planting scene (src/ideas/planting.ts). Optional everywhere. */
+export type OnPlantEvent = (e: PlantEvent) => void;
+
 /** A search that resolves to [] rather than hanging the whole gather. */
 async function searchOrEmpty(query: string): Promise<SearchHit[]> {
   try {
@@ -59,11 +63,20 @@ async function searchOrEmpty(query: string): Promise<SearchHit[]> {
  * tree from these hits while the bundle is still being extracted — the two
  * read the same results and neither needs the other.
  */
-export async function gatherHits(pitch: string, mode?: Mode): Promise<GatherResult> {
+export async function gatherHits(pitch: string, mode?: Mode, onEvent?: OnPlantEvent): Promise<GatherResult> {
   const t0 = Date.now();
   const m = researchMode(mode);
+  // Progress is a courtesy to the UI: a listener that throws must not break research.
+  const emit = (e: PlantEvent) => {
+    try {
+      onEvent?.(e);
+    } catch {
+      /* ignore */
+    }
+  };
 
   // 1. Write the five queries.
+  emit({ type: "status", phase: "queries", text: "Writing search queries" });
   let queries: QuerySet;
   try {
     queries = await askJSON({
@@ -79,13 +92,22 @@ export async function gatherHits(pitch: string, mode?: Mode): Promise<GatherResu
     queries = m.fallbackQueries(pitch);
   }
   const tQueries = Date.now();
+  for (const k of QUERY_KEYS) emit({ type: "query", purpose: k, text: queries[k] });
 
   // 2. Run all five in parallel — and, in nonprofit mode, the Explorer at the
   //    same time. It is a plain HTTP API with its own timeout, so it costs
   //    nothing on the clock and nothing from the credit budget.
   const terms = (queries.causeTerms?.trim() || queries.competitors).slice(0, 80);
+  emit({ type: "status", phase: "search", text: "Searching the web" });
   const [hitLists, peers] = await Promise.all([
-    Promise.all(QUERY_KEYS.map((k) => searchOrEmpty(queries[k]))),
+    Promise.all(
+      QUERY_KEYS.map(async (k) => {
+        const hits = await searchOrEmpty(queries[k]);
+        // Per search, not after all five, so the UI sees them land in bursts.
+        for (const h of hits) emit({ type: "source", purpose: k, title: h.title, url: h.url, domain: domainOf(h.url) });
+        return hits;
+      })
+    ),
     m.mode === "nonprofit"
       ? peerOrganizations(terms, pitch).catch((err) => {
           console.warn(`[gather] propublica failed: ${err}`);

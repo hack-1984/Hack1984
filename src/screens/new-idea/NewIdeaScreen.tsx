@@ -9,11 +9,16 @@ import { useRouter } from "next/navigation";
 import { useEffect, useLayoutEffect, useRef, useState, type FormEvent } from "react";
 import { Session } from "@/session";
 import { createIdea } from "@/ideas/store";
+import { narrateIdea } from "@/ideas/narrate";
+import type { PlantEvent, PlantPhase } from "@/ideas/planting";
 import { profileFor } from "@/lib/modes";
 import type { Mode } from "@/lib/types";
+import PlantingScene from "./PlantingScene";
 import "./new-idea.css";
 
 const MIN_DESCRIPTION = 20;
+/** After research resolves, keep the scene up this long so the final growth stage is seen. */
+const HOLD_MS = 900;
 
 type Phase = "idle" | "planting" | "error";
 
@@ -38,6 +43,11 @@ export default function NewIdeaScreen() {
   const [error, setError] = useState("");
   const [touched, setTouched] = useState({ name: false, description: false });
   const planted = useRef(false);
+  // Planting scene feed: research events streamed by createIdea, and Haiku's status lines.
+  const [events, setEvents] = useState<PlantEvent[]>([]);
+  const [lines, setLines] = useState<string[]>([]);
+  const run = useRef(0); // bumps per plant and on unmount, so late events are ignored
+  const lastPhase = useRef<PlantPhase | null>(null);
 
   // Same sign-in check as the ideas dashboard.
   useEffect(() => {
@@ -50,10 +60,20 @@ export default function NewIdeaScreen() {
     };
   }, [router]);
 
+  // On unmount, invalidate the in-flight plant so late events and the redirect are dropped.
+  useEffect(() => {
+    const r = run;
+    return () => {
+      r.current++;
+    };
+  }, []);
+
   // Next keeps this page alive (hidden) after we leave. Once a seed is planted,
   // start fresh next time; if the founder only cancelled, keep their draft.
   useLayoutEffect(() => {
     return () => {
+      setEvents([]);
+      setLines([]);
       if (!planted.current) return;
       planted.current = false;
       setName("");
@@ -74,11 +94,29 @@ export default function NewIdeaScreen() {
     if (!valid || phase === "planting") return;
     setPhase("planting");
     setError("");
+    setEvents([]);
+    setLines([]);
+    lastPhase.current = null;
+    const id = ++run.current;
+    const onEvent = (e: PlantEvent) => {
+      if (run.current !== id) return;
+      if (e.type === "status") lastPhase.current = e.phase;
+      setEvents((prev) => [...prev, e]);
+    };
+    // Narration is independent of the research; it usually lands first.
+    narrateIdea({ name: name.trim(), description: description.trim(), mode }).then((ls) => {
+      if (run.current === id) setLines(ls);
+    });
     try {
-      const saved = await createIdea({ name, description, mode });
+      const saved = await createIdea({ name, description, mode }, onEvent);
+      if (run.current !== id) return;
+      if (lastPhase.current !== "save") onEvent({ type: "status", phase: "save", text: "Saving your idea" });
+      await new Promise((r) => setTimeout(r, HOLD_MS));
+      if (run.current !== id) return;
       planted.current = true;
       router.push(`/map?id=${encodeURIComponent(saved.id)}`);
     } catch (err) {
+      if (run.current !== id) return;
       setError(err instanceof Error ? err.message : "Something went wrong. Try again.");
       setPhase("error");
     }
@@ -94,19 +132,8 @@ export default function NewIdeaScreen() {
           </Link>
 
           {phase === "planting" ? (
-            <div className="nw-planting" role="status" aria-live="polite">
-              <svg className="nw-seed" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <path d="M7 20h10" />
-                <path d="M10 20c5.5-2.5.8-6.4 3-10" />
-                <path d="M9.5 9.4c1.1.8 1.8 2.2 2.3 3.7-2 .4-3.5.4-4.8-.3-1.2-.6-2.3-1.9-3-4.2 2.8-.5 4.4 0 5.5.8z" />
-                <path d="M14.1 6a7 7 0 0 0-1.1 4c1.9-.1 3.3-.6 4.3-1.4 1-1 1.6-2.3 1.7-4.6-2.7.1-4 1-4.9 2z" />
-              </svg>
-              <h1 className="nw-h1">Planting your seed…</h1>
-              <p className="nw-sub">
-                Researching {mode === "nonprofit" ? "the need" : "the market"} for{" "}
-                <strong>{name.trim()}</strong>. This can take up to a minute.
-              </p>
-            </div>
+            // Full-viewport scene; it fades in over the card.
+            <PlantingScene name={name.trim()} mode={mode} events={events} lines={lines} />
           ) : (
             <form onSubmit={plant} noValidate className="nw-form">
               <div className="nw-head">
