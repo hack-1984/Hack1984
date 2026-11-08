@@ -118,6 +118,25 @@ All five are mocked behind `MOCK_AI=1` and return 501 without it. Shapes are in
 `src/lib/contracts.ts` — they're what the frontend is written against, so
 changing one breaks someone else's screen.
 
+### `summary.byGroup` carries more than the shipped type says
+
+`/api/launch/run` returns a `name`, a `dropOffPrice` and a `size` on every
+entry of `summary.byGroup`. `LaunchSummary` in `types.ts` declares only
+`{ groupId, buyRate }`, and that file is one nobody edits — so the wider type
+lives in `src/server/launch/summary.ts` instead:
+
+```ts
+import type { LaunchSummaryPlus } from "@/server/launch/summary";
+```
+
+Nothing broke: the extra keys are additive and anything typed against
+`LaunchSummary` still compiles. Import the wider type when you want them.
+
+The point of `dropOffPrice` per group is that **one median across all 100
+people hides the shape**. A run can read "$10 drop-off" while weekend anglers
+stop at $7 and charter captains go to $47 — two businesses, not one. The
+price slider is far more interesting per segment than in aggregate.
+
 Tony owns `/api/persona`, `/api/chat`, `/api/extract`, `/api/graveyard`,
 `/api/graveyard/detail` and `/api/build`.
 
