@@ -53,3 +53,9 @@ body:has(.pg-cv){margin:0;background-color:#F5F7F2;background-image:linear-gradi
   .cv-marquee-copy{flex:1;flex-wrap:wrap;justify-content:center;gap:24px 40px;padding-right:0}
   .cv-marquee-copy[aria-hidden="true"]{display:none}
 }
+
+/* Dashboard button (app addition): fades in once the session is known; arrow nudges on hover. */
+@keyframes cv-fadeIn{from{opacity:0}to{opacity:1}}
+.cv-dash{animation:cv-fadeIn .25s ease both}
+.cv-dash-arrow{transition:transform .2s}
+.cv-dash:hover .cv-dash-arrow{transform:translateX(3px)}

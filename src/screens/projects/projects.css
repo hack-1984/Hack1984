@@ -28,3 +28,8 @@ body:has(.pg-pj){margin:0;background:var(--bg);font-family:'Geist',system-ui,san
 .pj-danger:hover{background:var(--red-text) !important;border-color:var(--red-text) !important}
 .pj-danger:active{transform:scale(.97)}
 .pj-danger:focus-visible,.pj-confirm .pj-hover0:focus-visible{outline:2px solid var(--focus-ring);outline-offset:2px}
+
+/* Back arrow (app addition): nudges left on hover. */
+.pj-back-arrow{transition:transform .2s}
+.pj-back:hover .pj-back-arrow{transform:translateX(-2px)}
+.pj-back:focus-visible{outline:2px solid var(--focus-ring);outline-offset:2px}

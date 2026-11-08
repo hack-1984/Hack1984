@@ -4,10 +4,11 @@
 // (claude.ai/design project 64b283df-0e77-4c88-936d-707b3f0b3f61).
 // Markup and inline styles are the design's, converted 1:1; behaviour is in ./logic.js.
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { Fragment, useState, type CSSProperties } from "react";
+import { Fragment, useEffect, useState, type CSSProperties } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useLogic } from "../dc";
+import { Session, useSession } from "@/session";
 import Logic from "./logic";
 import "./canvas.css";
 
@@ -77,6 +78,12 @@ const MARQUEE_SECONDS = Math.round(SPONSORS.reduce((a, sp) => a + sp.w * 0.75 + 
 
 export default function CanvasScreen(props: Record<string, unknown>) {
   const v = useLogic(Logic, props);
+  // App change: a signed-in visitor can stay on the landing page. The nav's "Log in" becomes
+  // "Dashboard" (their ideas). The Supabase session only loads once something asks for it.
+  const session = useSession();
+  useEffect(() => {
+    Session.ready().catch(() => {});
+  }, []);
   if (!v) return <div className="pg-cv" />;
   const { aboutCopy, ann, barOn, barOp, barPe, barY, burst, cards, dismiss, edges, evidence, feed, feedCount, footerCols, gCaption, gDot, grid, h1a, h1b, h1c, leaves, navOp, navPe, navY, pillars, pills, progress, pulseOp, pulseR, sproutBright, sproutScale, stepLabel, stepNum, tabs, team } = v;
   return (
@@ -123,9 +130,18 @@ export default function CanvasScreen(props: Record<string, unknown>) {
             </a>
           </div>
           <div style={{ display: "flex", gap: "10px" }}>
-            <Link className="cv-hover2" href="/login" style={{ display: "inline-flex", alignItems: "center", whiteSpace: "nowrap", flex: "none", minHeight: "40px", padding: "0 18px", borderRadius: "999px", border: "1px solid #0F2E20", color: "#0F2E20", fontSize: "14px", fontWeight: "500", transition: "transform .2s,box-shadow .2s" }}>
-              Log in
-            </Link>
+            {session ? (
+              <Link className="cv-hover2 cv-dash" href="/sessions" style={{ display: "inline-flex", alignItems: "center", gap: "6px", whiteSpace: "nowrap", flex: "none", minHeight: "40px", padding: "0 14px 0 18px", borderRadius: "999px", border: "1px solid #0F2E20", color: "#0F2E20", fontSize: "14px", fontWeight: "500", transition: "transform .2s,box-shadow .2s" }}>
+                Dashboard
+                <svg className="cv-dash-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M5 12h14M13 6l6 6-6 6" />
+                </svg>
+              </Link>
+            ) : (
+              <Link className="cv-hover2" href="/login" style={{ display: "inline-flex", alignItems: "center", whiteSpace: "nowrap", flex: "none", minHeight: "40px", padding: "0 18px", borderRadius: "999px", border: "1px solid #0F2E20", color: "#0F2E20", fontSize: "14px", fontWeight: "500", transition: "transform .2s,box-shadow .2s" }}>
+                Log in
+              </Link>
+            )}
             <Link className="cv-hover3" href="/map" style={{ display: "inline-flex", alignItems: "center", whiteSpace: "nowrap", flex: "none", minHeight: "40px", padding: "0 18px", borderRadius: "999px", background: "#0F2E20", color: "#F2F5F3", fontSize: "14px", fontWeight: "600", transition: "transform .2s,box-shadow .2s" }}>
               Demo
             </Link>

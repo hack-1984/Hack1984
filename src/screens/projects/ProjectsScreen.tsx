@@ -22,10 +22,18 @@ export default function ProjectsScreen(props: Record<string, unknown>) {
     <div className="pg-pj">
       <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "var(--bg)" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "16px", padding: "8px 20px", borderBottom: "1px solid var(--border)", background: "var(--surface)", flexWrap: "wrap" }}>
-          <Link href="/" aria-label="Sprout home" style={{ display: "flex", alignItems: "center", minHeight: "44px", textDecoration: "none" }}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/brand/sprout-logo-black.svg" alt="Sprout" width={100} height={28} style={{ display: "block" }} />
-          </Link>
+          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+            {/* Back to the landing page (app addition): signed-in people can keep browsing it. */}
+            <Link className="pj-hover0 pj-back" href="/" aria-label="Back to home" title="Back to home" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: "36px", height: "36px", borderRadius: "50%", border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text)", textDecoration: "none", transition: "background .15s,border-color .15s" }}>
+              <svg className="pj-back-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M19 12H5M11 18l-6-6 6-6" />
+              </svg>
+            </Link>
+            <Link href="/" aria-label="Sprout home" style={{ display: "flex", alignItems: "center", minHeight: "44px", textDecoration: "none" }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/brand/sprout-logo-black.svg" alt="Sprout" width={100} height={28} style={{ display: "block" }} />
+            </Link>
+          </div>
           <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
             {isDemo ? (
               <>
