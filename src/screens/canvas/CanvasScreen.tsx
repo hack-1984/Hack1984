@@ -103,7 +103,7 @@ export default function CanvasScreen(props: Record<string, unknown>) {
             </div>
           </>
         ) : null}
-        <nav aria-label="Primary" style={{ height: "64px", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 clamp(20px,4vw,40px)", color: "#000" }}>
+        <nav aria-label="Primary" style={{ position: "relative", height: "64px", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 clamp(20px,4vw,40px)", color: "#000" }}>
           <a href="#top" aria-label="Sprout home" style={{ display: "block", width: "100px", height: "28px" }}>
             {" "}
             <svg viewBox="0 0 200 56" aria-hidden="true" style={{ width: "100%", height: "100%", display: "block" }}>
@@ -121,7 +121,7 @@ export default function CanvasScreen(props: Record<string, unknown>) {
             </svg>
             {" "}
           </a>
-          <div data-nav-links="1" style={{ display: "flex", gap: "28px", fontSize: "14px", fontWeight: "500" }}>
+          <div data-nav-links="1" style={{ position: "absolute", left: "50%", top: "50%", transform: "translate(-50%,-50%)", display: "flex", gap: "28px", fontSize: "14px", fontWeight: "500" }}>
             <a className="cv-hover1" href="#how" style={{ color: "#4A5E53", padding: "6px 0", transition: "color .2s", whiteSpace: "nowrap", flex: "none" }}>
               How it works
             </a>
