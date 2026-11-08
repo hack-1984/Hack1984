@@ -31,10 +31,11 @@ interface Grave {
 }
 
 const label = (k: string) => PILLAR_BY_KEY[k as keyof typeof PILLAR_BY_KEY]?.startup ?? k;
-// Where API graves stand in the yard (the demo set has its own positions).
+// Where graves stand in the yard: x as % of the yard's width, y as % of its height (the stone's base).
+// Back row higher and smaller-looking, front row lower, staggered like the mock.
 const SLOTS = [
-  { x: 50, y: 40, rot: -3 }, { x: 20, y: 44, rot: 4 }, { x: 80, y: 42, rot: -5 },
-  { x: 36, y: 86, rot: 3 }, { x: 66, y: 88, rot: -2 }, { x: 88, y: 86, rot: 4 },
+  { x: 50, y: 52, rot: -3 }, { x: 22, y: 58, rot: 4 }, { x: 78, y: 56, rot: -5 },
+  { x: 36, y: 86, rot: 3 }, { x: 64, y: 88, rot: -2 }, { x: 88, y: 84, rot: 4 },
 ];
 const money = (n?: number) => (!n ? "Not disclosed" : n >= 1e9 ? `$${+(n / 1e9).toFixed(1)}B` : n >= 1e6 ? `$${+(n / 1e6).toFixed(1)}M` : `$${Math.round(n / 1e3)}K`);
 const host = (u: string) => {
@@ -169,34 +170,35 @@ export default function GraveyardWidget({ ctx }: { ctx: WidgetCtx }) {
 
       {graves.length ? (
         <>
-          <div aria-hidden="true" style={{ height: sel === null ? "54px" : "4px", transition: "height .5s cubic-bezier(.3,1,.4,1)" }} />
-          <div className="gy-yard" style={{ height: sel === null ? "200px" : "150px" }}>
+          {/* The yard: stones scattered on a patch of ground. Size follows similarity; the open one grows.
+              Names show on hover / keyboard focus, and stay under the open stone. */}
+          <div className={`gy-yard${sel !== null ? " has-sel" : ""}`}>
             {graves.map((gr, i) => {
-              const w = Math.round(16 + gr.similarity / 5);
+              const w = Math.round(22 + gr.similarity / 4);
               const on = sel === i;
               const other = sel !== null && !on;
+              const tip = `gy-tip-${i}`;
               return (
-                <div key={gr.name}>
+                <div key={gr.name} className={`gy-plot${on ? " is-on" : ""}${other ? " is-other" : ""}`} style={{ left: `${gr.x}%`, top: `${gr.y}%`, zIndex: Math.round(gr.y) }}>
                   <button
                     type="button"
                     className="gy-stone"
-                    aria-label={`${gr.name}, ${gr.years}${mem.haunted?.[gr.name] ? ", visited" : ""}`}
+                    aria-label={`${gr.name}, ${gr.years}${mem.haunted?.[gr.name] ? ", opened" : ""}`}
+                    aria-describedby={tip}
                     aria-pressed={on}
                     onClick={() => pick(i)}
-                    style={{
-                      left: `${gr.x}%`, top: `${gr.y}%`, width: `${w}px`, height: `${Math.round(w * 1.3)}px`,
-                      background: on ? "var(--text)" : other ? "color-mix(in srgb, var(--muted) 35%, var(--surface))" : "color-mix(in srgb, var(--muted) 75%, var(--surface))",
-                      transform: `translate(-50%, -100%) rotate(${gr.rot}deg) scale(${on ? 1.15 : other ? 0.75 : 1})`,
-                    }}
-                  />
-                  <span className="gy-name" style={{ left: `${gr.x}%`, top: `${gr.y}%`, fontWeight: on ? 700 : 400, color: other ? "var(--muted)" : "var(--text)" }}>
+                    style={{ width: `${w}px`, height: `${Math.round(w * 1.3)}px`, transform: `translate(-50%, -100%) rotate(${gr.rot}deg) scale(${on ? 1.4 : other ? 0.82 : 1})` }}
+                  >
+                    <span className="gy-engrave" aria-hidden="true" />
+                  </button>
+                  <span id={tip} role="tooltip" className="gy-tip">
                     {gr.name}
                   </span>
                 </div>
               );
             })}
           </div>
-          {sel === null ? <p className="wg-muted">Tap a gravestone to see why it shut down.</p> : null}
+          {sel === null ? <p className="wg-muted">Hover a gravestone to see its name. Open one to learn why it shut down.</p> : null}
         </>
       ) : null}
 
